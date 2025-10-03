@@ -1,0 +1,10 @@
+{
+  "name": "@allecto/ui",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": { "build": "tsc -p tsconfig.build.json" },
+  "devDependencies": { "typescript": "^5.4.0", "@types/react": "^18.2.21" },
+  "peerDependencies": { "react": "^18.2.0" }
+}

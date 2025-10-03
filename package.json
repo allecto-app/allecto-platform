@@ -1,0 +1,13 @@
+{
+  "name": "allecto-platform",
+  "private": true,
+  "packageManager": "pnpm@9",
+  "workspaces": ["apps/*", "backend/*", "packages/*"],
+  "devDependencies": { "turbo": "^2.0.0", "typescript": "^5.4.0" },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  }
+}
