@@ -1,5 +1,5 @@
 import React from "react";
-import type { Minute } from "@allecto/contracts/minutes";
+import type { Minute } from "@allecto-app/contracts/minutes";
 
 export default function Admin() {
   const example: Minute = {

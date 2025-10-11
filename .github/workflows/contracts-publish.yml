@@ -11,7 +11,7 @@ jobs:
       - uses: pnpm/action-setup@v3
         with: { version: 9 }
       - run: pnpm install
-      - run: pnpm -F @allecto/contracts build
+      - run: pnpm -F @allecto-app/contracts build
       - run: npm publish --workspace packages/contracts
         env:
           NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}

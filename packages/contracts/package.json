@@ -1,6 +1,6 @@
 {
-  "name": "@allecto/contracts",
-  "version": "0.0.0",
+  "name": "@allecto-app/contracts",
+  "version": "0.0.2",
   "private": false,
   "type": "module",
   "main": "dist/index.js",
@@ -10,9 +10,19 @@
     "./minutes": "./dist/minutes.js",
     "./votes": "./dist/votes.js"
   },
-  "files": ["dist"],
-  "scripts": { "build": "tsc -p tsconfig.build.json" },
-  "dependencies": { "zod": "^3.23.8" },
-  "devDependencies": { "typescript": "^5.4.0" },
-  "publishConfig": { "access": "restricted" }
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
 }
