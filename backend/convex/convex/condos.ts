@@ -47,3 +47,10 @@ export const updateBranding = mutation({
         return true;
     },
 });
+
+export const list = query({
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, { limit }) => {
+        return await ctx.db.query("condos").take(limit ?? 500);
+    },
+});

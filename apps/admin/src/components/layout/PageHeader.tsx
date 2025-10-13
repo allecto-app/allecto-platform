@@ -1,0 +1,72 @@
+import { ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+
+interface PageHeaderProps {
+  title: string;
+  breadcrumb?: string[];
+  primaryAction?: {
+    label: string;
+    onClick: () => void;
+    variant?: "default" | "destructive";
+  };
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  contextPill?: {
+    name: string;
+    subdomain: string;
+  };
+}
+
+export function PageHeader({
+  title,
+  breadcrumb,
+  primaryAction,
+  secondaryAction,
+  contextPill,
+}: PageHeaderProps) {
+  return (
+    <div className="mb-6">
+      {breadcrumb && breadcrumb.length > 0 && (
+        <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+          {breadcrumb.map((item, index) => (
+            <div key={index} className="flex items-center gap-2">
+              {index > 0 && <ChevronRight className="h-4 w-4" />}
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1>{title}</h1>
+          {contextPill && (
+            <Badge variant="outline" className="gap-1">
+              <span>Condo:</span>
+              <span>{contextPill.name}</span>
+              <span className="text-muted-foreground">({contextPill.subdomain})</span>
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {secondaryAction && (
+            <Button variant="outline" onClick={secondaryAction.onClick}>
+              {secondaryAction.label}
+            </Button>
+          )}
+          {primaryAction && (
+            <Button 
+              variant={primaryAction.variant || "default"}
+              onClick={primaryAction.onClick}
+            >
+              {primaryAction.label}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

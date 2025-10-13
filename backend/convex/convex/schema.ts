@@ -107,4 +107,11 @@ export default defineSchema({
   })
     .index("byCondoEmail", ["condoId", "email"])
     .index("byCondoPhone", ["condoId", "phone"]),
+
+  platformUsers: defineTable({
+    email: v.string(),
+    name: v.optional(v.string()),
+    roles: v.array(v.string()), // ["super_admin","support","ops"]
+    createdAt: v.number(),
+  }).index("byEmail", ["email"]),
 });

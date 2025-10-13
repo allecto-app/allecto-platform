@@ -1,5 +1,5 @@
 // convex/units.ts
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const upsert = mutation({
@@ -46,5 +46,15 @@ export const addMembership = mutation({
             createdAt: now,
         });
         return true;
+    },
+});
+
+export const listByCondo = query({
+    args: { condoId: v.id("condos"), limit: v.optional(v.number()) },
+    handler: async (ctx, { condoId, limit }) => {
+        return await ctx.db
+            .query("units")
+            .withIndex("byCondo", (q) => q.eq("condoId", condoId))
+            .take(limit ?? 500);
     },
 });

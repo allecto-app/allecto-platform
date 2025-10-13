@@ -8,8 +8,24 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@allecto-app/contracts/*": ["../../packages/contracts/src/*"]
-    }
+      "@allecto-app/contracts/*": [
+        "../../packages/contracts/src/*"
+      ]
+    },
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "noEmit": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
