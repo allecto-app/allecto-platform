@@ -1,20 +1,53 @@
 import { useState } from "react";
+import { useMutation } from "convex/react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Button } from "../components/ui/button";
+import { api, Id } from "../lib/convexGenerated";
 
 interface AuthPageProps {
-  onLogin: () => void;
+  onLogin: (session: {
+    token: string;
+    userId: Id<"platformUsers">;
+    roles: string[];
+    name: string;
+    expiresAt: number;
+  }) => void;
 }
 
 export function AuthPage({ onLogin }: AuthPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const adminSignIn = useMutation(api.auth.adminSignIn);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const result = await adminSignIn({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (!result?.success) {
+        throw new Error("Invalid credentials");
+      }
+      onLogin({
+        token: result.token,
+        userId: result.userId,
+        roles: result.roles,
+        name: result.name,
+        expiresAt: result.expiresAt,
+      });
+    } catch (err) {
+      setError("Email ou senha inválidos");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,7 +73,10 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                 type="email"
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(null);
+                }}
                 required
               />
             </div>
@@ -59,14 +95,22 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(null);
+                }}
                 required
               />
             </div>
+            {error && (
+              <p className="text-destructive text-sm" role="status">
+                {error}
+              </p>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full">
-              Entrar
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Entrando..." : "Entrar"}
             </Button>
             <p className="text-center text-muted-foreground">
               Precisa de ajuda?{" "}

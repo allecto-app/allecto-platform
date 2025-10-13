@@ -4,15 +4,19 @@ import { v } from "convex/values";
 import { requirePlatformRole } from "./guards";
 
 export const listCondos = query({
-    args: { limit: v.optional(v.number()) },
+    args: {
+        sessionToken: v.string(),
+        limit: v.optional(v.number()),
+    },
     handler: async (ctx, a) => {
-        await requirePlatformRole(ctx, ["super_admin", "ops", "support"]);
+        await requirePlatformRole(ctx, ["super_admin", "ops", "support"], a.sessionToken);
         return ctx.db.query("condos").take(a.limit ?? 200);
     },
 });
 
 export const createCondo = mutation({
     args: {
+        sessionToken: v.string(),
         name: v.string(),
         subdomain: v.string(),
         branding: v.object({
@@ -25,7 +29,7 @@ export const createCondo = mutation({
         syndicName: v.string(),
     },
     handler: async (ctx, a) => {
-        await requirePlatformRole(ctx, ["super_admin", "ops"]);
+        await requirePlatformRole(ctx, ["super_admin", "ops"], a.sessionToken);
         const now = Date.now();
         const condoId = await ctx.db.insert("condos", {
             name: a.name,

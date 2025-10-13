@@ -113,5 +113,34 @@ export default defineSchema({
     name: v.optional(v.string()),
     roles: v.array(v.string()), // ["super_admin","support","ops"]
     createdAt: v.number(),
+    passwordHash: v.optional(v.string()),
+    lastLoginAt: v.optional(v.number()),
   }).index("byEmail", ["email"]),
+
+  loginAttempts: defineTable({
+    email: v.string(),
+    ip: v.string(),
+    attempts: v.number(),
+    firstAttemptAt: v.number(),
+    lastAttemptAt: v.number(),
+    blockedUntil: v.optional(v.number()),
+  })
+    .index("byEmailIp", ["email", "ip"])
+    .index("byIp", ["ip"]),
+
+  sessions: defineTable({
+    tokenDigest: v.string(),
+    tokenHash: v.string(),
+    type: v.string(), // "platform" | "resident"
+    platformUserId: v.optional(v.id("platformUsers")),
+    residentId: v.optional(v.id("residents")),
+    condoId: v.optional(v.id("condos")),
+    roles: v.array(v.string()),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    lastUsedAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  }).index("byDigest", ["tokenDigest"]),
 });

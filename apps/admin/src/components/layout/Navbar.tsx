@@ -21,6 +21,8 @@ interface NavbarProps {
   condos?: Doc<"condos">[] | undefined;
   selectedCondo?: Doc<"condos"> | null;
   onSelectCondo?: (condoId: Id<"condos"> | null) => void;
+  onLogout?: () => void;
+  userName?: string;
 }
 
 export function Navbar({
@@ -30,8 +32,11 @@ export function Navbar({
   condos,
   selectedCondo,
   onSelectCondo,
+  onLogout,
+  userName,
 }: NavbarProps) {
   const isPlatformMode = mode === "platform";
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : null;
 
   return (
     <>
@@ -111,19 +116,32 @@ export function Navbar({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <User className="h-4 w-4" />
+                  {userInitial ? (
+                    <span className="font-medium">{userInitial}</span>
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {userName ? `Bem-vindo, ${userName}` : "Minha Conta"}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Perfil</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onNavigate("settings")}>
                 Configurações
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onNavigate("auth")}>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (onLogout) {
+                    onLogout();
+                  } else {
+                    onNavigate("auth");
+                  }
+                }}
+              >
                 Sair
               </DropdownMenuItem>
             </DropdownMenuContent>

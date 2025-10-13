@@ -12,9 +12,10 @@ import { api, Id } from "../lib/convexGenerated";
 interface OnboardingPageProps {
   onNavigate: (page: string) => void;
   onSelectCondo: (condoId: Id<"condos">) => void;
+  sessionToken: string;
 }
 
-export function OnboardingPage({ onNavigate, onSelectCondo }: OnboardingPageProps) {
+export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: OnboardingPageProps) {
   const [condoName, setCondoName] = useState("");
   const [subdomain, setSubdomain] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#042940");
@@ -23,8 +24,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo }: OnboardingPageProp
   const [syndicEmail, setSyndicEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const createCondo = useMutation(api.condos.create);
-  const inviteResident = useMutation(api.residents.invite);
+  const createCondo = useMutation(api.platform.createCondo);
 
   const handleCreate = async () => {
     if (!condoName || !subdomain || !syndicName || !syndicEmail) {
@@ -32,9 +32,15 @@ export function OnboardingPage({ onNavigate, onSelectCondo }: OnboardingPageProp
       return;
     }
 
+    if (!sessionToken) {
+      toast.error("Sessão expirada. Faça login novamente.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
-      const condoId = await createCondo({
+      const { condoId } = await createCondo({
+        sessionToken,
         name: condoName,
         subdomain,
         branding: {
@@ -42,13 +48,8 @@ export function OnboardingPage({ onNavigate, onSelectCondo }: OnboardingPageProp
           primaryColor,
           secondaryColor,
         },
-      });
-
-      await inviteResident({
-        condoId,
-        name: syndicName,
-        email: syndicEmail,
-        role: "syndic",
+        syndicEmail,
+        syndicName,
       });
 
       toast.success(`Condomínio ${condoName} created successfully!`);

@@ -15,7 +15,65 @@ export const demo = mutation({
     handler: async (ctx, { subdomain = "allecto-demo", unitsCount = 10 }) => {
         const now = Date.now();
 
+        // Ensure a demo platform administrator exists
+        const adminEmail = "admin@demo.com";
+        const existingAdmin = await ctx.db
+            .query("platformUsers")
+            .withIndex("byEmail", (q) => q.eq("email", adminEmail))
+            .unique();
+        const adminPasswordHash = "$2a$12$qjKYX6vr4cpOv.z/7fg16OsiGTK68oxPj1I9dj/EhoPkVxuX2KNn."; // password: Admin@123
+        if (!existingAdmin) {
+            await ctx.db.insert("platformUsers", {
+                email: adminEmail,
+                name: "Demo Admin",
+                roles: ["super_admin"],
+                createdAt: now,
+                passwordHash: adminPasswordHash,
+            });
+        } else {
+            await ctx.db.patch(existingAdmin._id, {
+                passwordHash: adminPasswordHash,
+            });
+        }
+
+        const attempts = await ctx.db
+            .query("loginAttempts")
+            .withIndex("byEmailIp", (q) => q.eq("email", adminEmail).eq("ip", "unknown"))
+            .collect();
+        for (const attempt of attempts) {
+            await ctx.db.delete(attempt._id);
+        }
+
         // 1) Create condo
+
+        // Ensure a demo platform supporter exists
+        const supportEmail = "support@demo.com";
+        const supportPasswordHash = "$2a$12$LyhtWsGR/HTr8Axo1tEXA.bh431oKF8vMf6UPsN5ZUyxRBUv2AbIC"; // password: Support@123
+        const existingSupport = await ctx.db
+            .query("platformUsers")
+            .withIndex("byEmail", (q) => q.eq("email", supportEmail))
+            .unique();
+        if (!existingSupport) {
+            await ctx.db.insert("platformUsers", {
+                email: supportEmail,
+                name: "Support Demo",
+                roles: ["support"],
+                createdAt: now,
+                passwordHash: supportPasswordHash,
+            });
+        } else {
+            await ctx.db.patch(existingSupport._id, {
+                passwordHash: supportPasswordHash,
+            });
+        }
+
+        const supportAttempts = await ctx.db
+            .query("loginAttempts")
+            .withIndex("byEmailIp", (q) => q.eq("email", supportEmail).eq("ip", "unknown"))
+            .collect();
+        for (const attempt of supportAttempts) {
+            await ctx.db.delete(attempt._id);
+        }
         const condoId = await ctx.db.insert("condos", {
             name: "Condomínio Demo",
             subdomain,

@@ -30,50 +30,64 @@ type UserMode = "platform" | "tenant";
 
 type CondoDoc = Doc<"condos">;
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState("auth");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userMode, setUserMode] = useState<UserMode>("platform");
-  const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(null);
+type AuthSession = {
+  token: string;
+  userId: Id<"platformUsers">;
+  roles: string[];
+  name: string;
+  expiresAt: number;
+};
 
-  const condos = useQuery(
-    api.condos.list,
-    isAuthenticated ? { limit: 500 } : undefined,
-  );
+const AUTH_STORAGE_KEY = "allecto-admin-auth";
+
+export default function App() {
+  const [auth, setAuth] = useState<AuthSession | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    if (selectedCondoId) return;
-    if (!condos || condos.length === 0) return;
-    setSelectedCondoId(condos[0]._id);
-  }, [isAuthenticated, condos, selectedCondoId]);
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(AUTH_STORAGE_KEY);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Partial<AuthSession>;
+      const isValid =
+        parsed &&
+        typeof parsed.token === "string" &&
+        parsed.token.length >= 32 &&
+        typeof parsed.userId === "string" &&
+        Array.isArray(parsed.roles) &&
+        typeof parsed.expiresAt === "number" &&
+        parsed.expiresAt > Date.now();
+      if (isValid) {
+        setAuth(parsed as AuthSession);
+      } else {
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    } catch {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  }, []);
 
-  const selectedCondo: CondoDoc | null = useMemo(() => {
-    if (!selectedCondoId || !condos) return null;
-    return condos.find((condo) => condo._id === selectedCondoId) ?? null;
-  }, [condos, selectedCondoId]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (auth) {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
+    } else {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  }, [auth]);
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    setUserMode("platform");
-    setCurrentPage("tenants");
+  const handleLogin = (session: AuthSession) => {
+    if (!session.token || session.token.length < 32 || session.expiresAt <= Date.now()) {
+      return;
+    }
+    setAuth(session);
   };
 
-  const handleNavigate = (page: string) => {
-    setCurrentPage(page);
+  const handleLogout = () => {
+    setAuth(null);
   };
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  const handleSelectCondo = (condoId: Id<"condos"> | null) => {
-    setSelectedCondoId(condoId);
-    setUserMode(condoId ? "tenant" : "platform");
-  };
-
-  if (!isAuthenticated && currentPage === "auth") {
+  if (!auth) {
     return (
       <>
         <AuthPage onLogin={handleLogin} />
@@ -82,68 +96,114 @@ export default function App() {
     );
   }
 
-  // Design system pages (full width, no sidebar)
-  if (
-    currentPage === "design-tokens" ||
-    currentPage === "component-library"
-  ) {
+  return (
+    <>
+      <AuthenticatedShell auth={auth} onUpdateAuth={setAuth} onLogout={handleLogout} />
+      <Toaster />
+    </>
+  );
+}
+
+function AuthenticatedShell({
+  auth,
+  onUpdateAuth,
+  onLogout,
+}: {
+  auth: AuthSession;
+  onUpdateAuth: (auth: AuthSession | null) => void;
+  onLogout: () => void;
+}) {
+  const [currentPage, setCurrentPage] = useState<string>("tenants");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [userMode, setUserMode] = useState<UserMode>("platform");
+  const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(null);
+
+  const condos = useQuery(api.platform.listCondos, {
+    sessionToken: auth.token,
+    limit: 500,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const msUntilExpiry = Math.max(auth.expiresAt - Date.now(), 0);
+    const timer = window.setTimeout(() => {
+      onUpdateAuth(null);
+    }, msUntilExpiry);
+    return () => window.clearTimeout(timer);
+  }, [auth, onUpdateAuth]);
+
+  useEffect(() => {
+    if (!condos || condos.length === 0) return;
+    if (!selectedCondoId) {
+      setSelectedCondoId(condos[0]._id);
+    }
+  }, [condos, selectedCondoId]);
+
+  useEffect(() => {
+    if (!condos || selectedCondoId === null) return;
+    const exists = condos.some((condo) => condo._id === selectedCondoId);
+    if (!exists) {
+      setSelectedCondoId(null);
+      setUserMode("platform");
+    }
+  }, [condos, selectedCondoId]);
+
+  const selectedCondo: CondoDoc | null = useMemo(() => {
+    if (!selectedCondoId || !condos) return null;
+    return condos.find((condo) => condo._id === selectedCondoId) ?? null;
+  }, [condos, selectedCondoId]);
+
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => !prev);
+  };
+
+  const handleSelectCondo = (condoId: Id<"condos"> | null) => {
+    setSelectedCondoId(condoId);
+    setUserMode(condoId ? "tenant" : "platform");
+  };
+
+  const isLoadingCondos = condos === undefined;
+
+  if (currentPage === "design-tokens" || currentPage === "component-library") {
     return (
       <div className="min-h-screen bg-background">
         <div className="border-b border-border bg-background">
           <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-                <span className="text-primary-foreground">
-                  A
-                </span>
+                <span className="text-primary-foreground">A</span>
               </div>
-              <span className="text-foreground">
-                Allecto Admin - Design System
-              </span>
+              <span className="text-foreground">Allecto Admin - Design System</span>
             </div>
             <div className="flex gap-2">
               <Button
-                variant={
-                  currentPage === "design-tokens"
-                    ? "default"
-                    : "ghost"
-                }
+                variant={currentPage === "design-tokens" ? "default" : "ghost"}
                 onClick={() => setCurrentPage("design-tokens")}
               >
                 <Palette className="mr-2 h-4 w-4" />
                 Design Tokens
               </Button>
               <Button
-                variant={
-                  currentPage === "component-library"
-                    ? "default"
-                    : "ghost"
-                }
-                onClick={() =>
-                  setCurrentPage("component-library")
-                }
+                variant={currentPage === "component-library" ? "default" : "ghost"}
+                onClick={() => setCurrentPage("component-library")}
               >
                 <Package className="mr-2 h-4 w-4" />
                 Components
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage("dashboard")}
-              >
+              <Button variant="outline" onClick={() => setCurrentPage("dashboard")}>
                 Back to App
               </Button>
             </div>
           </div>
         </div>
         <div className="container mx-auto max-w-7xl p-6">
-          {currentPage === "design-tokens" && (
-            <DesignTokensPage />
-          )}
-          {currentPage === "component-library" && (
-            <ComponentLibraryPage />
-          )}
+          {currentPage === "design-tokens" && <DesignTokensPage />}
+          {currentPage === "component-library" && <ComponentLibraryPage />}
         </div>
-        <Toaster />
       </div>
     );
   }
@@ -166,28 +226,21 @@ export default function App() {
           condos={condos}
           selectedCondo={selectedCondo}
           onSelectCondo={handleSelectCondo}
+          onLogout={onLogout}
+          userName={auth.name}
         />
         <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
           <div className="mx-auto max-w-7xl">
-            {/* Quick access to design system */}
             {currentPage === "dashboard" && (
               <div className="mb-6 flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage("design-tokens")
-                  }
-                >
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage("design-tokens")}>
                   <Palette className="mr-2 h-4 w-4" />
                   Design Tokens
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    setCurrentPage("component-library")
-                  }
+                  onClick={() => setCurrentPage("component-library")}
                 >
                   <Package className="mr-2 h-4 w-4" />
                   Component Library
@@ -195,12 +248,11 @@ export default function App() {
               </div>
             )}
 
-            {/* Platform Pages */}
             {currentPage === "tenants" && (
               <TenantsPage
                 onNavigate={handleNavigate}
                 condos={condos}
-                isLoading={isAuthenticated && !condos}
+                isLoading={isLoadingCondos}
                 onSelectCondo={handleSelectCondo}
                 selectedCondoId={selectedCondoId}
               />
@@ -209,85 +261,49 @@ export default function App() {
               <OnboardingPage
                 onNavigate={handleNavigate}
                 onSelectCondo={handleSelectCondo}
+                sessionToken={auth.token}
               />
             )}
             {currentPage === "audit" && <AuditPage />}
             {currentPage === "support" && (
-              <SupportPage
-                onNavigate={handleNavigate}
-                onSelectCondo={handleSelectCondo}
-              />
+              <SupportPage onNavigate={handleNavigate} onSelectCondo={handleSelectCondo} />
             )}
 
-            {/* Tenant Pages */}
             {currentPage === "dashboard" && (
-              <DashboardPage
-                condos={condos}
-                selectedCondo={selectedCondo}
-              />
+              <DashboardPage condos={condos} selectedCondo={selectedCondo} />
             )}
             {currentPage === "minutes" && (
-              <MinutesListPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-              />
+              <MinutesListPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
             )}
             {currentPage === "minutes-new" && (
-              <MinutesNewPage
-                onNavigate={handleNavigate}
-                condo={selectedCondo}
-              />
+              <MinutesNewPage onNavigate={handleNavigate} condo={selectedCondo} />
             )}
             {currentPage === "minutes-detail" && (
-              <MinutesDetailPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-              />
+              <MinutesDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
             )}
             {currentPage === "residents" && (
-              <ResidentsListPage
-                onNavigate={handleNavigate}
-                condo={selectedCondo}
-              />
+              <ResidentsListPage onNavigate={handleNavigate} condo={selectedCondo} />
             )}
             {currentPage === "resident-detail" && (
-              <ResidentDetailPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-              />
+              <ResidentDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
             )}
             {currentPage === "resident-edit" && (
-              <ResidentEditPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-              />
+              <ResidentEditPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
             )}
             {currentPage === "units" && (
-              <UnitsListPage
-                onNavigate={handleNavigate}
-                condo={selectedCondo}
-              />
+              <UnitsListPage onNavigate={handleNavigate} condo={selectedCondo} />
             )}
             {currentPage === "unit-detail" && (
-              <UnitDetailPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-              />
+              <UnitDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
             )}
             {currentPage === "unit-edit" && (
-              <UnitEditPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-              />
+              <UnitEditPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
             )}
             {currentPage === "settings" && <SettingsPage />}
-            {currentPage === "notifications" && (
-              <NotificationsPage />
-            )}
+            {currentPage === "notifications" && <NotificationsPage />}
           </div>
         </main>
       </div>
-      <Toaster />
     </div>
   );
 }
