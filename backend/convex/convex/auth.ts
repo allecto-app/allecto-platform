@@ -191,3 +191,21 @@ export const adminSignIn = mutation({
         };
     },
 });
+
+
+export const logout = mutation({
+    args: { token: v.string() },
+    handler: async (ctx, { token }) => {
+        if (!token || token.length < 32) return { success: true };
+        const digest = await digestToken(token);
+        const session = await ctx.db
+            .query("sessions")
+            .withIndex("byDigest", (q) => q.eq("tokenDigest", digest))
+            .unique();
+        if (!session) return { success: true };
+        await ctx.db.patch(session._id, {
+            revokedAt: Date.now(),
+        });
+        return { success: true };
+    },
+});

@@ -83,7 +83,18 @@ export default function App() {
     setAuth(session);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (auth?.token && typeof window !== "undefined") {
+      try {
+        await fetch("/api/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: auth.token }),
+        });
+      } catch {
+        // swallow network errors; we'll still clear the local session
+      }
+    }
     setAuth(null);
   };
 
@@ -118,10 +129,7 @@ function AuthenticatedShell({
   const [userMode, setUserMode] = useState<UserMode>("platform");
   const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(null);
 
-  const condos = useQuery(api.platform.listCondos, {
-    sessionToken: auth.token,
-    limit: 500,
-  });
+  const condos = useQuery(api.platform.listCondos, { sessionToken: auth.token, limit: 500 });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -212,7 +220,13 @@ function AuthenticatedShell({
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         currentPage={currentPage}
-        onNavigate={handleNavigate}
+        onNavigate={(page) => {
+          if (page === "__logout") {
+            void onLogout();
+            return;
+          }
+          handleNavigate(page);
+        }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
         mode={userMode}

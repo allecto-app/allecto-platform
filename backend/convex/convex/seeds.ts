@@ -48,7 +48,7 @@ export const demo = mutation({
 
         // Ensure a demo platform supporter exists
         const supportEmail = "support@demo.com";
-        const supportPasswordHash = "$2a$12$LyhtWsGR/HTr8Axo1tEXA.bh431oKF8vMf6UPsN5ZUyxRBUv2AbIC"; // password: Support@123
+        const supportPasswordHash = "$2a$12$DleDgMTzc.OhBK2/y2kWFOYozimPcq1m55JmlvnCBgKRe17lf4JvO"; // password: Support@123
         const existingSupport = await ctx.db
             .query("platformUsers")
             .withIndex("byEmail", (q) => q.eq("email", supportEmail))

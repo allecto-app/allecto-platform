@@ -1,4 +1,4 @@
-import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3 } from "lucide-react";
+import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -32,11 +32,19 @@ const tenantNavigation = [
   { name: "Configurações", icon: Settings, page: "settings" },
 ];
 
+const logoutNavigation = { name: "Sair", icon: LogOut, page: "__logout" } as const;
+
 export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, mode = "tenant", selectedCondo }: SidebarProps) {
   const isPlatformMode = mode === "platform";
   const hasCondoSelected = !!selectedCondo;
 
-  const renderNavItem = (item: typeof platformNavigation[0], disabled = false) => {
+  const renderNavItem = (
+    item:
+      | (typeof platformNavigation)[number]
+      | (typeof tenantNavigation)[number]
+      | typeof logoutNavigation,
+    disabled = false,
+  ) => {
     const Icon = item.icon;
     const isActive = currentPage === item.page;
 
@@ -119,6 +127,9 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, 
             tenantNavigation.map((item) => renderNavItem(item))
           )}
         </nav>
+        <div className="p-2">
+          {renderNavItem(logoutNavigation)}
+        </div>
       </ScrollArea>
     </div>
   );

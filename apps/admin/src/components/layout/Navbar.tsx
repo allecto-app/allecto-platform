@@ -136,7 +136,7 @@ export function Navbar({
               <DropdownMenuItem
                 onClick={() => {
                   if (onLogout) {
-                    onLogout();
+                    void onLogout();
                   } else {
                     onNavigate("auth");
                   }
