@@ -10,10 +10,12 @@ interface PageHeaderProps {
     label: string;
     onClick: () => void;
     variant?: "default" | "destructive";
+    disabled?: boolean;
   };
   secondaryAction?: {
     label: string;
     onClick: () => void;
+    disabled?: boolean;
   };
   contextPill?: {
     name: string;
@@ -53,14 +55,19 @@ export function PageHeader({
         </div>
         <div className="flex items-center gap-2">
           {secondaryAction && (
-            <Button variant="outline" onClick={secondaryAction.onClick}>
+            <Button
+              variant="outline"
+              onClick={secondaryAction.onClick}
+              disabled={secondaryAction.disabled}
+            >
               {secondaryAction.label}
             </Button>
           )}
           {primaryAction && (
-            <Button 
+            <Button
               variant={primaryAction.variant || "default"}
               onClick={primaryAction.onClick}
+              disabled={primaryAction.disabled}
             >
               {primaryAction.label}
             </Button>

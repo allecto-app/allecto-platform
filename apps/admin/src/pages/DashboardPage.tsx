@@ -22,7 +22,7 @@ const formatDateTime = (timestamp: number) =>
 export function DashboardPage({ condos, selectedCondo }: DashboardPageProps) {
   const minutes = useQuery(
     api.minutes.list,
-    selectedCondo ? { condoId: selectedCondo._id } : undefined,
+    selectedCondo ? { condoId: selectedCondo._id } : "skip",
   );
 
   const totalCondos = condos?.length ?? 0;

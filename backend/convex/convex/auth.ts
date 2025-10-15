@@ -269,6 +269,10 @@ export const adminSignIn = mutation({
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
+        if (!user) {
+            throw new Error(GENERIC_AUTH_ERROR);
+        }
+
         if (attemptRecord) {
             await ctx.db.delete(attemptRecord._id);
         }

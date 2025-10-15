@@ -151,12 +151,12 @@ function AuthenticatedShell({
 
   const platformCondos = useQuery(
     api.platform.listCondos,
-    canSeePlatform ? { sessionToken: auth.token, limit: 500 } : undefined,
+    canSeePlatform ? { sessionToken: auth.token, limit: 500 } : "skip",
   );
 
   const residentCondo = useQuery(
     api.condos.getBySubdomain,
-    isResident && auth.condoSubdomain ? { subdomain: auth.condoSubdomain } : undefined,
+    isResident && auth.condoSubdomain ? { subdomain: auth.condoSubdomain } : "skip",
   );
 
   const condos: Doc<"condos">[] | undefined = useMemo(() => {

@@ -25,7 +25,7 @@ export function UnitsListPage({ onNavigate, condo }: UnitsListPageProps) {
 
   const units = useQuery(
     api.units.listByCondo,
-    condo ? { condoId: condo._id } : undefined,
+    condo ? { condoId: condo._id } : "skip",
   );
 
   const blocks = useMemo(() => {

@@ -31,7 +31,7 @@ export function ResidentsListPage({ onNavigate, condo }: ResidentsListPageProps)
 
   const residents = useQuery(
     api.residents.list,
-    condo ? { condoId: condo._id } : undefined,
+    condo ? { condoId: condo._id } : "skip",
   );
   const inviteResident = useMutation(api.residents.invite);
 

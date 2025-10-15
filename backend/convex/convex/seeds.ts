@@ -1,6 +1,7 @@
 // convex/seeds.ts
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 /**
  * Seed: cria um condomínio demo, algumas unidades, moradores e uma ata aberta.
@@ -83,7 +84,7 @@ export const demo = mutation({
         });
 
         // 2) Units
-        const unitIds: string[] = [];
+        const unitIds: Id<"units">[] = [];
         for (let i = 1; i <= unitsCount; i++) {
             const unitId = await ctx.db.insert("units", {
                 condoId,

@@ -32,7 +32,7 @@ export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
 
   const residents = useQuery(
     api.residents.list,
-    condo ? { condoId: condo._id } : undefined,
+    condo ? { condoId: condo._id } : "skip",
   );
   const publishMinute = useMutation(api.minutes.publish);
 

@@ -26,7 +26,7 @@ export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
 
   const minutes = useQuery(
     api.minutes.list,
-    condoId ? { condoId } : undefined,
+    condoId ? { condoId } : "skip",
   );
   const closeMinuteMutation = useMutation(api.minutes.close);
 
@@ -134,29 +134,29 @@ export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onNavigate("minutes-detail")}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {minute.status === "open" && (
-                        <Button
                           variant="ghost"
                           size="sm"
-                          disabled={closingId === minute._id}
-                          onClick={() => handleCloseMinute(minute._id)}
+                          onClick={() => onNavigate("minutes-detail")}
                         >
-                          {closingId === minute._id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4" />
-                          )}
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                        {minute.status === "open" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={closingId === minute._id}
+                            onClick={() => handleCloseMinute(minute._id)}
+                          >
+                            {closingId === minute._id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>

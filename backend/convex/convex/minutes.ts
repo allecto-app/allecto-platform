@@ -1,5 +1,6 @@
 // convex/minutes.ts
 import { mutation, query, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 const MinuteStatus = v.union(v.literal("open"), v.literal("closed"));
@@ -36,9 +37,15 @@ export const publish = mutation({
         const d2 = now + 2 * 24 * 3600 * 1000;
         const d4 = now + 4 * 24 * 3600 * 1000;
 
-        await ctx.scheduler.runAt(d2, "notifications:sendReminder", { minuteId, template: "reminderD2" });
-        await ctx.scheduler.runAt(d4, "notifications:sendReminder", { minuteId, template: "reminderD4" });
-        await ctx.scheduler.runAt(a.closesAt, "minutes:internalClose", { minuteId });
+        await ctx.scheduler.runAt(d2, internal.notifications.sendReminder, {
+            minuteId,
+            template: "reminderD2",
+        });
+        await ctx.scheduler.runAt(d4, internal.notifications.sendReminder, {
+            minuteId,
+            template: "reminderD4",
+        });
+        await ctx.scheduler.runAt(a.closesAt, internal.minutes.internalClose, { minuteId });
 
         await ctx.db.patch(minuteId, {
             reminderD2Scheduled: true,

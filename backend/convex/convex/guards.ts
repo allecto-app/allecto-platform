@@ -20,7 +20,9 @@ async function digestToken(token: string) {
 }
 
 async function loadSession(ctx: any, sessionToken: string | null | undefined) {
-    assert(sessionToken && sessionToken.length >= 32, UNAUTHORIZED);
+    if (typeof sessionToken !== "string" || sessionToken.length < 32) {
+        throw new Error(UNAUTHORIZED);
+    }
     const digest = await digestToken(sessionToken);
     const session = await ctx.db
         .query("sessions")
