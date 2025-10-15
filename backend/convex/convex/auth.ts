@@ -80,6 +80,119 @@ export const verifyOtp = mutation({
     },
 });
 
+export const requestResidentOtp = mutation({
+    args: { subdomain: v.string(), email: v.string() },
+    handler: async (ctx, { subdomain, email }) => {
+        const cleanedSubdomain = subdomain.trim().toLowerCase();
+        const cleanedEmail = email.trim().toLowerCase();
+        if (!cleanedSubdomain || !cleanedEmail) return { ok: true };
+
+        const condo = await ctx.db
+            .query("condos")
+            .withIndex("bySubdomain", (q) => q.eq("subdomain", cleanedSubdomain))
+            .unique();
+        if (!condo) return { ok: true };
+
+        const resident = await ctx.db
+            .query("residents")
+            .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
+            .unique();
+        if (!resident || !["syndic", "manager"].includes(resident.role)) {
+            return { ok: true };
+        }
+
+        const now = Date.now();
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = now + 15 * 60 * 1000;
+        await ctx.db.insert("otps", {
+            condoId: condo._id,
+            email: cleanedEmail,
+            code,
+            expiresAt,
+            createdAt: now,
+        });
+        return { ok: true, devCode: code };
+    },
+});
+
+export const residentSignIn = mutation({
+    args: {
+        subdomain: v.string(),
+        email: v.string(),
+        code: v.string(),
+        ip: v.optional(v.string()),
+    },
+    handler: async (ctx, { subdomain, email, code, ip }) => {
+        const now = Date.now();
+        const cleanedSubdomain = subdomain.trim().toLowerCase();
+        const cleanedEmail = email.trim().toLowerCase();
+        const trimmedCode = code.trim();
+
+        if (!cleanedSubdomain || !cleanedEmail || trimmedCode.length === 0) {
+            throw new Error(GENERIC_AUTH_ERROR);
+        }
+
+        const condo = await ctx.db
+            .query("condos")
+            .withIndex("bySubdomain", (q) => q.eq("subdomain", cleanedSubdomain))
+            .unique();
+        if (!condo) {
+            throw new Error(GENERIC_AUTH_ERROR);
+        }
+
+        const resident = await ctx.db
+            .query("residents")
+            .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
+            .unique();
+        if (!resident || !["syndic", "manager"].includes(resident.role)) {
+            throw new Error(GENERIC_AUTH_ERROR);
+        }
+
+        const otp = await ctx.db
+            .query("otps")
+            .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
+            .order("desc")
+            .first();
+        if (!otp || otp.code !== trimmedCode) {
+            throw new Error(GENERIC_AUTH_ERROR);
+        }
+        if (otp.expiresAt < now || otp.consumedAt) {
+            throw new Error(GENERIC_AUTH_ERROR);
+        }
+
+        await ctx.db.patch(otp._id, { consumedAt: now });
+
+        const rawToken = generateSessionToken();
+        const tokenDigest = await digestToken(rawToken);
+        const tokenHash = bcrypt.hashSync(rawToken, BCRYPT_COST);
+        const expiresAt = now + SESSION_TTL_MS;
+
+        await ctx.db.insert("sessions", {
+            tokenDigest,
+            tokenHash,
+            type: "resident",
+            residentId: resident._id,
+            condoId: condo._id,
+            roles: [resident.role],
+            createdAt: now,
+            expiresAt,
+            lastUsedAt: now,
+            ip: (ip?.trim() ?? "") || "unknown",
+        });
+
+        return {
+            success: true,
+            token: rawToken,
+            residentId: resident._id,
+            condoId: condo._id,
+            condo: { name: condo.name, subdomain: condo.subdomain },
+            roles: [resident.role],
+            name: resident.name,
+            expiresAt,
+        };
+    },
+});
+
 export const adminSignIn = mutation({
     args: {
         email: v.string(),

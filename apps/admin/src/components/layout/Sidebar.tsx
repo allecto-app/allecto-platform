@@ -115,9 +115,9 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, 
                 <div className="px-3 py-2 text-muted-foreground">Platform</div>
               )}
               {platformNavigation.map((item) => renderNavItem(item))}
-              
+
               <Separator className="my-2" />
-              
+
               {!collapsed && (
                 <div className="px-3 py-2 text-muted-foreground">Tenant Views</div>
               )}

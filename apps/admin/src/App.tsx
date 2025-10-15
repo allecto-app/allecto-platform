@@ -25,40 +25,45 @@ import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import { Palette, Package } from "lucide-react";
 import { api, Doc, Id } from "./lib/convexGenerated";
+import { AdminAuthSession } from "./lib/authSession";
 
 type UserMode = "platform" | "tenant";
 
 type CondoDoc = Doc<"condos">;
 
-type AuthSession = {
-  token: string;
-  userId: Id<"platformUsers">;
-  roles: string[];
-  name: string;
-  expiresAt: number;
-};
 
 const AUTH_STORAGE_KEY = "allecto-admin-auth";
 
 export default function App() {
-  const [auth, setAuth] = useState<AuthSession | null>(null);
+  const [auth, setAuth] = useState<AdminAuthSession | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const stored = window.localStorage.getItem(AUTH_STORAGE_KEY);
       if (!stored) return;
-      const parsed = JSON.parse(stored) as Partial<AuthSession>;
-      const isValid =
+      const parsed = JSON.parse(stored) as Partial<AdminAuthSession>;
+      const baseValid =
         parsed &&
         typeof parsed.token === "string" &&
         parsed.token.length >= 32 &&
-        typeof parsed.userId === "string" &&
         Array.isArray(parsed.roles) &&
         typeof parsed.expiresAt === "number" &&
-        parsed.expiresAt > Date.now();
-      if (isValid) {
-        setAuth(parsed as AuthSession);
+        parsed.expiresAt > Date.now() &&
+        (parsed.type === "platform" || parsed.type === "resident");
+      const platformValid =
+        baseValid &&
+        parsed.type === "platform" &&
+        typeof parsed.userId === "string";
+      const residentValid =
+        baseValid &&
+        parsed.type === "resident" &&
+        typeof parsed.userId === "string" &&
+        typeof parsed.condoId === "string" &&
+        typeof parsed.condoName === "string" &&
+        typeof parsed.condoSubdomain === "string";
+      if (platformValid || residentValid) {
+        setAuth(parsed as AdminAuthSession);
       } else {
         window.localStorage.removeItem(AUTH_STORAGE_KEY);
       }
@@ -76,9 +81,14 @@ export default function App() {
     }
   }, [auth]);
 
-  const handleLogin = (session: AuthSession) => {
+  const handleLogin = (session: AdminAuthSession) => {
     if (!session.token || session.token.length < 32 || session.expiresAt <= Date.now()) {
       return;
+    }
+    if (session.type === "resident") {
+      if (!session.condoId || !session.condoName || !session.condoSubdomain) {
+        return;
+      }
     }
     setAuth(session);
   };
@@ -94,6 +104,9 @@ export default function App() {
       } catch {
         // swallow network errors; we'll still clear the local session
       }
+    }
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
     setAuth(null);
   };
@@ -120,16 +133,41 @@ function AuthenticatedShell({
   onUpdateAuth,
   onLogout,
 }: {
-  auth: AuthSession;
-  onUpdateAuth: (auth: AuthSession | null) => void;
-  onLogout: () => void;
+  auth: AdminAuthSession;
+  onUpdateAuth: (auth: AdminAuthSession | null) => void;
+  onLogout: () => Promise<void> | void;
 }) {
-  const [currentPage, setCurrentPage] = useState<string>("tenants");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [userMode, setUserMode] = useState<UserMode>("platform");
-  const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(null);
+  const canSeePlatform =
+    auth.type === "platform" && (auth.roles.includes("super_admin") || auth.roles.includes("support"));
+  const isResident = auth.type === "resident";
 
-  const condos = useQuery(api.platform.listCondos, { sessionToken: auth.token, limit: 500 });
+  const [currentPage, setCurrentPage] = useState<string>(
+    canSeePlatform ? "tenants" : isResident ? "minutes" : "dashboard",
+  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [userMode, setUserMode] = useState<UserMode>(canSeePlatform ? "platform" : "tenant");
+  const initialCondoId = auth.type === "resident" ? auth.condoId : null;
+  const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
+
+  const platformCondos = useQuery(
+    api.platform.listCondos,
+    canSeePlatform ? { sessionToken: auth.token, limit: 500 } : undefined,
+  );
+
+  const residentCondo = useQuery(
+    api.condos.getBySubdomain,
+    isResident && auth.condoSubdomain ? { subdomain: auth.condoSubdomain } : undefined,
+  );
+
+  const condos: Doc<"condos">[] | undefined = useMemo(() => {
+    if (canSeePlatform) {
+      return platformCondos ?? undefined;
+    }
+    if (isResident) {
+      return residentCondo ? [residentCondo] : residentCondo === null ? [] : undefined;
+    }
+    return undefined;
+  }, [canSeePlatform, isResident, platformCondos, residentCondo]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -139,6 +177,12 @@ function AuthenticatedShell({
     }, msUntilExpiry);
     return () => window.clearTimeout(timer);
   }, [auth, onUpdateAuth]);
+
+  useEffect(() => {
+    if (!canSeePlatform) {
+      setUserMode("tenant");
+    }
+  }, [canSeePlatform]);
 
   useEffect(() => {
     if (!condos || condos.length === 0) return;
@@ -151,17 +195,33 @@ function AuthenticatedShell({
     if (!condos || selectedCondoId === null) return;
     const exists = condos.some((condo) => condo._id === selectedCondoId);
     if (!exists) {
-      setSelectedCondoId(null);
-      setUserMode("platform");
+      setSelectedCondoId(condos[0]?._id ?? null);
     }
   }, [condos, selectedCondoId]);
+
+  useEffect(() => {
+    if (isResident && auth.condoId && selectedCondoId !== auth.condoId) {
+      setSelectedCondoId(auth.condoId);
+    }
+  }, [isResident, auth, selectedCondoId]);
 
   const selectedCondo: CondoDoc | null = useMemo(() => {
     if (!selectedCondoId || !condos) return null;
     return condos.find((condo) => condo._id === selectedCondoId) ?? null;
   }, [condos, selectedCondoId]);
 
+  const restrictedPlatformPages = new Set(["tenants", "onboarding", "audit", "support"]);
+
+  useEffect(() => {
+    if (!canSeePlatform && restrictedPlatformPages.has(currentPage)) {
+      setCurrentPage(isResident ? "minutes" : "dashboard");
+    }
+  }, [canSeePlatform, currentPage, isResident]);
+
   const handleNavigate = (page: string) => {
+    if (!canSeePlatform && restrictedPlatformPages.has(page)) {
+      return;
+    }
     setCurrentPage(page);
   };
 
@@ -170,11 +230,19 @@ function AuthenticatedShell({
   };
 
   const handleSelectCondo = (condoId: Id<"condos"> | null) => {
+    if (!canSeePlatform) {
+      return;
+    }
     setSelectedCondoId(condoId);
     setUserMode(condoId ? "tenant" : "platform");
   };
 
-  const isLoadingCondos = condos === undefined;
+  const handleLogout = async () => {
+    await onLogout();
+  };
+
+  const isLoadingCondos =
+    canSeePlatform ? platformCondos === undefined : isResident ? condos === undefined : false;
 
   if (currentPage === "design-tokens" || currentPage === "component-library") {
     return (
@@ -216,38 +284,45 @@ function AuthenticatedShell({
     );
   }
 
+  const sidebarMode: UserMode = canSeePlatform ? userMode : "tenant";
+  const showPlatformSections = canSeePlatform;
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         currentPage={currentPage}
         onNavigate={(page) => {
           if (page === "__logout") {
-            void onLogout();
+            void handleLogout();
             return;
           }
           handleNavigate(page);
         }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
-        mode={userMode}
+        mode={sidebarMode}
         selectedCondo={selectedCondo}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar
           onToggleSidebar={toggleSidebar}
           onNavigate={handleNavigate}
-          mode={userMode}
+          mode={showPlatformSections ? userMode : "tenant"}
           condos={condos}
           selectedCondo={selectedCondo}
-          onSelectCondo={handleSelectCondo}
-          onLogout={onLogout}
+          onSelectCondo={showPlatformSections ? handleSelectCondo : undefined}
+          onLogout={handleLogout}
           userName={auth.name}
         />
         <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
           <div className="mx-auto max-w-7xl">
             {currentPage === "dashboard" && (
               <div className="mb-6 flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage("design-tokens")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage("design-tokens")}
+                >
                   <Palette className="mr-2 h-4 w-4" />
                   Design Tokens
                 </Button>
@@ -262,7 +337,7 @@ function AuthenticatedShell({
               </div>
             )}
 
-            {currentPage === "tenants" && (
+            {showPlatformSections && currentPage === "tenants" && (
               <TenantsPage
                 onNavigate={handleNavigate}
                 condos={condos}
@@ -271,15 +346,15 @@ function AuthenticatedShell({
                 selectedCondoId={selectedCondoId}
               />
             )}
-            {currentPage === "onboarding" && (
+            {showPlatformSections && currentPage === "onboarding" && (
               <OnboardingPage
                 onNavigate={handleNavigate}
                 onSelectCondo={handleSelectCondo}
                 sessionToken={auth.token}
               />
             )}
-            {currentPage === "audit" && <AuditPage />}
-            {currentPage === "support" && (
+            {showPlatformSections && currentPage === "audit" && <AuditPage />}
+            {showPlatformSections && currentPage === "support" && (
               <SupportPage onNavigate={handleNavigate} onSelectCondo={handleSelectCondo} />
             )}
 

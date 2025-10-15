@@ -29,8 +29,9 @@ export const create = mutation({
 });
 
 export const getBySubdomain = query({
-    args: { subdomain: v.string() },
+    args: { subdomain: v.optional(v.string()) },
     handler: async (ctx, { subdomain }) => {
+        if (!subdomain) return null;
         return await ctx.db
             .query("condos")
             .withIndex("bySubdomain", (q) => q.eq("subdomain", subdomain))
