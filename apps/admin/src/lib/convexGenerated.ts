@@ -1,6 +1,2 @@
-export { api } from "../../../../backend/convex/convex/_generated/api";
-export type {
-  Id,
-  Doc,
-  TableNames,
-} from "../../../../backend/convex/convex/_generated/dataModel";
+export { api } from "../../convex/_generated/api";
+export type { Id, Doc, TableNames } from "../../convex/_generated/dataModel";

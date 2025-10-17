@@ -1,4 +1,4 @@
-import { Id } from "../../../../backend/convex/convex/_generated/dataModel";
+import { Id } from "./convexGenerated";
 
 export type AdminAuthSession =
   | {

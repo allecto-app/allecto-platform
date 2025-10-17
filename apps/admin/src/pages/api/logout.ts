@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../../backend/convex/convex/_generated/api";
+import { api } from "../../lib/convexGenerated";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
