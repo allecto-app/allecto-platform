@@ -143,4 +143,38 @@ export default defineSchema({
     ip: v.optional(v.string()),
     userAgent: v.optional(v.string()),
   }).index("byDigest", ["tokenDigest"]),
+
+  securityEvents: defineTable({
+    type: v.string(),
+    key: v.string(),
+    createdAt: v.number(),
+    meta: v.optional(v.any()),
+  })
+    .index("byKey", ["key"])
+    .index("byType", ["type"]),
+
+  invites: defineTable({
+    condoId: v.id("condos"),
+    email: v.string(),
+    name: v.optional(v.string()),
+    role: v.literal("syndic"),
+    tokenHash: v.string(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+    createdBy: v.optional(v.id("platformUsers")),
+    createdAt: v.number(),
+    status: v.string(),
+    attempts: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("byTokenHash", ["tokenHash"])
+    .index("byCondoEmail", ["condoId", "email"]),
+
+  inviteRate: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+    blockedUntil: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("byKey", ["key"]),
 });

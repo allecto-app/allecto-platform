@@ -37,6 +37,19 @@ const AUTH_STORAGE_KEY = "allecto-admin-auth";
 export default function App() {
   const [auth, setAuth] = useState<AdminAuthSession | null>(null);
 
+  async function syncSessionCookie(token: string, expiresAt: number) {
+    try {
+      await fetch("/api/session/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, expiresAt }),
+        credentials: "same-origin",
+      });
+    } catch (error) {
+      console.error("Failed to sync admin session cookie", error);
+    }
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -81,6 +94,13 @@ export default function App() {
     }
   }, [auth]);
 
+  useEffect(() => {
+    if (!auth || !auth.token || auth.token.length < 32 || auth.expiresAt <= Date.now()) {
+      return;
+    }
+    void syncSessionCookie(auth.token, auth.expiresAt);
+  }, [auth?.token, auth?.expiresAt]);
+
   const handleLogin = (session: AdminAuthSession) => {
     if (!session.token || session.token.length < 32 || session.expiresAt <= Date.now()) {
       return;
@@ -103,6 +123,14 @@ export default function App() {
         });
       } catch {
         // swallow network errors; we'll still clear the local session
+      }
+      try {
+        await fetch("/api/session/sync", {
+          method: "DELETE",
+          credentials: "same-origin",
+        });
+      } catch (error) {
+        console.error("Failed to clear admin session cookie", error);
       }
     }
     if (typeof window !== "undefined") {
@@ -139,6 +167,11 @@ function AuthenticatedShell({
 }) {
   const canSeePlatform =
     auth.type === "platform" && (auth.roles.includes("super_admin") || auth.roles.includes("support"));
+  const canPlatformInvite =
+    auth.type === "platform" &&
+    (auth.roles.includes("super_admin") ||
+      auth.roles.includes("support") ||
+      auth.roles.includes("ops"));
   const isResident = auth.type === "resident";
 
   const [currentPage, setCurrentPage] = useState<string>(
@@ -286,6 +319,9 @@ function AuthenticatedShell({
 
   const sidebarMode: UserMode = canSeePlatform ? userMode : "tenant";
   const showPlatformSections = canSeePlatform;
+  const canInviteSyndic =
+    canPlatformInvite ||
+    (isResident && (auth.roles.includes("syndic") || auth.roles.includes("manager")));
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -371,7 +407,11 @@ function AuthenticatedShell({
               <MinutesDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
             )}
             {currentPage === "residents" && (
-              <ResidentsListPage onNavigate={handleNavigate} condo={selectedCondo} />
+              <ResidentsListPage
+                onNavigate={handleNavigate}
+                condo={selectedCondo}
+                canInviteSyndic={canInviteSyndic}
+              />
             )}
             {currentPage === "resident-detail" && (
               <ResidentDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />

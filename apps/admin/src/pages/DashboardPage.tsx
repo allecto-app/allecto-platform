@@ -23,14 +23,14 @@ export function DashboardPage({ condos, selectedCondo }: DashboardPageProps) {
   const minutes = useQuery(
     api.minutes.list,
     selectedCondo ? { condoId: selectedCondo._id } : "skip",
-  );
+  ) as Doc<"minutes">[] | undefined;
 
   const totalCondos = condos?.length ?? 0;
-  const openMinutes = minutes?.filter((minute) => minute.status === "open").length ?? 0;
+  const openMinutes = (minutes ?? []).filter((minute) => minute.status === "open").length;
 
   const recentActivity = useMemo(() => {
-    if (!minutes) return [] as Array<{ id: string; title: string; status: string; publishedAt: number }>;
-    return [...minutes]
+    const list = minutes ?? [];
+    return [...list]
       .sort((a, b) => b.publishedAt - a.publishedAt)
       .slice(0, 5)
       .map((minute) => ({

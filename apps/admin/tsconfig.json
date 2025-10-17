@@ -20,10 +20,17 @@
     "noEmit": true,
     "incremental": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
-    "src"
+    "src",
+    "app",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -1,84 +1,81 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { Users, Search, Eye, Loader2 } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent } from "../components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { EmptyState } from "../components/admin/EmptyState";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../components/ui/sheet";
+import { InviteSyndicModal } from "../components/modals/invite-syndic";
 import { api, Doc } from "../lib/convexGenerated";
 import { toast } from "sonner";
+
+type InviteDoc = Doc<"invites">;
 
 interface ResidentsListPageProps {
   onNavigate: (page: string) => void;
   condo: Doc<"condos"> | null;
+  canInviteSyndic: boolean;
 }
 
-export function ResidentsListPage({ onNavigate, condo }: ResidentsListPageProps) {
+const INVITE_STATUS_LABEL: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
+  pending: { label: "Pendente", variant: "secondary" },
+  used: { label: "Usado", variant: "outline" },
+  expired: { label: "Expirado", variant: "destructive" },
+  revoked: { label: "Revogado", variant: "destructive" },
+};
+
+export function ResidentsListPage({ onNavigate, condo, canInviteSyndic }: ResidentsListPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteName, setInviteName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [invitePhone, setInvitePhone] = useState("");
-  const [inviteRole, setInviteRole] = useState("resident");
-  const [isInviting, setIsInviting] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   const residents = useQuery(
     api.residents.list,
     condo ? { condoId: condo._id } : "skip",
   );
-  const inviteResident = useMutation(api.residents.invite);
+  const invites = useQuery(
+    api.invites.listByCondo,
+    condo ? { condoId: condo._id } : "skip",
+  );
+
+  const invitesByEmail = useMemo(() => {
+    if (!invites) return new Map<string, InviteDoc>();
+    return new Map(invites.map((invite) => [invite.email, invite]));
+  }, [invites]);
 
   const filteredResidents = useMemo(() => {
     if (!residents) return [];
     return residents.filter((resident) => {
+      const query = searchTerm.toLowerCase();
       const matchesSearch =
-        resident.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (resident.email ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+        resident.name.toLowerCase().includes(query) ||
+        (resident.email ?? "").toLowerCase().includes(query);
       const matchesStatus =
         statusFilter === "all" || (resident.isActive ? "active" : "inactive") === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [residents, searchTerm, statusFilter]);
-
-  const handleInvite = async () => {
-    if (!condo) {
-      toast.error("Selecione um condomínio antes de convidar.");
-      return;
-    }
-    if (!inviteName || (!inviteEmail && !invitePhone)) {
-      toast.error("Informe um nome e email ou telefone.");
-      return;
-    }
-
-    try {
-      setIsInviting(true);
-      await inviteResident({
-        condoId: condo._id,
-        name: inviteName,
-        email: inviteEmail || undefined,
-        phone: invitePhone || undefined,
-        role: inviteRole,
-      });
-      toast.success("Convite enviado com sucesso!");
-      setInviteOpen(false);
-      setInviteName("");
-      setInviteEmail("");
-      setInvitePhone("");
-      setInviteRole("resident");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Não foi possível enviar o convite";
-      toast.error(message);
-    } finally {
-      setIsInviting(false);
-    }
-  };
 
   const isLoading = !!condo && !residents;
 
@@ -86,11 +83,21 @@ export function ResidentsListPage({ onNavigate, condo }: ResidentsListPageProps)
     <div>
       <PageHeader
         title="Moradores"
-        primaryAction={{
-          label: "Convidar",
-          onClick: () => setInviteOpen(true),
-          disabled: !condo,
-        }}
+        primaryAction={
+          canInviteSyndic
+            ? {
+                label: "Convidar Síndico",
+                onClick: () => {
+                  if (!condo) {
+                    toast.error("Selecione um condomínio");
+                    return;
+                  }
+                  setInviteModalOpen(true);
+                },
+                disabled: !condo,
+              }
+            : undefined
+        }
       />
 
       <div className="mb-6 flex flex-col gap-4 md:flex-row">
@@ -102,7 +109,7 @@ export function ResidentsListPage({ onNavigate, condo }: ResidentsListPageProps)
               placeholder="Buscar por nome ou email"
               className="pl-9"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
               disabled={!condo}
             />
           </div>
@@ -140,10 +147,6 @@ export function ResidentsListPage({ onNavigate, condo }: ResidentsListPageProps)
           icon={Users}
           title="Nenhum morador encontrado"
           description="Convide novos moradores para o condomínio selecionado."
-          primaryAction={{
-            label: "Convidar Morador",
-            onClick: () => setInviteOpen(true),
-          }}
         />
       ) : (
         <Card>
@@ -155,114 +158,88 @@ export function ResidentsListPage({ onNavigate, condo }: ResidentsListPageProps)
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Função</TableHead>
-                  <TableHead>Situação</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredResidents.map((resident) => (
-                  <TableRow key={resident._id}>
-                    <TableCell>{resident.name}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {resident.email ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {resident.phone ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={resident.role === "syndic" ? "default" : "secondary"}>
-                        {resident.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {resident.isActive ? (
-                        <Badge variant="outline">Ativo</Badge>
-                      ) : (
-                        <Badge variant="destructive">Inativo</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onNavigate("resident-detail")}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredResidents.map((resident) => {
+                  const normalizedEmail = resident.email?.toLowerCase() ?? "";
+                  const invite = normalizedEmail
+                    ? invitesByEmail.get(normalizedEmail)
+                    : undefined;
+                  const inviteStatus = invite ? INVITE_STATUS_LABEL[invite.status] : undefined;
+
+                  return (
+                    <TableRow key={resident._id}>
+                      <TableCell>{resident.name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {resident.email ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {resident.phone ?? "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={resident.role === "syndic" ? "default" : "secondary"}>
+                          {resident.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {resident.isActive ? (
+                            <Badge variant="outline">Ativo</Badge>
+                          ) : (
+                            <Badge variant="destructive">Inativo</Badge>
+                          )}
+                          {inviteStatus && (
+                            <Badge variant={inviteStatus.variant}>{inviteStatus.label}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onNavigate("resident-detail")}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {invite && invite.status === "pending" && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toast.info("Função disponível em breve")}
+                              >
+                                Reenviar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toast.info("Função disponível em breve")}
+                              >
+                                Revogar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       )}
 
-      <Sheet open={inviteOpen} onOpenChange={setInviteOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Convidar Morador</SheetTitle>
-            <SheetDescription>
-              Preencha os dados para enviar um convite.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="invite-name">Nome</Label>
-              <Input
-                id="invite-name"
-                value={inviteName}
-                onChange={(e) => setInviteName(e.target.value)}
-                placeholder="Nome completo"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="email@exemplo.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="invite-phone">Telefone</Label>
-              <Input
-                id="invite-phone"
-                value={invitePhone}
-                onChange={(e) => setInvitePhone(e.target.value)}
-                placeholder="(11) 99999-9999"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="invite-role">Função</Label>
-              <Select value={inviteRole} onValueChange={setInviteRole}>
-                <SelectTrigger id="invite-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="resident">Resident</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="syndic">Syndic</SelectItem>
-                  <SelectItem value="council">Council</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="rounded-md bg-info/10 p-3 text-sm text-info">
-              Um código de acesso será enviado ao morador convidado.
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setInviteOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleInvite} disabled={isInviting}>
-                {isInviting ? "Enviando..." : "Enviar Convite"}
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <InviteSyndicModal
+        open={inviteModalOpen}
+        onOpenChange={setInviteModalOpen}
+        condoId={condo?._id ?? null}
+        condoName={condo?.name}
+      />
     </div>
   );
 }

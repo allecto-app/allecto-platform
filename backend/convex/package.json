@@ -1,20 +1,21 @@
 {
-  "name": "backend-convex",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "convex dev",
-    "deploy": "convex deploy",
-    "seed:demo": "convex run seeds:demo",
-    "seed:deleteDemo": "convex run seeds:deleteDemo"
-  },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "convex": "^1.14.0",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@types/bcryptjs": "^3.0.0",
-    "typescript": "^5.4.0"
-  }
+    "name": "backend-convex",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "convex dev",
+        "deploy": "convex deploy",
+        "seed:demo": "convex run seeds:demo",
+        "seed:deleteDemo": "convex run seeds:deleteDemo"
+    },
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "convex": "^1.14.0",
+        "zod": "^3.23.8",
+        "resend": "^3.2.0"
+    },
+    "devDependencies": {
+        "@types/bcryptjs": "^3.0.0",
+        "typescript": "^5.4.0"
+    }
 }
