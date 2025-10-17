@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { Sidebar } from "./components/layout/Sidebar";
@@ -26,6 +28,7 @@ import { Button } from "./components/ui/button";
 import { Palette, Package } from "lucide-react";
 import { api, Doc, Id } from "./lib/convexGenerated";
 import { AdminAuthSession } from "./lib/authSession";
+import { useHostInfo } from "./lib/hostContext";
 
 type UserMode = "platform" | "tenant";
 
@@ -35,6 +38,9 @@ type CondoDoc = Doc<"condos">;
 const AUTH_STORAGE_KEY = "allecto-admin-auth";
 
 export default function App() {
+  const hostInfo = useHostInfo();
+  const hostSubdomain = hostInfo.subdomain ?? null;
+  const isCondoHost = hostInfo.isCondoSubdomain;
   const [auth, setAuth] = useState<AdminAuthSession | null>(null);
 
   async function syncSessionCookie(token: string, expiresAt: number) {
@@ -75,7 +81,12 @@ export default function App() {
         typeof parsed.condoId === "string" &&
         typeof parsed.condoName === "string" &&
         typeof parsed.condoSubdomain === "string";
-      if (platformValid || residentValid) {
+
+      const hostAligned = !isCondoHost
+        ? true
+        : parsed?.type === "resident" && parsed.condoSubdomain === hostSubdomain;
+
+      if (hostAligned && (platformValid || residentValid)) {
         setAuth(parsed as AdminAuthSession);
       } else {
         window.localStorage.removeItem(AUTH_STORAGE_KEY);
@@ -83,7 +94,7 @@ export default function App() {
     } catch {
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
-  }, []);
+  }, [hostSubdomain, isCondoHost]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -107,6 +118,16 @@ export default function App() {
     }
     if (session.type === "resident") {
       if (!session.condoId || !session.condoName || !session.condoSubdomain) {
+        return;
+      }
+    }
+    if (isCondoHost) {
+      if (session.type !== "resident") {
+        console.warn("Platform sessions are not allowed on condo subdomains");
+        return;
+      }
+      if (session.condoSubdomain !== hostSubdomain) {
+        console.warn("Resident session does not match current subdomain");
         return;
       }
     }
@@ -165,18 +186,29 @@ function AuthenticatedShell({
   onUpdateAuth: (auth: AdminAuthSession | null) => void;
   onLogout: () => Promise<void> | void;
 }) {
+  const hostInfo = useHostInfo();
+  const isPortalDomain = hostInfo.isPortal;
+  const isCondoDomain = hostInfo.isCondoSubdomain;
+
   const canSeePlatform =
-    auth.type === "platform" && (auth.roles.includes("super_admin") || auth.roles.includes("support"));
+    isPortalDomain &&
+    auth.type === "platform" &&
+    (auth.roles.includes("super_admin") || auth.roles.includes("support"));
   const canPlatformInvite =
+    isPortalDomain &&
     auth.type === "platform" &&
     (auth.roles.includes("super_admin") ||
       auth.roles.includes("support") ||
       auth.roles.includes("ops"));
   const isResident = auth.type === "resident";
 
-  const [currentPage, setCurrentPage] = useState<string>(
-    canSeePlatform ? "tenants" : isResident ? "minutes" : "dashboard",
-  );
+  const initialPage = canSeePlatform
+    ? "tenants"
+    : isResident || isCondoDomain
+    ? "minutes"
+    : "dashboard";
+
+  const [currentPage, setCurrentPage] = useState<string>(initialPage);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>(canSeePlatform ? "platform" : "tenant");
   const initialCondoId = auth.type === "resident" ? auth.condoId : null;
@@ -187,9 +219,13 @@ function AuthenticatedShell({
     canSeePlatform ? { sessionToken: auth.token, limit: 500 } : "skip",
   );
 
+  const residentSubdomain = isResident
+    ? auth.condoSubdomain ?? hostInfo.subdomain ?? null
+    : null;
+
   const residentCondo = useQuery(
     api.condos.getBySubdomain,
-    isResident && auth.condoSubdomain ? { subdomain: auth.condoSubdomain } : "skip",
+    isResident && residentSubdomain ? { subdomain: residentSubdomain } : "skip",
   );
 
   const condos: Doc<"condos">[] | undefined = useMemo(() => {
@@ -212,10 +248,10 @@ function AuthenticatedShell({
   }, [auth, onUpdateAuth]);
 
   useEffect(() => {
-    if (!canSeePlatform) {
+    if (!canSeePlatform || isCondoDomain) {
       setUserMode("tenant");
     }
-  }, [canSeePlatform]);
+  }, [canSeePlatform, isCondoDomain]);
 
   useEffect(() => {
     if (!condos || condos.length === 0) return;
@@ -246,13 +282,13 @@ function AuthenticatedShell({
   const restrictedPlatformPages = new Set(["tenants", "onboarding", "audit", "support"]);
 
   useEffect(() => {
-    if (!canSeePlatform && restrictedPlatformPages.has(currentPage)) {
+    if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(currentPage)) {
       setCurrentPage(isResident ? "minutes" : "dashboard");
     }
-  }, [canSeePlatform, currentPage, isResident]);
+  }, [canSeePlatform, currentPage, isResident, isCondoDomain]);
 
   const handleNavigate = (page: string) => {
-    if (!canSeePlatform && restrictedPlatformPages.has(page)) {
+    if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(page)) {
       return;
     }
     setCurrentPage(page);
@@ -263,7 +299,7 @@ function AuthenticatedShell({
   };
 
   const handleSelectCondo = (condoId: Id<"condos"> | null) => {
-    if (!canSeePlatform) {
+    if (!canSeePlatform || isCondoDomain) {
       return;
     }
     setSelectedCondoId(condoId);
@@ -275,7 +311,11 @@ function AuthenticatedShell({
   };
 
   const isLoadingCondos =
-    canSeePlatform ? platformCondos === undefined : isResident ? condos === undefined : false;
+    canSeePlatform && !isCondoDomain
+      ? platformCondos === undefined
+      : isResident
+      ? condos === undefined
+      : false;
 
   if (currentPage === "design-tokens" || currentPage === "component-library") {
     return (
@@ -317,10 +357,10 @@ function AuthenticatedShell({
     );
   }
 
-  const sidebarMode: UserMode = canSeePlatform ? userMode : "tenant";
-  const showPlatformSections = canSeePlatform;
+  const sidebarMode: UserMode = canSeePlatform && !isCondoDomain ? userMode : "tenant";
+  const showPlatformSections = canSeePlatform && !isCondoDomain;
   const canInviteSyndic =
-    canPlatformInvite ||
+    (canPlatformInvite && !isCondoDomain) ||
     (isResident && (auth.roles.includes("syndic") || auth.roles.includes("manager")));
 
   return (

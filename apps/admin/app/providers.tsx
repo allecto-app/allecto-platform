@@ -4,12 +4,16 @@ import type { ReactNode } from "react";
 import { ConvexProvider } from "convex/react";
 import { convex } from "../src/lib/convexClient";
 import { Toaster } from "../src/components/ui/sonner";
+import type { HostInfo } from "../src/lib/host";
+import { HostProvider } from "../src/lib/hostContext";
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({ children, host }: { children: ReactNode; host: HostInfo }) {
   return (
-    <ConvexProvider client={convex}>
-      {children}
-      <Toaster />
-    </ConvexProvider>
+    <HostProvider value={host}>
+      <ConvexProvider client={convex}>
+        {children}
+        <Toaster />
+      </ConvexProvider>
+    </HostProvider>
   );
 }
