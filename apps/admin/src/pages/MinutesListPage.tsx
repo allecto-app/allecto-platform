@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Label } from "../components/ui/label";
 import { EmptyState } from "../components/admin/EmptyState";
 import { toast } from "sonner";
-import { api, Id } from "../lib/convexGenerated";
+import { api, Id, Doc } from "../lib/convexGenerated";
 
 interface MinutesListPageProps {
   onNavigate: (page: string) => void;
@@ -32,7 +32,7 @@ export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
 
   const filteredMinutes = useMemo(() => {
     if (!minutes) return [];
-    return minutes.filter((minute) => {
+    return minutes.filter((minute: Doc<"minutes">) => {
       if (statusFilter === "all") return true;
       return minute.status === statusFilter;
     });
@@ -115,7 +115,7 @@ export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMinutes.map((minute) => (
+                {filteredMinutes.map((minute: Doc<"minutes">) => (
                   <TableRow key={minute._id}>
                     <TableCell>{minute.title}</TableCell>
                     <TableCell className="text-muted-foreground">

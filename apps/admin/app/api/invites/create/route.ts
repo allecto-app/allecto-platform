@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await convex.action(api.invites.createAndEmail, {
+    await convex.action(api.invites.createAndEmail as any, {
       token: sessionToken,
       condoId,
       email,
@@ -74,4 +74,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

@@ -26,12 +26,12 @@ export function UnitsListPage({ onNavigate, condo }: UnitsListPageProps) {
   const units = useQuery(
     api.units.listByCondo,
     condo ? { condoId: condo._id } : "skip",
-  );
+  ) as Doc<"units">[] | undefined;
 
   const blocks = useMemo(() => {
     if (!units) return [] as string[];
     const values = new Set<string>();
-    for (const unit of units) {
+    for (const unit of units as Doc<"units">[]) {
       if (unit.block) values.add(unit.block);
     }
     return Array.from(values).sort();
@@ -40,7 +40,7 @@ export function UnitsListPage({ onNavigate, condo }: UnitsListPageProps) {
   const floors = useMemo(() => {
     if (!units) return [] as string[];
     const values = new Set<string>();
-    for (const unit of units) {
+    for (const unit of units as Doc<"units">[]) {
       if (unit.floor) values.add(unit.floor);
     }
     return Array.from(values).sort();
@@ -48,7 +48,7 @@ export function UnitsListPage({ onNavigate, condo }: UnitsListPageProps) {
 
   const filteredUnits = useMemo(() => {
     if (!units) return [];
-    return units.filter((unit) => {
+    return units.filter((unit: Doc<"units">) => {
       const matchesSearch = unit.code.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesBlock = blockFilter === "all" || unit.block === blockFilter;
       const matchesFloor = floorFilter === "all" || unit.floor === floorFilter;

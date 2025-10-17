@@ -1,3 +1,7 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  distDir: "dist",
+  pageExtensions: ["page.tsx"],
+};
+
 module.exports = nextConfig;

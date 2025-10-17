@@ -53,20 +53,20 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic }: Reside
   const residents = useQuery(
     api.residents.list,
     condo ? { condoId: condo._id } : "skip",
-  );
+  ) as Doc<"residents">[] | undefined;
   const invites = useQuery(
     api.invites.listByCondo,
     condo ? { condoId: condo._id } : "skip",
-  );
+  ) as InviteDoc[] | undefined;
 
   const invitesByEmail = useMemo(() => {
     if (!invites) return new Map<string, InviteDoc>();
-    return new Map(invites.map((invite) => [invite.email, invite]));
+    return new Map(invites.map((invite: InviteDoc) => [invite.email, invite]));
   }, [invites]);
 
   const filteredResidents = useMemo(() => {
     if (!residents) return [];
-    return residents.filter((resident) => {
+    return residents.filter((resident: Doc<"residents">) => {
       const query = searchTerm.toLowerCase();
       const matchesSearch =
         resident.name.toLowerCase().includes(query) ||
@@ -163,7 +163,7 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic }: Reside
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredResidents.map((resident) => {
+                {filteredResidents.map((resident: Doc<"residents">) => {
                   const normalizedEmail = resident.email?.toLowerCase() ?? "";
                   const invite = normalizedEmail
                     ? invitesByEmail.get(normalizedEmail)

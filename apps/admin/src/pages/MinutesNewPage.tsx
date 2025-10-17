@@ -33,12 +33,16 @@ export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
   const residents = useQuery(
     api.residents.list,
     condo ? { condoId: condo._id } : "skip",
-  );
+  ) as Doc<"residents">[] | undefined;
   const publishMinute = useMutation(api.minutes.publish);
 
   const author = useMemo(() => {
     if (!residents) return null;
-    return residents.find((resident) => resident.role === "syndic") ?? residents[0] ?? null;
+    return (
+      residents.find((resident: Doc<"residents">) => resident.role === "syndic") ??
+      residents[0] ??
+      null
+    );
   }, [residents]);
 
   const handleSubmit = async (e: React.FormEvent) => {
