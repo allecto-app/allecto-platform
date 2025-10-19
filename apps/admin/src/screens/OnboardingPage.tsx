@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
-import { Upload } from "lucide-react";
+import { Upload, Trash2, Image as ImageIcon } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -15,6 +15,13 @@ interface OnboardingPageProps {
   sessionToken: string;
 }
 
+type PendingLogoState = {
+  storageId: string | null;
+  previewUrl: string | null;
+} | null;
+
+const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
+
 export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: OnboardingPageProps) {
   const [condoName, setCondoName] = useState("");
   const [subdomain, setSubdomain] = useState("");
@@ -24,8 +31,73 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
   const [syndicName, setSyndicName] = useState("");
   const [syndicEmail, setSyndicEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [logoState, setLogoState] = useState<PendingLogoState>(null);
 
   const createCondo = useMutation(api.platform.createCondo);
+  const generateUploadUrl = useMutation(api.condos.generateLogoUploadUrl);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const logoPreview = useMemo(() => logoState?.previewUrl ?? null, [logoState?.previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (logoState?.previewUrl) {
+        URL.revokeObjectURL(logoState.previewUrl);
+      }
+    };
+  }, [logoState?.previewUrl]);
+
+  const handleSelectLogo = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_LOGO_SIZE) {
+      toast.error("O arquivo excede o limite de 2MB");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const { uploadUrl } = await generateUploadUrl({});
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!response.ok) {
+        throw new Error("Upload falhou");
+      }
+      const json = (await response.json()) as { storageId?: string };
+      if (!json.storageId) {
+        throw new Error("Resposta inválida do armazenamento");
+      }
+
+      if (logoState?.previewUrl) {
+        URL.revokeObjectURL(logoState.previewUrl);
+      }
+
+      const objectUrl = URL.createObjectURL(file);
+      setLogoState({ storageId: json.storageId, previewUrl: objectUrl });
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível fazer upload do logo");
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    if (logoState?.previewUrl) {
+      URL.revokeObjectURL(logoState.previewUrl);
+    }
+    setLogoState({ storageId: null, previewUrl: null });
+  };
 
   const handleCreate = async () => {
     if (!condoName || !subdomain || !syndicName || !syndicEmail) {
@@ -49,6 +121,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
           primaryColor,
           secondaryColor,
           accentColor,
+          logoStorageId: logoState?.storageId ?? undefined,
         },
         syndicEmail,
         syndicName,
@@ -58,6 +131,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
       onSelectCondo(condoId);
       onNavigate("dashboard");
     } catch (error) {
+      console.error(error);
       const message = error instanceof Error ? error.message : "Falha ao criar o condomínio";
       toast.error(message);
     } finally {
@@ -103,9 +177,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                     placeholder="jardim-flores"
                     required
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">
-                    .allecto.app
-                  </span>
+                  <span className="text-muted-foreground whitespace-nowrap">.allecto.app</span>
                 </div>
               </div>
             </div>
@@ -119,57 +191,63 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="logo">Logo</Label>
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted">
-                  <span className="text-muted-foreground">Logo</span>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-border bg-muted">
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo do condomínio" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <ImageIcon className="h-5 w-5" />
+                      <span className="text-xs">Sem logo</span>
+                    </div>
+                  )}
                 </div>
-                <Button variant="outline">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload
-                </Button>
+                <div className="flex flex-1 flex-wrap gap-2">
+                  <Input
+                    ref={fileInputRef}
+                    id="logo"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                  />
+                  <Button type="button" variant="outline" onClick={handleSelectLogo} disabled={isUploading || isSubmitting}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isUploading ? "Enviando..." : "Selecionar logo"}
+                  </Button>
+                  {logoPreview && (
+                    <Button type="button" variant="ghost" onClick={handleRemoveLogo} disabled={isUploading || isSubmitting}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remover
+                    </Button>
+                  )}
+                </div>
               </div>
+              <p className="text-sm text-muted-foreground">
+                Formatos aceitos: PNG, JPG, SVG. Tamanho máximo de 2MB.
+              </p>
             </div>
+
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="primary-color">Cor Primária</Label>
                 <div className="flex gap-2">
-                  <div
-                    className="h-10 w-10 rounded-md border border-border shrink-0"
-                    style={{ backgroundColor: primaryColor }}
-                  />
-                  <Input
-                    id="primary-color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                  />
+                  <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ backgroundColor: primaryColor }} />
+                  <Input id="primary-color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="secondary-color">Cor Secundária</Label>
                 <div className="flex gap-2">
-                  <div
-                    className="h-10 w-10 rounded-md border border-border shrink-0"
-                    style={{ backgroundColor: secondaryColor }}
-                  />
-                  <Input
-                    id="secondary-color"
-                    value={secondaryColor}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
-                  />
+                  <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ backgroundColor: secondaryColor }} />
+                  <Input id="secondary-color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="accent-color">Cor de Destaque</Label>
                 <div className="flex gap-2">
-                  <div
-                    className="h-10 w-10 rounded-md border border-border shrink-0"
-                    style={{ backgroundColor: accentColor }}
-                  />
-                  <Input
-                    id="accent-color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                  />
+                  <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ backgroundColor: accentColor }} />
+                  <Input id="accent-color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -208,10 +286,10 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onNavigate("tenants")} disabled={isSubmitting}>
+          <Button variant="outline" onClick={() => onNavigate("tenants")} disabled={isSubmitting || isUploading}>
             Cancelar
           </Button>
-          <Button onClick={handleCreate} disabled={isSubmitting}>
+          <Button onClick={handleCreate} disabled={isSubmitting || isUploading}>
             {isSubmitting ? "Criando..." : "Criar Condomínio"}
           </Button>
         </div>
