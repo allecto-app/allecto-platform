@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { CheckCircle2, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -192,10 +192,12 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onNavigate("tenants")}>
+          <Button variant="outline" onClick={() => onNavigate("tenants")} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button onClick={handleCreate}>Criar Condomínio</Button>
+          <Button onClick={handleCreate} disabled={isSubmitting}>
+            {isSubmitting ? "Criando..." : "Criar Condomínio"}
+          </Button>
         </div>
       </div>
     </div>

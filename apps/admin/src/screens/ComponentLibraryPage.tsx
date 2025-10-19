@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/ui/button";
@@ -14,8 +13,6 @@ import { EmptyState } from "../components/admin/EmptyState";
 import { toast } from "sonner";
 
 export function ComponentLibraryPage() {
-  const [loading, setLoading] = useState(false);
-
   const handleToast = (type: string) => {
     switch (type) {
       case "success":

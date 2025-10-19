@@ -103,7 +103,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
         name: result.name,
         expiresAt: result.expiresAt,
       });
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       setError("Email ou senha inválidos");
     } finally {
       setIsSubmitting(false);
@@ -130,7 +131,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       setResidentDevCode(result?.devCode ?? null);
       setResidentCode("");
       setOtpSent(true);
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       setResidentError("Não foi possível enviar o código");
     } finally {
       setIsSendingOtp(false);
@@ -172,7 +174,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
         condoName: result.condo.name,
         condoSubdomain: result.condo.subdomain,
       });
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       setResidentError("Código inválido ou expirado");
     } finally {
       setIsVerifyingOtp(false);

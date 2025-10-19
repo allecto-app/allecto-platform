@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";

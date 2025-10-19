@@ -49,14 +49,11 @@ export function Navbar({
         </Alert>
       )}
       <header className="flex h-16 items-center gap-4 border-b border-border bg-background px-6">
-        {/* <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={onToggleSidebar}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        {onToggleSidebar && (
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={onToggleSidebar}>
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
 
         {isPlatformMode && onSelectCondo && (
           <CondoSwitcher
@@ -66,14 +63,10 @@ export function Navbar({
           />
         )}
 
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex flex-1 max-w-md items-center gap-2">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar..."
-            className="w-full pl-9"
-          />
-        </div> */}
+          <Input type="search" placeholder="Buscar..." className="w-full pl-9" />
+        </div>
 
         <div className="ml-auto flex items-center gap-2">
           <DropdownMenu modal={false}>

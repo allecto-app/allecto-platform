@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Copy, AlertTriangle } from "lucide-react";
-import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -39,7 +38,7 @@ export function SettingsCondoPage() {
 
   return (
     <div className="space-y-6">
-        <Card>
+      <Card>
           <CardHeader>
             <CardTitle>Informações do Condomínio</CardTitle>
           </CardHeader>
@@ -53,19 +52,22 @@ export function SettingsCondoPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="subdomain">Subdomínio</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="subdomain"
-                  value={`${subdomain}.allecto.app`}
-                  readOnly
-                  className="bg-muted"
-                />
-                <Button variant="outline" onClick={handleCopy}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subdomain">Subdomínio</Label>
+                <div className="flex gap-2">
+                  <div className="flex flex-1 items-center gap-2">
+                    <Input
+                      id="subdomain"
+                      value={subdomain}
+                      onChange={(event) => setSubdomain(event.target.value)}
+                      placeholder="jardim-flores"
+                    />
+                    <span className="text-muted-foreground whitespace-nowrap">.allecto.app</span>
+                  </div>
+                  <Button variant="outline" onClick={handleCopy}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
               <p className="text-muted-foreground">
                 Este é o endereço que os moradores usarão para acessar o sistema
               </p>
