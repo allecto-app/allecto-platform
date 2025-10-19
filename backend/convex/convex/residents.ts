@@ -88,3 +88,61 @@ export const findByEmail = query({
         };
     },
 });
+
+export const update = mutation({
+    args: {
+        residentId: v.id("residents"),
+        name: v.string(),
+        email: v.optional(v.string()),
+        phone: v.optional(v.string()),
+        role: v.string(),
+        isActive: v.boolean(),
+    },
+    handler: async (ctx, { residentId, name, email, phone, role, isActive }) => {
+        const existing = await ctx.db.get(residentId);
+        if (!existing) {
+            throw new Error("Resident not found");
+        }
+
+        const now = Date.now();
+        await ctx.db.patch(residentId, {
+            name: name.trim(),
+            email:
+                email !== undefined
+                    ? email.trim().length > 0
+                        ? normalizeEmail(email)
+                        : null
+                    : existing.email ?? null,
+            phone:
+                phone !== undefined
+                    ? phone.trim().length > 0
+                        ? phone.trim()
+                        : null
+                    : existing.phone ?? null,
+            role,
+            isActive,
+            updatedAt: now,
+        });
+
+        const updated = await ctx.db.get(residentId);
+        const condo = updated ? await ctx.db.get(updated.condoId) : null;
+
+        return {
+            resident: updated
+                ? {
+                      id: updated._id,
+                      name: updated.name,
+                      email: updated.email ?? null,
+                      phone: updated.phone ?? null,
+                      role: updated.role,
+                      isActive: updated.isActive,
+                      condoId: updated.condoId,
+                      condoName: condo?.name ?? null,
+                      condoSubdomain: condo?.subdomain ?? null,
+                      createdAt: updated.createdAt,
+                      updatedAt: updated.updatedAt,
+                  }
+                : null,
+        };
+    },
+});

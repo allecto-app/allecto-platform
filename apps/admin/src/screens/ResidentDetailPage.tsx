@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UserX, UserCheck, Mail, Edit, Loader2 } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -27,7 +27,8 @@ import {
   SheetTitle,
 } from "../components/ui/sheet";
 import { toast } from "sonner";
-import { Id, api, Doc } from "../lib/convexGenerated";
+import { Id, api } from "../lib/convexGenerated";
+import type { ResidentRecord } from "../types/resident";
 import { useAction, useQuery } from "convex/react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -50,10 +51,17 @@ interface ResidentDetailPageProps {
   onNavigate: (page: string) => void;
   condoId: Id<"condos"> | null;
   residentId?: Id<"residents"> | null;
-  residentFallback?: Doc<"residents"> | null;
+  residentFallback?: ResidentRecord | null;
+  onResidentLoaded?: (resident: ResidentRecord) => void;
 }
 
-export function ResidentDetailPage({ onNavigate, condoId: _condoId, residentId, residentFallback }: ResidentDetailPageProps) {
+export function ResidentDetailPage({
+  onNavigate,
+  condoId: _condoId,
+  residentId,
+  residentFallback,
+  onResidentLoaded,
+}: ResidentDetailPageProps) {
   const [linkUnitOpen, setLinkUnitOpen] = useState(false);
 
   const detail = useQuery(
@@ -67,22 +75,7 @@ export function ResidentDetailPage({ onNavigate, condoId: _condoId, residentId, 
   const resendResidentOtp = useAction(api.residentDetail.resendOtp);
 
   const residentFromQuery = detail?.resident ?? null;
-  const resident = residentFromQuery ??
-    (residentFallback
-      ? {
-          id: residentFallback._id,
-          name: residentFallback.name,
-          email: residentFallback.email ?? null,
-          phone: residentFallback.phone ?? null,
-          role: residentFallback.role,
-          isActive: residentFallback.isActive,
-          condoId: residentFallback.condoId,
-          condoName: null,
-          condoSubdomain: null,
-          createdAt: residentFallback.createdAt,
-          updatedAt: residentFallback.updatedAt,
-        }
-      : null);
+  const resident = residentFromQuery ?? residentFallback ?? null;
   const units = detail?.units ?? [];
   const activities = (detail?.activities ?? []).map((activity) => ({
     ...activity,
@@ -117,6 +110,12 @@ export function ResidentDetailPage({ onNavigate, condoId: _condoId, residentId, 
   const handleUnlinkUnit = (unitCode: string) =>
     toast.error(`Desvincular unidade ${unitCode} ainda não implementado`);
   const handleEdit = () => onNavigate("resident-edit");
+
+  useEffect(() => {
+    if (resident && onResidentLoaded) {
+      onResidentLoaded(resident);
+    }
+  }, [resident, onResidentLoaded]);
 
   if (isLoading) {
     return (

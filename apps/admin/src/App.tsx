@@ -27,6 +27,7 @@ import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import { Palette, Package } from "lucide-react";
 import { api, Doc, Id } from "./lib/convexGenerated";
+import type { ResidentRecord } from "./types/resident";
 import { AdminAuthSession } from "./lib/authSession";
 import { useHostInfo } from "./lib/hostContext";
 
@@ -214,7 +215,7 @@ function AuthenticatedShell({
   const initialCondoId = auth.type === "resident" ? auth.condoId : null;
   const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
   const [selectedResidentId, setSelectedResidentId] = useState<Id<"residents"> | null>(null);
-  const [selectedResident, setSelectedResident] = useState<Doc<"residents"> | null>(null);
+  const [selectedResident, setSelectedResident] = useState<ResidentRecord | null>(null);
 
   const platformCondos = useQuery(
     api.platform.listCondos,
@@ -433,8 +434,21 @@ function AuthenticatedShell({
                 condo={selectedCondo}
                 canInviteSyndic={canInviteSyndic}
                 onSelectResident={(resident) => {
-                  setSelectedResidentId(resident._id);
-                  setSelectedResident(resident);
+                  const record: ResidentRecord = {
+                    id: resident._id,
+                    name: resident.name,
+                    email: resident.email ?? null,
+                    phone: resident.phone ?? null,
+                    role: resident.role,
+                    isActive: resident.isActive,
+                    condoId: resident.condoId,
+                    condoName: null,
+                    condoSubdomain: null,
+                    createdAt: resident.createdAt,
+                    updatedAt: resident.updatedAt,
+                  };
+                  setSelectedResidentId(record.id);
+                  setSelectedResident(record);
                 }}
               />
             )}
@@ -444,10 +458,23 @@ function AuthenticatedShell({
                 condoId={selectedCondo?._id ?? null}
                 residentId={selectedResidentId}
                 residentFallback={selectedResident}
+                onResidentLoaded={(resident) => {
+                  setSelectedResidentId(resident.id);
+                  setSelectedResident(resident);
+                }}
               />
             )}
             {currentPage === "resident-edit" && (
-              <ResidentEditPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
+              <ResidentEditPage
+                onNavigate={handleNavigate}
+                condoId={selectedCondo?._id ?? null}
+                residentId={selectedResidentId}
+                residentFallback={selectedResident}
+                onResidentUpdated={(resident) => {
+                  setSelectedResidentId(resident.id);
+                  setSelectedResident(resident);
+                }}
+              />
             )}
             {currentPage === "units" && (
               <UnitsListPage onNavigate={handleNavigate} condo={selectedCondo} />
