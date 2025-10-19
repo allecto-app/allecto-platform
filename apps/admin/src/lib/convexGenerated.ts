@@ -16,7 +16,7 @@ type AugmentedApi = typeof baseApi & {
   };
   auth: {
     adminSignIn: MutationRef;
-    requestResidentOtp: MutationRef;
+    requestResidentOtp: ActionRef;
     residentSignIn: MutationRef;
   };
   platform: {
@@ -36,6 +36,9 @@ type AugmentedApi = typeof baseApi & {
   };
   units: {
     listByCondo: QueryRef;
+  };
+  notifications: {
+    listLogs: QueryRef;
   };
 };
 
