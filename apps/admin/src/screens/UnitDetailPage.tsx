@@ -28,8 +28,6 @@ import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { api, Doc, Id } from "../lib/convexGenerated";
 import type { UnitRecord } from "../types/unit";
 
@@ -154,11 +152,19 @@ export function UnitDetailPage({
     }
   }, [availableResidents, selectedResidentId]);
 
+  const formatDateTime = (timestamp: number | null | undefined) =>
+    typeof timestamp === "number"
+      ? new Intl.DateTimeFormat("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(new Date(timestamp))
+      : "-";
+
   const votesWithFormattedDate = useMemo(
     () =>
       votes.map((vote) => ({
         ...vote,
-        formattedDate: format(new Date(vote.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+        formattedDate: formatDateTime(vote.createdAt),
       })),
     [votes],
   );
@@ -287,12 +293,8 @@ export function UnitDetailPage({
     );
   }
 
-  const formattedCreatedAt = unit.createdAt
-    ? format(new Date(unit.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
-  const formattedUpdatedAt = unit.updatedAt
-    ? format(new Date(unit.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
+  const formattedCreatedAt = formatDateTime(unit.createdAt);
+  const formattedUpdatedAt = formatDateTime(unit.updatedAt);
   const floorLabel = unit.floor ? `${unit.floor}º Andar` : "-";
   const blockLabel = unit.block ? `Bloco ${unit.block}` : "Unidade";
   const breadcrumb = ["Unidades", unit.block ? `${unit.block}-${unit.code}` : unit.code];

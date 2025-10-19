@@ -30,8 +30,6 @@ import { toast } from "sonner";
 import { Id, api } from "../lib/convexGenerated";
 import type { ResidentRecord } from "../types/resident";
 import { useAction, useQuery } from "convex/react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 const TEMPLATE_LABELS: Record<string, string> = {
   convocation: "Convocação",
@@ -46,6 +44,28 @@ const ROLE_LABELS: Record<string, string> = {
   manager: "Gestor",
   council: "Conselho",
 };
+
+type ResidentUnitLink = {
+  membershipId: Id<"memberships">;
+  unitId: Id<"units">;
+  code: string;
+  block: string | null;
+  role: string | null;
+};
+
+type ResidentActivity = {
+  id: Id<"notificationLogs">;
+  type: string;
+  channel: string;
+  description: string | null;
+  createdAt: number;
+};
+
+type ResidentDetailResponse = {
+  resident: ResidentRecord;
+  units: ResidentUnitLink[];
+  activities: ResidentActivity[];
+} | null;
 
 interface ResidentDetailPageProps {
   onNavigate: (page: string) => void;
@@ -71,26 +91,28 @@ export function ResidentDetailPage({
       : residentFallback?.email
       ? { email: residentFallback.email }
       : "skip",
-  );
+  ) as ResidentDetailResponse | undefined;
   const resendResidentOtp = useAction(api.residentDetail.resendOtp);
 
   const residentFromQuery = detail?.resident ?? null;
   const resident = residentFromQuery ?? residentFallback ?? null;
   const units = detail?.units ?? [];
+  const formatDateTime = (timestamp: number | null | undefined) =>
+    typeof timestamp === "number"
+      ? new Intl.DateTimeFormat("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(new Date(timestamp))
+      : "-";
+
   const activities = (detail?.activities ?? []).map((activity) => ({
     ...activity,
-    formattedDate: format(new Date(activity.createdAt), "dd/MM/yyyy HH:mm", {
-      locale: ptBR,
-    }),
+    formattedDate: formatDateTime(activity.createdAt),
   }));
   const isLoading = residentId != null && detail === undefined;
 
-  const formattedCreatedAt = resident?.createdAt
-    ? format(new Date(resident.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
-  const formattedUpdatedAt = resident?.updatedAt
-    ? format(new Date(resident.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
+  const formattedCreatedAt = formatDateTime(resident?.createdAt ?? null);
+  const formattedUpdatedAt = formatDateTime(resident?.updatedAt ?? null);
 
   const handleInviteAgain = async () => {
     if (!resident?.email) {

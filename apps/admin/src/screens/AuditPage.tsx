@@ -7,7 +7,22 @@ import { Badge } from "../components/ui/badge";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Input } from "../components/ui/input";
-import { api } from "../lib/convexGenerated";
+import { api, Id } from "../lib/convexGenerated";
+
+type NotificationLogRecord = {
+  _id: Id<"notificationLogs">;
+  createdAt: number;
+  condoId: Id<"condos">;
+  condoName: string | null;
+  condoSubdomain: string | null;
+  template: string;
+  channel: string;
+  audienceCount: number;
+  successCount: number;
+  errorCount: number;
+  note: string | null;
+  minuteId: Id<"minutes"> | null;
+};
 
 const TEMPLATE_LABELS: Record<string, string> = {
   convocation: "Convocação",
@@ -22,7 +37,7 @@ export function AuditPage() {
   const [channelFilter, setChannelFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
 
-  const logsResult = useQuery(api.notifications.listLogs, {});
+  const logsResult = useQuery(api.notifications.listLogs, {}) as NotificationLogRecord[] | undefined;
   const isLoading = logsResult === undefined;
   const logs = logsResult ?? [];
 

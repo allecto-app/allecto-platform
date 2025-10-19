@@ -2,9 +2,12 @@ import type { FunctionReference } from "convex/server";
 import type { GenericId } from "convex/values";
 import { api as baseApi, internal as baseInternal } from "../../convex/_generated/api";
 
-type ActionRef = FunctionReference<"action", any, any>;
-type MutationRef = FunctionReference<"mutation", any, any>;
-type QueryRef = FunctionReference<"query", any, any>;
+type PublicFunctionRef = FunctionReference<any, "public">;
+type InternalFunctionRef = FunctionReference<any, "internal">;
+
+type ActionRef = PublicFunctionRef;
+type MutationRef = PublicFunctionRef;
+type QueryRef = PublicFunctionRef;
 
 type AugmentedApi = typeof baseApi & {
   invites: {
@@ -57,16 +60,115 @@ type AugmentedApi = typeof baseApi & {
 
 type AugmentedInternal = typeof baseInternal & {
   invites: {
-    _authorizeInviteCreator: MutationRef;
-    _createInviteRecord: MutationRef;
-    _markInviteRevoked: MutationRef;
-    _logSecurityEvent: MutationRef;
+    _authorizeInviteCreator: InternalFunctionRef;
+    _createInviteRecord: InternalFunctionRef;
+    _markInviteRevoked: InternalFunctionRef;
+    _logSecurityEvent: InternalFunctionRef;
   };
 };
 
 export const api = baseApi as AugmentedApi;
 export const internal = baseInternal as AugmentedInternal;
 
-export type TableNames = string;
+export type TableNames =
+  | "condos"
+  | "units"
+  | "residents"
+  | "memberships"
+  | "minutes"
+  | "votes"
+  | "notificationLogs"
+  | "otps"
+  | "platformUsers"
+  | "loginAttempts"
+  | "sessions"
+  | "securityEvents"
+  | "invites"
+  | "inviteRate"
+  | (string & {});
+
 export type Id<TableName extends TableNames = TableNames> = GenericId<TableName>;
-export type Doc<TableName extends TableNames = TableNames> = Record<string, any>;
+
+type DefaultDoc<TableName extends TableNames> = {
+  _id: Id<TableName>;
+  _creationTime: number;
+};
+
+type CondoBranding = {
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  displayName?: string;
+};
+
+type DocByTable = {
+  condos: DefaultDoc<"condos"> & {
+    name: string;
+    subdomain: string;
+    branding: CondoBranding;
+    createdAt: number;
+    updatedAt: number;
+  };
+  units: DefaultDoc<"units"> & {
+    condoId: Id<"condos">;
+    code: string;
+    block?: string;
+    floor?: string;
+    createdAt: number;
+    updatedAt: number;
+  };
+  residents: DefaultDoc<"residents"> & {
+    condoId: Id<"condos">;
+    name: string;
+    email?: string;
+    phone?: string;
+    role: string;
+    isActive: boolean;
+    createdAt: number;
+    updatedAt: number;
+  };
+  invites: DefaultDoc<"invites"> & {
+    condoId: Id<"condos">;
+    email: string;
+    name?: string;
+    role: "syndic";
+    tokenHash: string;
+    expiresAt: number;
+    usedAt?: number;
+    createdBy?: Id<"platformUsers">;
+    createdAt: number;
+    status: string;
+    attempts: number;
+    updatedAt?: number;
+  };
+  minutes: DefaultDoc<"minutes"> & {
+    condoId: Id<"condos">;
+    title: string;
+    summary?: string;
+    pdfUrl: string;
+    publishedAt: number;
+    closesAt: number;
+    status: string;
+    createdBy: Id<"residents">;
+    reminderD2Scheduled: boolean;
+    reminderD4Scheduled: boolean;
+    closeScheduled: boolean;
+    createdAt: number;
+    updatedAt: number;
+  };
+  notificationLogs: DefaultDoc<"notificationLogs"> & {
+    condoId: Id<"condos">;
+    minuteId?: Id<"minutes">;
+    channel: string;
+    template: string;
+    audienceCount: number;
+    successCount: number;
+    errorCount: number;
+    createdAt: number;
+    meta?: Record<string, unknown>;
+  };
+};
+
+export type Doc<TableName extends TableNames = TableNames> = TableName extends keyof DocByTable
+  ? DocByTable[TableName]
+  : DefaultDoc<TableName> & Record<string, unknown>;

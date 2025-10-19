@@ -19,8 +19,6 @@ import {
 } from "../components/ui/alert-dialog";
 import { Badge } from "../components/ui/badge";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { api, Id } from "../lib/convexGenerated";
 import type { UnitRecord } from "../types/unit";
 
@@ -161,12 +159,16 @@ export function UnitEditPage({
     return extra > 0 ? `${items.join(", ")} e mais ${extra}` : items.join(", ");
   }, [membershipCount, memberships]);
 
-  const formattedCreatedAt = unit?.createdAt
-    ? format(new Date(unit.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
-  const formattedUpdatedAt = unit?.updatedAt
-    ? format(new Date(unit.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
+  const formatDateTime = (timestamp: number | null | undefined) =>
+    typeof timestamp === "number"
+      ? new Intl.DateTimeFormat("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(new Date(timestamp))
+      : "-";
+
+  const formattedCreatedAt = formatDateTime(unit?.createdAt ?? null);
+  const formattedUpdatedAt = formatDateTime(unit?.updatedAt ?? null);
 
   const updateField = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));

@@ -11,8 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "../components/ui/switch";
 import { toast } from "sonner";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Id, api } from "../lib/convexGenerated";
 import type { ResidentRecord } from "../types/resident";
 
@@ -91,12 +89,16 @@ export function ResidentEditPage({
     setLastResidentId(resident.id);
   }, [resident, initialForm, lastResidentId]);
 
-  const formattedCreatedAt = resident?.createdAt
-    ? format(new Date(resident.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
-  const formattedUpdatedAt = resident?.updatedAt
-    ? format(new Date(resident.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
-    : "-";
+  const formatDateTime = (timestamp: number | null | undefined) =>
+    typeof timestamp === "number"
+      ? new Intl.DateTimeFormat("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(new Date(timestamp))
+      : "-";
+
+  const formattedCreatedAt = formatDateTime(resident?.createdAt ?? null);
+  const formattedUpdatedAt = formatDateTime(resident?.updatedAt ?? null);
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
