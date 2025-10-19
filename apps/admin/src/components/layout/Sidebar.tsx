@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
@@ -37,6 +38,18 @@ const logoutNavigation = { name: "Sair", icon: LogOut, page: "__logout" } as con
 export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, mode = "tenant", selectedCondo }: SidebarProps) {
   const isPlatformMode = mode === "platform";
   const hasCondoSelected = !!selectedCondo;
+  const branding = selectedCondo?.branding;
+  const condoName = branding?.displayName?.trim() || selectedCondo?.name || "Allecto Admin";
+
+  const condoInitials = useMemo(() => {
+    if (!condoName) return "A";
+    const parts = condoName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "A";
+    const initials = parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+    return initials || "A";
+  }, [condoName]);
+
+  const condoLogoUrl = branding?.logoUrl ?? null;
 
   const renderNavItem = (
     item:
@@ -89,14 +102,25 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, 
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <span className="text-primary-foreground">A</span>
-            </div>
-            <span className="text-foreground">Allecto Admin</span>
+        <div
+          className={cn(
+            "flex items-center gap-2 transition-opacity",
+            collapsed ? "justify-center" : "justify-start",
+          )}
+        >
+          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground">
+            {condoLogoUrl ? (
+              <img src={condoLogoUrl} alt={condoName} className="h-full w-full object-cover" />
+            ) : (
+              <span>{condoInitials}</span>
+            )}
           </div>
-        )}
+          {!collapsed && (
+            <span className="max-w-[160px] truncate text-foreground">
+              {condoName}
+            </span>
+          )}
+        </div>
         <Button
           variant="ghost"
           size="icon"

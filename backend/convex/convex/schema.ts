@@ -4,8 +4,10 @@ import { v } from "convex/values";
 
 const Branding = v.object({
   logoUrl: v.optional(v.string()),
+  logoStorageId: v.optional(v.string()),
   primaryColor: v.optional(v.string()),
   secondaryColor: v.optional(v.string()),
+  accentColor: v.optional(v.string()),
   displayName: v.optional(v.string()),
 });
 
@@ -14,6 +16,9 @@ export default defineSchema({
     name: v.string(),
     subdomain: v.string(),
     branding: Branding,
+    timezone: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+    disabledAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

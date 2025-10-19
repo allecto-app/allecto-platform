@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Copy, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useMutation } from "convex/react";
+import { Copy, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -17,128 +18,180 @@ import {
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 import { toast } from "sonner";
+import { api, Doc } from "../lib/convexGenerated";
+import { Badge } from "../components/ui/badge";
 
-export function SettingsCondoPage() {
-  const [name, setName] = useState("Condomínio Jardim das Flores");
-  const [subdomain, setSubdomain] = useState("jardim-flores");
-  const [timezone, setTimezone] = useState("America/Sao_Paulo");
+interface SettingsCondoPageProps {
+  condo: Doc<"condos">;
+  onCondoUpdated?: (condo: Doc<"condos">) => void;
+}
+
+const TIMEZONE_OPTIONS = [
+  { value: "America/Sao_Paulo", label: "(GMT-3) São Paulo" },
+  { value: "America/Manaus", label: "(GMT-4) Manaus" },
+  { value: "America/Cuiaba", label: "(GMT-4) Cuiabá" },
+  { value: "America/Fortaleza", label: "(GMT-3) Fortaleza" },
+  { value: "America/Rio_Branco", label: "(GMT-5) Rio Branco" },
+];
+
+export function SettingsCondoPage({ condo, onCondoUpdated }: SettingsCondoPageProps) {
+  const [name, setName] = useState(condo.name);
+  const [timezone, setTimezone] = useState(condo.timezone ?? "America/Sao_Paulo");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDisabling, setIsDisabling] = useState(false);
+
+  const updateSettings = useMutation(api.condos.updateSettings);
+  const disableCondo = useMutation(api.condos.disable);
+
+  useEffect(() => {
+    setName(condo.name);
+    setTimezone(condo.timezone ?? "America/Sao_Paulo");
+  }, [condo.name, condo.timezone]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(`${subdomain}.allecto.app`);
-    toast.success("Subdomínio copiado!");
+    const url = `${condo.subdomain}.allecto.app`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success("Subdomínio copiado!");
+    });
   };
 
-  const handleSave = () => {
-    toast.success("Configurações salvas com sucesso!");
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updated = (await updateSettings({
+        condoId: condo._id,
+        name: name.trim(),
+        timezone,
+      })) as Doc<"condos"> | null;
+      if (updated) {
+        onCondoUpdated?.(updated);
+      }
+      toast.success("Configurações do condomínio atualizadas");
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível salvar as configurações");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDisable = () => {
-    toast.warning("Condomínio desabilitado");
+  const handleDisable = async () => {
+    setIsDisabling(true);
+    try {
+      const result = (await disableCondo({ condoId: condo._id })) as
+        | { success: boolean; condo?: Doc<"condos"> | null }
+        | null;
+      if (result?.success) {
+        if (result.condo) {
+          onCondoUpdated?.(result.condo);
+        }
+        toast.success("Condomínio desabilitado");
+      } else {
+        toast.info("O condomínio já está desabilitado");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível desabilitar o condomínio");
+    } finally {
+      setIsDisabling(false);
+    }
   };
+
+  const isActive = condo.isActive !== false;
 
   return (
     <div className="space-y-6">
       <Card>
-          <CardHeader>
+        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
             <CardTitle>Informações do Condomínio</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+            <CardDescription>Edite dados administrativos do condomínio selecionado.</CardDescription>
+          </div>
+          <Badge variant={isActive ? "default" : "destructive"} className="flex items-center gap-1">
+            {isActive ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+            {isActive ? "Ativo" : "Desabilitado"}
+          </Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome</Label>
+            <Input id="name" value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="subdomain">Subdomínio</Label>
+            <div className="flex gap-2">
+              <Input id="subdomain" value={condo.subdomain} readOnly className="bg-muted" />
+              <Button variant="outline" onClick={handleCopy}>
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
+            <p className="text-muted-foreground text-sm">
+              Este é o endereço que os moradores usarão para acessar o sistema
+            </p>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="subdomain">Subdomínio</Label>
-                <div className="flex gap-2">
-                  <div className="flex flex-1 items-center gap-2">
-                    <Input
-                      id="subdomain"
-                      value={subdomain}
-                      onChange={(event) => setSubdomain(event.target.value)}
-                      placeholder="jardim-flores"
-                    />
-                    <span className="text-muted-foreground whitespace-nowrap">.allecto.app</span>
-                  </div>
-                  <Button variant="outline" onClick={handleCopy}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              <p className="text-muted-foreground">
-                Este é o endereço que os moradores usarão para acessar o sistema
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Fuso Horário</Label>
-              <Select value={timezone} onValueChange={setTimezone}>
-                <SelectTrigger id="timezone">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="America/Sao_Paulo">
-                    (GMT-3) São Paulo
+          <div className="space-y-2">
+            <Label htmlFor="timezone">Fuso Horário</Label>
+            <Select value={timezone} onValueChange={setTimezone}>
+              <SelectTrigger id="timezone">
+                <SelectValue placeholder="Selecione um fuso" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
-                  <SelectItem value="America/Rio_Branco">
-                    (GMT-5) Rio Branco
-                  </SelectItem>
-                  <SelectItem value="America/Manaus">
-                    (GMT-4) Manaus
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-muted-foreground">
-                Define os horários de fechamento de atas e envio de notificações
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-sm">
+              Defina o fuso horário padrão para agendas e envio de notificações.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave}>Salvar Alterações</Button>
-        </div>
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Salvando..." : "Salvar Alterações"}
+        </Button>
+      </div>
 
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">Zona de Perigo</CardTitle>
-            <CardDescription>
-              Ações irreversíveis que afetam todo o condomínio
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Desabilitar Condomínio
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. Isso irá desabilitar
-                    permanentemente o condomínio e todos os moradores perderão
-                    acesso ao sistema.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDisable}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Sim, desabilitar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">Zona de Perigo</CardTitle>
+          <CardDescription>Ações irreversíveis que afetam todo o condomínio.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={!isActive || isDisabling}>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                {isActive ? "Desabilitar Condomínio" : "Condomínio Desabilitado"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. Todos os moradores perderão acesso ao sistema.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDisable}
+                  disabled={isDisabling}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDisabling ? "Desabilitando..." : "Sim, desabilitar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

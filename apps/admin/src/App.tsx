@@ -27,6 +27,7 @@ import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import { Palette, Package } from "lucide-react";
 import { api, Doc, Id } from "./lib/convexGenerated";
+import { applyBrandingTheme } from "./lib/brandingTheme";
 import type { ResidentRecord } from "./types/resident";
 import type { UnitRecord } from "./types/unit";
 import { AdminAuthSession } from "./lib/authSession";
@@ -217,6 +218,7 @@ function AuthenticatedShell({
   const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
   const [selectedResidentId, setSelectedResidentId] = useState<Id<"residents"> | null>(null);
   const [selectedResident, setSelectedResident] = useState<ResidentRecord | null>(null);
+  const [selectedCondoOverride, setSelectedCondoOverride] = useState<CondoDoc | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState<Id<"units"> | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<UnitRecord | null>(null);
 
@@ -280,10 +282,48 @@ function AuthenticatedShell({
     }
   }, [isResident, auth, selectedCondoId]);
 
-  const selectedCondo: CondoDoc | null = useMemo(() => {
+  const baseSelectedCondo: CondoDoc | null = useMemo(() => {
     if (!selectedCondoId || !condos) return null;
     return condos.find((condo) => condo._id === selectedCondoId) ?? null;
   }, [condos, selectedCondoId]);
+
+  useEffect(() => {
+    if (!baseSelectedCondo) {
+      setSelectedCondoOverride(null);
+      return;
+    }
+    setSelectedCondoOverride((prev) => {
+      if (!prev) return prev;
+      if (prev._id !== baseSelectedCondo._id) {
+        return null;
+      }
+      if ((prev.updatedAt ?? 0) < (baseSelectedCondo.updatedAt ?? 0)) {
+        return null;
+      }
+      return prev;
+    });
+  }, [baseSelectedCondo?._id, baseSelectedCondo?.updatedAt]);
+
+  const selectedCondo: CondoDoc | null = useMemo(() => {
+    if (selectedCondoOverride && selectedCondoOverride._id === baseSelectedCondo?._id) {
+      if (
+        !baseSelectedCondo ||
+        (selectedCondoOverride.updatedAt ?? 0) >= (baseSelectedCondo.updatedAt ?? 0)
+      ) {
+        return selectedCondoOverride;
+      }
+    }
+    return baseSelectedCondo ?? selectedCondoOverride ?? null;
+  }, [baseSelectedCondo, selectedCondoOverride]);
+
+  useEffect(() => {
+    applyBrandingTheme(selectedCondo?.branding);
+  }, [
+    selectedCondo?.branding?.primaryColor,
+    selectedCondo?.branding?.secondaryColor,
+    selectedCondo?.branding?.accentColor,
+    selectedCondo?.branding?.logoUrl,
+  ]);
 
   useEffect(() => {
     if (!selectedCondo) {
@@ -538,7 +578,16 @@ function AuthenticatedShell({
                 }}
               />
             )}
-            {currentPage === "settings" && <SettingsPage />}
+            {currentPage === "settings" && (
+              <SettingsPage
+                condo={selectedCondo}
+                onBrandingApplied={(branding) => applyBrandingTheme(branding)}
+                onCondoUpdated={(condoDoc) => {
+                  setSelectedCondoOverride(condoDoc);
+                  applyBrandingTheme(condoDoc.branding);
+                }}
+              />
+            )}
             {currentPage === "notifications" && <NotificationsPage />}
           </div>
         </main>

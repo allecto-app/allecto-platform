@@ -20,6 +20,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
   const [subdomain, setSubdomain] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#042940");
   const [secondaryColor, setSecondaryColor] = useState("#9FC131");
+  const [accentColor, setAccentColor] = useState("#005C53");
   const [syndicName, setSyndicName] = useState("");
   const [syndicEmail, setSyndicEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,6 +48,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
           displayName: condoName,
           primaryColor,
           secondaryColor,
+          accentColor,
         },
         syndicEmail,
         syndicName,
@@ -127,7 +129,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                 </Button>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="primary-color">Cor Primária</Label>
                 <div className="flex gap-2">
@@ -153,6 +155,20 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                     id="secondary-color"
                     value={secondaryColor}
                     onChange={(e) => setSecondaryColor(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="accent-color">Cor de Destaque</Label>
+                <div className="flex gap-2">
+                  <div
+                    className="h-10 w-10 rounded-md border border-border shrink-0"
+                    style={{ backgroundColor: accentColor }}
+                  />
+                  <Input
+                    id="accent-color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
                   />
                 </div>
               </div>

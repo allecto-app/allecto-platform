@@ -78,7 +78,15 @@ export const demo = mutation({
         const condoId = await ctx.db.insert("condos", {
             name: "Condomínio Demo",
             subdomain,
-            branding: { displayName: "Condomínio Demo", primaryColor: "#0b5fff" },
+            branding: {
+                displayName: "Condomínio Demo",
+                primaryColor: "#0b5fff",
+                secondaryColor: "#9FC131",
+                accentColor: "#005C53",
+            },
+            timezone: "America/Sao_Paulo",
+            isActive: true,
+            disabledAt: undefined,
             createdAt: now,
             updatedAt: now,
         });

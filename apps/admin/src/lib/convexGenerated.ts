@@ -28,6 +28,13 @@ type AugmentedApi = typeof baseApi & {
   };
   condos: {
     getBySubdomain: QueryRef;
+    getAdmin: QueryRef;
+    list: QueryRef;
+    create: MutationRef;
+    updateBranding: MutationRef;
+    updateSettings: MutationRef;
+    generateLogoUploadUrl: MutationRef;
+    disable: MutationRef;
   };
   residents: {
     list: QueryRef;
@@ -96,8 +103,10 @@ type DefaultDoc<TableName extends TableNames> = {
 
 type CondoBranding = {
   logoUrl?: string;
+  logoStorageId?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  accentColor?: string;
   displayName?: string;
 };
 
@@ -106,6 +115,9 @@ type DocByTable = {
     name: string;
     subdomain: string;
     branding: CondoBranding;
+    timezone?: string;
+    isActive?: boolean;
+    disabledAt?: number;
     createdAt: number;
     updatedAt: number;
   };
