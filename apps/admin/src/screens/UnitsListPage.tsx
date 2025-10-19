@@ -16,9 +16,10 @@ import { Loader2 } from "lucide-react";
 interface UnitsListPageProps {
   onNavigate: (page: string) => void;
   condo: Doc<"condos"> | null;
+  onSelectUnit?: (unit: Doc<"units">) => void;
 }
 
-export function UnitsListPage({ onNavigate, condo }: UnitsListPageProps) {
+export function UnitsListPage({ onNavigate, condo, onSelectUnit }: UnitsListPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [blockFilter, setBlockFilter] = useState("all");
   const [floorFilter, setFloorFilter] = useState("all");
@@ -170,7 +171,10 @@ export function UnitsListPage({ onNavigate, condo }: UnitsListPageProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onNavigate("unit-detail")}
+                        onClick={() => {
+                          onSelectUnit?.(unit);
+                          onNavigate("unit-detail");
+                        }}
                       >
                         Ver Detalhes
                       </Button>

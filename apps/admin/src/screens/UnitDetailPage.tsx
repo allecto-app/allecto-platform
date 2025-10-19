@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Trash2, Edit, UserPlus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { Trash2, Edit, UserPlus, Loader2 } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -27,119 +28,281 @@ import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
-import { Id } from "../lib/convexGenerated";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { api, Doc, Id } from "../lib/convexGenerated";
+import type { UnitRecord } from "../types/unit";
+
+type MembershipRole = "owner" | "tenant";
+
+type UnitDetailMembership = {
+  membershipId: Id<"memberships">;
+  resident: {
+    id: Id<"residents">;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    role: string;
+    isActive: boolean;
+  };
+  membershipRole: MembershipRole | null;
+  linkedAt: number;
+};
+
+type UnitDetailVote = {
+  id: Id<"votes">;
+  minuteId: Id<"minutes">;
+  minuteTitle: string;
+  minutePublishedAt: number | null;
+  choice: "agree" | "disagree";
+  comment: string | null;
+  createdAt: number;
+};
+
+type UnitDetailResponse = {
+  unit: UnitRecord;
+  memberships: UnitDetailMembership[];
+  votes: UnitDetailVote[];
+} | null;
 
 interface UnitDetailPageProps {
   onNavigate: (page: string) => void;
   condoId: Id<"condos"> | null;
+  unitId?: Id<"units"> | null;
+  unitFallback?: UnitRecord | null;
+  onUnitLoaded?: (unit: UnitRecord) => void;
 }
 
-// Mock data for the unit
-const unit = {
-  id: 1,
-  code: "101",
-  block: "A",
-  floor: "1",
-  condo: "Jardim das Flores",
-  createdAt: "01/11/2024",
-  updatedAt: "05/01/2025",
-};
-
-const linkedResidents = [
-  {
-    id: 1,
-    name: "João Silva",
-    email: "joao@example.com",
-    phone: "(11) 99999-0001",
-    role: "owner",
-  },
-  {
-    id: 2,
-    name: "Maria Silva",
-    email: "maria@example.com",
-    phone: "(11) 99999-0002",
-    role: "tenant",
-  },
-];
-
-const recentVotes = [
-  {
-    id: 1,
-    minute: "Ata de Assembleia Ordinária 2025",
-    date: "10/01/2025 14:30",
-    choice: "agree",
-    comment: "Concordo com a proposta",
-  },
-  {
-    id: 2,
-    minute: "Ata Extraordinária - Obras na Piscina",
-    date: "05/01/2025 16:15",
-    choice: "disagree",
-    comment: "Valores acima do esperado",
-  },
-  {
-    id: 3,
-    minute: "Ata Ordinária - Dezembro 2024",
-    date: "01/12/2024 11:20",
-    choice: "agree",
-    comment: "",
-  },
-];
-
-const availableResidents = [
-  { id: 3, name: "Pedro Oliveira", email: "pedro@example.com" },
-  { id: 4, name: "Ana Costa", email: "ana@example.com" },
-  { id: 5, name: "Carlos Lima", email: "carlos@example.com" },
-];
-
-export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
+export function UnitDetailPage({
+  onNavigate,
+  condoId,
+  unitId,
+  unitFallback,
+  onUnitLoaded,
+}: UnitDetailPageProps) {
   const [linkResidentOpen, setLinkResidentOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedResident, setSelectedResident] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedResidentId, setSelectedResidentId] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<MembershipRole | "">("");
+  const [isLinking, setIsLinking] = useState(false);
+  const [pendingMembershipId, setPendingMembershipId] = useState<Id<"memberships"> | null>(null);
+
+  const effectiveUnitId = unitId ?? unitFallback?.id ?? null;
+
+  const detail = useQuery(
+    api.units.detail,
+    effectiveUnitId ? { unitId: effectiveUnitId } : "skip",
+  ) as UnitDetailResponse | undefined;
+
+  const unitFromQuery = detail && detail !== null ? detail.unit : null;
+  const unit = detail === null ? null : unitFromQuery ?? unitFallback ?? null;
+  const memberships = detail && detail !== null ? detail.memberships : [];
+  const votes = detail && detail !== null ? detail.votes : [];
+
+  useEffect(() => {
+    if (unitFromQuery && onUnitLoaded) {
+      onUnitLoaded(unitFromQuery);
+    }
+  }, [unitFromQuery, onUnitLoaded]);
+
+  useEffect(() => {
+    if (!linkResidentOpen) {
+      setSearchTerm("");
+      setSelectedResidentId("");
+      setSelectedRole("");
+    }
+  }, [linkResidentOpen]);
+
+  const isLoadingDetail = effectiveUnitId !== null && detail === undefined;
+  const effectiveCondoId = unit?.condoId ?? condoId ?? null;
+
+  const residents = useQuery(
+    api.residents.list,
+    effectiveCondoId ? { condoId: effectiveCondoId } : "skip",
+  ) as Doc<"residents">[] | undefined;
+
+  const isLoadingResidents = effectiveCondoId !== null && residents === undefined;
+
+  const linkedResidents = useMemo(
+    () =>
+      memberships
+        .slice()
+        .sort((a, b) => a.resident.name.localeCompare(b.resident.name)),
+    [memberships],
+  );
+
+  const availableResidents = useMemo(() => {
+    if (!residents) return [] as Doc<"residents">[];
+    const linkedIds = new Set(memberships.map((membership) => membership.resident.id));
+    return residents.filter((resident) => !linkedIds.has(resident._id));
+  }, [residents, memberships]);
+
+  const filteredResidents = useMemo(() => {
+    if (!searchTerm.trim()) return availableResidents;
+    const query = searchTerm.trim().toLowerCase();
+    return availableResidents.filter((resident) => {
+      const nameMatch = resident.name.toLowerCase().includes(query);
+      const emailMatch = (resident.email ?? "").toLowerCase().includes(query);
+      return nameMatch || emailMatch;
+    });
+  }, [availableResidents, searchTerm]);
+
+  useEffect(() => {
+    if (!selectedResidentId) return;
+    if (!availableResidents.some((resident) => resident._id === selectedResidentId)) {
+      setSelectedResidentId("");
+    }
+  }, [availableResidents, selectedResidentId]);
+
+  const votesWithFormattedDate = useMemo(
+    () =>
+      votes.map((vote) => ({
+        ...vote,
+        formattedDate: format(new Date(vote.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+      })),
+    [votes],
+  );
+
+  const addMembership = useMutation(api.units.addMembership);
+  const updateMembershipRole = useMutation(api.units.updateMembershipRole);
+  const removeMembership = useMutation(api.units.removeMembership);
 
   const handleDelete = () => {
-    toast.success("Unidade excluída com sucesso!");
-    onNavigate("units");
+    toast.warning("Exclusão de unidade ainda não está disponível");
   };
 
   const handleEdit = () => {
+    if (!unit) return;
     onNavigate("unit-edit");
   };
 
-  const handleLinkResident = () => {
-    if (selectedResident && selectedRole) {
-      const resident = availableResidents.find((r) => r.id.toString() === selectedResident);
+  const handleLinkResident = async () => {
+    if (!unit || !selectedResidentId || !selectedRole) return;
+    setIsLinking(true);
+    try {
+      await addMembership({
+        residentId: selectedResidentId as Id<"residents">,
+        unitId: unit.id,
+        role: selectedRole,
+      });
+      const resident = availableResidents.find((r) => r._id === selectedResidentId);
       toast.success(
-        `${resident?.name} vinculado como ${selectedRole === "owner" ? "proprietário" : "inquilino"}`
+        `${resident?.name ?? "Morador"} vinculado como ${
+          selectedRole === "owner" ? "proprietário" : "inquilino"
+        }`,
       );
       setLinkResidentOpen(false);
-      setSelectedResident("");
+      setSelectedResidentId("");
       setSelectedRole("");
       setSearchTerm("");
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível vincular o morador");
+    } finally {
+      setIsLinking(false);
     }
   };
 
-  const handleUnlinkResident = (name: string) => {
-    toast.success(`${name} desvinculado com sucesso!`);
+  const handleChangeRole = async (
+    membership: UnitDetailMembership,
+    newRole: MembershipRole,
+  ) => {
+    setPendingMembershipId(membership.membershipId);
+    try {
+      await updateMembershipRole({
+        membershipId: membership.membershipId,
+        role: newRole,
+      });
+      toast.success(
+        `${membership.resident.name} agora é ${
+          newRole === "owner" ? "proprietário" : "inquilino"
+        }`,
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível atualizar o vínculo");
+    } finally {
+      setPendingMembershipId(null);
+    }
   };
 
-  const handleChangeRole = (name: string, newRole: string) => {
-    toast.success(
-      `${name} agora é ${newRole === "owner" ? "proprietário" : "inquilino"}`
+  const handleUnlinkResident = async (membership: UnitDetailMembership) => {
+    setPendingMembershipId(membership.membershipId);
+    try {
+      await removeMembership({ membershipId: membership.membershipId });
+      toast.success(`${membership.resident.name} desvinculado com sucesso`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível desvincular o morador");
+    } finally {
+      setPendingMembershipId(null);
+    }
+  };
+
+  if (!effectiveUnitId && !unit) {
+    return (
+      <div>
+        <PageHeader
+          title="Unidade"
+          breadcrumb={["Unidades", "Detalhe"]}
+          primaryAction={{
+            label: "Voltar",
+            onClick: () => onNavigate("units"),
+          }}
+        />
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Selecione uma unidade na lista para visualizar os detalhes.
+          </CardContent>
+        </Card>
+      </div>
     );
-  };
+  }
 
-  const filteredResidents = availableResidents.filter((resident) =>
-    resident.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    resident.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  if (isLoadingDetail) {
+    return (
+      <div className="flex h-full items-center justify-center py-12 text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando unidade...
+      </div>
+    );
+  }
+
+  if (!unit) {
+    return (
+      <div>
+        <PageHeader
+          title="Unidade não encontrada"
+          breadcrumb={["Unidades", "Detalhe"]}
+          primaryAction={{
+            label: "Voltar",
+            onClick: () => onNavigate("units"),
+          }}
+        />
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Nenhuma unidade foi encontrada para o identificador informado.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const formattedCreatedAt = unit.createdAt
+    ? format(new Date(unit.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
+    : "-";
+  const formattedUpdatedAt = unit.updatedAt
+    ? format(new Date(unit.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
+    : "-";
+  const floorLabel = unit.floor ? `${unit.floor}º Andar` : "-";
+  const blockLabel = unit.block ? `Bloco ${unit.block}` : "Unidade";
+  const breadcrumb = ["Unidades", unit.block ? `${unit.block}-${unit.code}` : unit.code];
+  const canSelectResident = !isLoadingResidents && filteredResidents.length > 0;
 
   return (
     <div>
       <PageHeader
-        title={`Bloco ${unit.block} - ${unit.code}`}
-        breadcrumb={["Unidades", `${unit.block}-${unit.code}`]}
+        title={`${blockLabel} - ${unit.code}`}
+        breadcrumb={breadcrumb}
         primaryAction={{
           label: "Editar Unidade",
           onClick: handleEdit,
@@ -160,26 +323,34 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
               <div>
                 <div className="text-muted-foreground">Bloco</div>
                 <div>
-                  <Badge variant="outline">Bloco {unit.block}</Badge>
+                  {unit.block ? (
+                    <Badge variant="outline">Bloco {unit.block}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Andar</div>
-                <div>{unit.floor}º Andar</div>
+                <div>{floorLabel}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Condomínio</div>
                 <div>
-                  <Badge variant="outline">{unit.condo}</Badge>
+                  {unit.condoName ? (
+                    <Badge variant="outline">{unit.condoName}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Criado em</div>
-                <div>{unit.createdAt}</div>
+                <div>{formattedCreatedAt}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Atualizado em</div>
-                <div>{unit.updatedAt}</div>
+                <div>{formattedUpdatedAt}</div>
               </div>
             </CardContent>
           </Card>
@@ -209,66 +380,71 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {linkedResidents.map((resident) => (
-                      <TableRow key={resident.id}>
-                        <TableCell>{resident.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {resident.email}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {resident.phone}
-                        </TableCell>
-                        <TableCell>
-                          {resident.role === "owner" ? (
-                            <Badge>Proprietário</Badge>
-                          ) : (
-                            <Badge variant="secondary">Inquilino</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                handleChangeRole(
-                                  resident.name,
-                                  resident.role === "owner" ? "tenant" : "owner"
-                                )
-                              }
-                            >
-                              {resident.role === "owner"
-                                ? "Tornar Inquilino"
-                                : "Tornar Proprietário"}
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  Desvincular
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Desvincular Morador</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tem certeza que deseja desvincular {resident.name}?
-                                    O morador perderá acesso a esta unidade.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleUnlinkResident(resident.name)}
-                                  >
+                    {linkedResidents.map((membership) => {
+                      const resident = membership.resident;
+                      const nextRole: MembershipRole =
+                        membership.membershipRole === "owner" ? "tenant" : "owner";
+                      const isPending = pendingMembershipId === membership.membershipId;
+                      return (
+                        <TableRow key={membership.membershipId}>
+                          <TableCell>{resident.name}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {resident.email ?? "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {resident.phone ?? "-"}
+                          </TableCell>
+                          <TableCell>
+                            {membership.membershipRole === "owner" ? (
+                              <Badge>Proprietário</Badge>
+                            ) : membership.membershipRole === "tenant" ? (
+                              <Badge variant="secondary">Inquilino</Badge>
+                            ) : (
+                              <Badge variant="outline">Sem tipo</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleChangeRole(membership, nextRole)}
+                                disabled={isPending}
+                              >
+                                {membership.membershipRole === "owner"
+                                  ? "Tornar Inquilino"
+                                  : "Tornar Proprietário"}
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" disabled={isPending}>
                                     Desvincular
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Desvincular Morador</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja desvincular {resident.name}? O morador
+                                      perderá acesso a esta unidade.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleUnlinkResident(membership)}
+                                      disabled={isPending}
+                                    >
+                                      Desvincular
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
@@ -280,7 +456,7 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
               <CardTitle>Histórico de Votos</CardTitle>
             </CardHeader>
             <CardContent>
-              {recentVotes.length === 0 ? (
+              {votesWithFormattedDate.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Nenhum voto registrado
                 </div>
@@ -295,11 +471,11 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentVotes.map((vote) => (
+                    {votesWithFormattedDate.map((vote) => (
                       <TableRow key={vote.id}>
-                        <TableCell>{vote.minute}</TableCell>
+                        <TableCell>{vote.minuteTitle}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {vote.date}
+                          {vote.formattedDate}
                         </TableCell>
                         <TableCell>
                           {vote.choice === "agree" ? (
@@ -309,7 +485,7 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {vote.comment || "-"}
+                          {vote.comment && vote.comment.trim().length > 0 ? vote.comment : "-"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -337,9 +513,7 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Excluir Unidade</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Tem certeza que deseja excluir a unidade {unit.code}? Esta ação
-                      não pode ser desfeita. Todos os moradores vinculados perderão
-                      acesso.
+                      A exclusão de unidades ainda não está disponível nesta versão.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -348,7 +522,7 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
                       onClick={handleDelete}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Excluir
+                      Entendi
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -374,26 +548,40 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
                 placeholder="Nome ou email"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={isLoadingResidents}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="resident-select">Morador</Label>
-              <Select value={selectedResident} onValueChange={setSelectedResident}>
-                <SelectTrigger id="resident-select">
-                  <SelectValue placeholder="Selecione um morador" />
+              <Select value={selectedResidentId} onValueChange={setSelectedResidentId}>
+                <SelectTrigger id="resident-select" disabled={!canSelectResident}>
+                  <SelectValue placeholder={isLoadingResidents ? "Carregando..." : "Selecione um morador"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredResidents.map((resident) => (
-                    <SelectItem key={resident.id} value={resident.id.toString()}>
-                      {resident.name} - {resident.email}
+                  {isLoadingResidents ? (
+                    <SelectItem value="loading" disabled>
+                      Carregando moradores...
                     </SelectItem>
-                  ))}
+                  ) : filteredResidents.length === 0 ? (
+                    <SelectItem value="empty" disabled>
+                      Nenhum morador disponível
+                    </SelectItem>
+                  ) : (
+                    filteredResidents.map((resident) => (
+                      <SelectItem key={resident._id} value={resident._id}>
+                        {resident.name} {resident.email ? `- ${resident.email}` : ""}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="role-select">Tipo de Vínculo</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <Select
+                value={selectedRole}
+                onValueChange={(value) => setSelectedRole(value as MembershipRole)}
+              >
                 <SelectTrigger id="role-select">
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
@@ -406,9 +594,9 @@ export function UnitDetailPage({ onNavigate }: UnitDetailPageProps) {
             <Button
               onClick={handleLinkResident}
               className="w-full"
-              disabled={!selectedResident || !selectedRole}
+              disabled={!selectedResidentId || !selectedRole || isLinking}
             >
-              Vincular
+              {isLinking ? "Vinculando..." : "Vincular"}
             </Button>
           </div>
         </SheetContent>

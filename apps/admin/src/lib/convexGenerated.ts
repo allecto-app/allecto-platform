@@ -38,6 +38,10 @@ type AugmentedApi = typeof baseApi & {
   };
   units: {
     listByCondo: QueryRef;
+    detail: QueryRef;
+    addMembership: MutationRef;
+    updateMembershipRole: MutationRef;
+    removeMembership: MutationRef;
   };
   notifications: {
     listLogs: QueryRef;

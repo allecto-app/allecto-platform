@@ -28,6 +28,7 @@ import { Button } from "./components/ui/button";
 import { Palette, Package } from "lucide-react";
 import { api, Doc, Id } from "./lib/convexGenerated";
 import type { ResidentRecord } from "./types/resident";
+import type { UnitRecord } from "./types/unit";
 import { AdminAuthSession } from "./lib/authSession";
 import { useHostInfo } from "./lib/hostContext";
 
@@ -216,6 +217,8 @@ function AuthenticatedShell({
   const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
   const [selectedResidentId, setSelectedResidentId] = useState<Id<"residents"> | null>(null);
   const [selectedResident, setSelectedResident] = useState<ResidentRecord | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState<Id<"units"> | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<UnitRecord | null>(null);
 
   const platformCondos = useQuery(
     api.platform.listCondos,
@@ -281,6 +284,13 @@ function AuthenticatedShell({
     if (!selectedCondoId || !condos) return null;
     return condos.find((condo) => condo._id === selectedCondoId) ?? null;
   }, [condos, selectedCondoId]);
+
+  useEffect(() => {
+    if (!selectedCondo) {
+      setSelectedUnitId(null);
+      setSelectedUnit(null);
+    }
+  }, [selectedCondo]);
 
   const restrictedPlatformPages = new Set(["tenants", "onboarding", "audit", "support"]);
 
@@ -477,10 +487,36 @@ function AuthenticatedShell({
               />
             )}
             {currentPage === "units" && (
-              <UnitsListPage onNavigate={handleNavigate} condo={selectedCondo} />
+              <UnitsListPage
+                onNavigate={handleNavigate}
+                condo={selectedCondo}
+                onSelectUnit={(unit) => {
+                  const record: UnitRecord = {
+                    id: unit._id,
+                    condoId: unit.condoId,
+                    code: unit.code,
+                    block: unit.block ?? null,
+                    floor: unit.floor ?? null,
+                    createdAt: unit.createdAt,
+                    updatedAt: unit.updatedAt,
+                    condoName: selectedCondo?.name ?? null,
+                  };
+                  setSelectedUnitId(record.id);
+                  setSelectedUnit(record);
+                }}
+              />
             )}
             {currentPage === "unit-detail" && (
-              <UnitDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
+              <UnitDetailPage
+                onNavigate={handleNavigate}
+                condoId={selectedCondo?._id ?? null}
+                unitId={selectedUnitId}
+                unitFallback={selectedUnit}
+                onUnitLoaded={(unit) => {
+                  setSelectedUnitId(unit.id);
+                  setSelectedUnit(unit);
+                }}
+              />
             )}
             {currentPage === "unit-edit" && (
               <UnitEditPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />

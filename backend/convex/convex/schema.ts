@@ -83,7 +83,8 @@ export default defineSchema({
   })
     .index("byMinute", ["minuteId"])
     .index("byMinuteUnit", ["minuteId", "unitId"])
-    .index("byResidentMinute", ["residentId", "minuteId"]),
+    .index("byResidentMinute", ["residentId", "minuteId"])
+    .index("byUnit", ["unitId"]),
 
   notificationLogs: defineTable({
     condoId: v.id("condos"),
