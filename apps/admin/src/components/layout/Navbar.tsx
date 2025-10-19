@@ -49,7 +49,7 @@ export function Navbar({
         </Alert>
       )}
       <header className="flex h-16 items-center gap-4 border-b border-border bg-background px-6">
-        <Button
+        {/* <Button
           variant="ghost"
           size="icon"
           className="md:hidden"
@@ -73,7 +73,7 @@ export function Navbar({
             placeholder="Buscar..."
             className="w-full pl-9"
           />
-        </div>
+        </div> */}
 
         <div className="ml-auto flex items-center gap-2">
           <DropdownMenu>

@@ -17,10 +17,10 @@ interface SidebarProps {
 
 const platformNavigation = [
   { name: "Dashboard", icon: Home, page: "dashboard" },
-  { name: "Tenants", icon: Globe, page: "tenants" },
+  { name: "Condomínios", icon: Globe, page: "tenants" },
   { name: "Onboarding", icon: Building2, page: "onboarding" },
-  { name: "Audit", icon: BarChart3, page: "audit" },
-  { name: "Support", icon: Wrench, page: "support" },
+  { name: "Auditoria", icon: BarChart3, page: "audit" },
+  { name: "Suporte", icon: Wrench, page: "support" },
 ];
 
 const tenantNavigation = [

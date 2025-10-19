@@ -392,27 +392,6 @@ function AuthenticatedShell({
         />
         <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
           <div className="mx-auto max-w-7xl">
-            {currentPage === "dashboard" && (
-              <div className="mb-6 flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage("design-tokens")}
-                >
-                  <Palette className="mr-2 h-4 w-4" />
-                  Design Tokens
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage("component-library")}
-                >
-                  <Package className="mr-2 h-4 w-4" />
-                  Component Library
-                </Button>
-              </div>
-            )}
-
             {showPlatformSections && currentPage === "tenants" && (
               <TenantsPage
                 onNavigate={handleNavigate}
