@@ -42,7 +42,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("byCondo", ["condoId"])
-    .index("byCondoEmail", ["condoId", "email"]),
+    .index("byCondoEmail", ["condoId", "email"])
+    .index("byEmail", ["email"]),
 
   memberships: defineTable({
     residentId: v.id("residents"),

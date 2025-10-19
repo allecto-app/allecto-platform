@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Search, Mail, Building2 } from "lucide-react";
+ "use client";
+
+import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { Search, Mail, Building2, Loader2 } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -18,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Id } from "../lib/convexGenerated";
+import { Id, api } from "../lib/convexGenerated";
 
 interface SupportPageProps {
   onNavigate: (page: string) => void;
@@ -26,94 +29,147 @@ interface SupportPageProps {
 }
 
 export function SupportPage({ onNavigate, onSelectCondo }: SupportPageProps) {
-  const [searchEmail, setSearchEmail] = useState("");
-  const [foundResident, setFoundResident] = useState<any>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [queryEmail, setQueryEmail] = useState<string | null>(null);
+
+  const resident = useQuery(
+    api.residents.findByEmail,
+    queryEmail ? { email: queryEmail } : "skip",
+  );
+  const resendOtp = useMutation(api.auth.requestResidentOtp);
+
+  const trimmedInput = searchInput.trim().toLowerCase();
+  const isLoading = queryEmail !== null && resident === undefined;
+  const currentResident = resident ?? null;
+
+  useEffect(() => {
+    if (!queryEmail) return;
+    if (resident === undefined) return;
+    if (resident) {
+      toast.success("Residente encontrado");
+    } else {
+      toast.error("Nenhum residente encontrado para este email");
+    }
+  }, [resident, queryEmail]);
 
   const handleFindResident = () => {
-    if (!searchEmail) {
-      toast.error("Please enter an email address");
+    if (!trimmedInput) {
+      toast.error("Informe um email para buscar");
       return;
     }
-
-    // Mock search result
-    setFoundResident({
-      name: "João Silva",
-      email: searchEmail,
-      condo: "Jardim das Flores",
-      subdomain: "jardim-flores",
-      condoId: "1",
-      status: "active",
-    });
-
-    toast.success("Resident found");
+    setQueryEmail(trimmedInput);
   };
 
-  const handleResendOTP = () => {
-    toast.success("OTP resent successfully");
+  const handleResendOTP = async () => {
+    if (!currentResident) {
+      toast.error("Residente não encontrado");
+      return;
+    }
+    if (!currentResident.condoSubdomain || !currentResident.email) {
+      toast.error("Dados insuficientes para reenviar OTP");
+      return;
+    }
+    try {
+      await resendOtp({
+        subdomain: currentResident.condoSubdomain,
+        email: currentResident.email,
+      });
+      toast.success("OTP reenviado com sucesso");
+    } catch (error) {
+      console.error("Failed to resend OTP", error);
+      toast.error("Não foi possível reenviar o OTP");
+    }
   };
 
   const handleEnterTenantView = () => {
-    if (foundResident) {
-      onSelectCondo(foundResident.condoId as Id<"condos">);
-      onNavigate("dashboard");
-      toast.success(`Entered tenant view for ${foundResident.condo}`);
+    if (!currentResident || !currentResident.condoId) {
+      toast.error("Condomínio não disponível");
+      return;
     }
+    onSelectCondo(currentResident.condoId as Id<"condos">);
+    onNavigate("dashboard");
+    toast.success(
+      `Entrando no condomínio ${currentResident.condoName ?? currentResident.condoSubdomain ?? ""}`,
+    );
   };
 
   return (
     <div>
-      <PageHeader title="Support Tools" breadcrumb={["Platform", "Support"]} />
+      <PageHeader title="Suporte" breadcrumb={["Allecto App", "Suporte"]} />
 
       <div className="space-y-6 max-w-3xl">
         <Card>
           <CardHeader>
-            <CardTitle>Find Resident by Email</CardTitle>
+            <CardTitle>Encontrar Usuário</CardTitle>
             <CardDescription>
-              Search for a resident across all condominiums to provide support
+              Procure um morador em todos os condomínios para dar suporte
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="search-email">Email Address</Label>
+              <Label htmlFor="search-email">E-mail</Label>
               <div className="flex gap-2">
                 <Input
                   id="search-email"
                   type="email"
                   placeholder="resident@example.com"
-                  value={searchEmail}
-                  onChange={(e) => setSearchEmail(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                 />
-                <Button onClick={handleFindResident}>
-                  <Search className="mr-2 h-4 w-4" />
-                  Search
+                <Button onClick={handleFindResident} disabled={isLoading || !trimmedInput}>
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="mr-2 h-4 w-4" />
+                  )}
+                  Buscar
                 </Button>
               </div>
             </div>
 
-            {foundResident && (
+            {queryEmail && resident === undefined && (
+              <Card className="bg-muted/50">
+                <CardContent className="flex items-center gap-2 py-6 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Buscando residente...
+                </CardContent>
+              </Card>
+            )}
+
+            {queryEmail && resident === null && (
+              <Card className="bg-muted/50">
+                <CardContent className="py-6 text-center text-muted-foreground">
+                  Nenhum residente encontrado para {queryEmail}.
+                </CardContent>
+              </Card>
+            )}
+
+            {currentResident && (
               <Card className="bg-muted/50">
                 <CardContent className="pt-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-muted-foreground">Name</div>
-                        <div>{foundResident.name}</div>
+                        <div className="text-muted-foreground">Nome</div>
+                        <div>{currentResident.name}</div>
                       </div>
-                      <Badge>
-                        {foundResident.status === "active" ? "Active" : "Inactive"}
-                      </Badge>
+                      <Badge>{currentResident.isActive ? "Active" : "Inactive"}</Badge>
                     </div>
                     <div>
-                      <div className="text-muted-foreground">Email</div>
-                      <div>{foundResident.email}</div>
+                      <div className="text-muted-foreground">E-mail</div>
+                      <div>{currentResident.email ?? "-"}</div>
                     </div>
                     <div>
                       <div className="text-muted-foreground">Condomínio</div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">{foundResident.condo}</Badge>
-                        <span className="text-muted-foreground">
-                          ({foundResident.subdomain})
-                        </span>
+                        <Badge variant="outline">
+                          {currentResident.condoName ?? "Condomínio"}
+                        </Badge>
+                        {currentResident.condoSubdomain && (
+                          <span className="text-muted-foreground">
+                            ({currentResident.condoSubdomain})
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
@@ -121,29 +177,34 @@ export function SupportPage({ onNavigate, onSelectCondo }: SupportPageProps) {
                         variant="outline"
                         size="sm"
                         onClick={handleEnterTenantView}
+                        disabled={!currentResident.condoId}
                       >
                         <Building2 className="mr-2 h-4 w-4" />
-                        Enter Tenant View
+                        Entrar na visualização do locatário
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!currentResident.email || !currentResident.condoSubdomain}
+                          >
                             <Mail className="mr-2 h-4 w-4" />
-                            Resend OTP
+                            Re-enviar código OTP
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Resend OTP</AlertDialogTitle>
+                            <AlertDialogTitle>Re-enviar código OTP</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will send a new one-time password to{" "}
-                              {foundResident.email}. Continue?
+                              Isso enviará uma nova senha de uso único para {" "}
+                              {currentResident.email}. Continuar?
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction onClick={handleResendOTP}>
-                              Send OTP
+                              Enviar OTP
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -158,9 +219,9 @@ export function SupportPage({ onNavigate, onSelectCondo }: SupportPageProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>Ações</CardTitle>
             <CardDescription>
-              Common support operations
+              Operações de suporte comuns
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -170,7 +231,7 @@ export function SupportPage({ onNavigate, onSelectCondo }: SupportPageProps) {
               onClick={() => onNavigate("tenants")}
             >
               <Building2 className="mr-2 h-4 w-4" />
-              View All Tenants
+              Vizualizar todos os condomínios
             </Button>
             <Button
               variant="outline"
@@ -178,7 +239,7 @@ export function SupportPage({ onNavigate, onSelectCondo }: SupportPageProps) {
               onClick={() => onNavigate("audit")}
             >
               <Search className="mr-2 h-4 w-4" />
-              View Global Audit Log
+              Exibir log de auditoria global
             </Button>
           </CardContent>
         </Card>

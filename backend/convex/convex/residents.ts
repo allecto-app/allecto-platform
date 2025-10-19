@@ -1,6 +1,7 @@
 // convex/residents.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { normalizeEmail } from "./_secu";
 
 export const invite = mutation({
     args: {
@@ -58,5 +59,32 @@ export const list = query({
             .query("residents")
             .withIndex("byCondo", (q) => q.eq("condoId", condoId))
             .take(limit ?? 200);
+    },
+});
+
+export const findByEmail = query({
+    args: { email: v.string() },
+    handler: async (ctx, { email }) => {
+        const normalized = normalizeEmail(email);
+        const resident = await ctx.db
+            .query("residents")
+            .withIndex("byEmail", (q) => q.eq("email", normalized))
+            .first();
+
+        if (!resident) return null;
+
+        const condo = await ctx.db.get(resident.condoId);
+
+        return {
+            _id: resident._id,
+            name: resident.name,
+            email: resident.email ?? null,
+            phone: resident.phone ?? null,
+            role: resident.role,
+            isActive: resident.isActive,
+            condoId: resident.condoId,
+            condoName: condo?.name ?? null,
+            condoSubdomain: condo?.subdomain ?? null,
+        };
     },
 });
