@@ -62,20 +62,20 @@ export function TenantsPage({
   return (
     <div>
       <PageHeader
-        title="Tenants"
+        title="Condomínios"
         primaryAction={{
-          label: "Create Condo",
+          label: "Criar Condomínio",
           onClick: () => onNavigate("onboarding"),
         }}
       />
 
       <div className="mb-6 flex items-end gap-4">
         <div className="flex-1 space-y-2">
-          <Label>Search</Label>
+          <Label>Buscar</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by name or subdomain..."
+              placeholder="Buscar por nome ou subdomínio..."
               className="pl-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -107,12 +107,12 @@ export function TenantsPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Subdomain</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Active Minutes</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Subdomínio</TableHead>
+                  <TableHead>Criado</TableHead>
+                  <TableHead>Ativo desde</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
             <TableBody>
