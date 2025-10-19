@@ -2,6 +2,7 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 import bcrypt from "bcryptjs";
+import { resend, FROM } from "./_email";
 
 const GENERIC_AUTH_ERROR = "Invalid email or password";
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -111,6 +112,48 @@ export const requestResidentOtp = mutation({
             expiresAt,
             createdAt: now,
         });
+
+        const subject = `Seu código de acesso - ${condo.name}`;
+        const html = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+            <p>Olá ${resident.name ?? "Síndico(a)"}!</p>
+            <p>Seu código de acesso ao portal do condomínio <strong>${condo.name}</strong> é:</p>
+            <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${code}</p>
+            <p>Ele expira em 15 minutos. Não compartilhe este código com ninguém.</p>
+            <p>Se você não solicitou este acesso, pode ignorar este email.</p>
+            <p>Equipe Allecto</p>
+          </div>
+        `;
+        const text = `Olá ${resident.name ?? "Síndico(a)"}!
+
+Seu código de acesso ao portal do condomínio ${condo.name} é: ${code}
+
+O código expira em 15 minutos. Não compartilhe este código com ninguém.
+Se você não solicitou este acesso, ignore este email.
+
+Equipe Allecto`;
+
+        if (!process.env.RESEND_API_KEY) {
+            console.warn(
+                "[auth.requestResidentOtp] RESEND_API_KEY not configured; OTP for",
+                cleanedEmail,
+                "é",
+                code,
+            );
+        } else {
+            try {
+                await resend.emails.send({
+                    from: FROM,
+                    to: cleanedEmail,
+                    subject,
+                    html,
+                    text,
+                });
+            } catch (error) {
+                console.error("Failed to send resident OTP email", error);
+            }
+        }
+
         return { ok: true, devCode: code };
     },
 });
