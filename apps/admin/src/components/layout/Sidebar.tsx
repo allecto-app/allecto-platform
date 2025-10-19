@@ -18,7 +18,7 @@ interface SidebarProps {
 const platformNavigation = [
   { name: "Dashboard", icon: Home, page: "dashboard" },
   { name: "Condomínios", icon: Globe, page: "tenants" },
-  { name: "Onboarding", icon: Building2, page: "onboarding" },
+  { name: "Criar Condomínio", icon: Building2, page: "onboarding" },
   { name: "Auditoria", icon: BarChart3, page: "audit" },
   { name: "Suporte", icon: Wrench, page: "support" },
 ];

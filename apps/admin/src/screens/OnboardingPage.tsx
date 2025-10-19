@@ -28,7 +28,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
 
   const handleCreate = async () => {
     if (!condoName || !subdomain || !syndicName || !syndicEmail) {
-      toast.error("Please fill all required fields");
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
@@ -52,11 +52,11 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
         syndicName,
       });
 
-      toast.success(`Condomínio ${condoName} created successfully!`);
+      toast.success(`Condomínio ${condoName} criado com sucesso!`);
       onSelectCondo(condoId);
       onNavigate("dashboard");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create condo";
+      const message = error instanceof Error ? error.message : "Falha ao criar o condomínio";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -66,10 +66,10 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
   return (
     <div>
       <PageHeader
-        title="Onboarding"
-        breadcrumb={["Platform", "Onboarding"]}
+        title="Criar Condomínio"
+        breadcrumb={["Allecto App", "Criar Condomínio"]}
         secondaryAction={{
-          label: "Cancel",
+          label: "Cancelar",
           onClick: () => onNavigate("tenants"),
         }}
       />
@@ -77,12 +77,12 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
       <div className="space-y-6 max-w-4xl">
         <Card>
           <CardHeader>
-            <CardTitle>Condomínio Information</CardTitle>
+            <CardTitle>Informações do Condomínio</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="condo-name">Condomínio Name *</Label>
+                <Label htmlFor="condo-name">Nome do Condomínio *</Label>
                 <Input
                   id="condo-name"
                   value={condoName}
@@ -92,7 +92,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="subdomain">Subdomain *</Label>
+                <Label htmlFor="subdomain">Subdomínio *</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="subdomain"
@@ -129,7 +129,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="primary-color">Primary Color</Label>
+                <Label htmlFor="primary-color">Cor Primária</Label>
                 <div className="flex gap-2">
                   <div
                     className="h-10 w-10 rounded-md border border-border shrink-0"
@@ -143,7 +143,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="secondary-color">Secondary Color</Label>
+                <Label htmlFor="secondary-color">Cor Secundária</Label>
                 <div className="flex gap-2">
                   <div
                     className="h-10 w-10 rounded-md border border-border shrink-0"
@@ -162,12 +162,12 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
 
         <Card>
           <CardHeader>
-            <CardTitle>Syndic Information</CardTitle>
+            <CardTitle>Informações do Síndico</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="syndic-name">Syndic Name *</Label>
+                <Label htmlFor="syndic-name">Nome do Síndico *</Label>
                 <Input
                   id="syndic-name"
                   value={syndicName}
@@ -177,13 +177,13 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="syndic-email">Syndic Email *</Label>
+                <Label htmlFor="syndic-email">E-mail do Síndico *</Label>
                 <Input
                   id="syndic-email"
                   type="email"
                   value={syndicEmail}
                   onChange={(e) => setSyndicEmail(e.target.value)}
-                  placeholder="syndic@example.com"
+                  placeholder="sindico@exemplo.com"
                   required
                 />
               </div>
@@ -191,33 +191,11 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>DNS Setup Checklist</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-success" />
-                <span>Configure DNS CNAME record</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-success" />
-                <span>Verify SSL certificate</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-success" />
-                <span>Test subdomain accessibility</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onNavigate("tenants")}>
-            Cancel
+            Cancelar
           </Button>
-          <Button onClick={handleCreate}>Create Condomínio</Button>
+          <Button onClick={handleCreate}>Criar Condomínio</Button>
         </div>
       </div>
     </div>
