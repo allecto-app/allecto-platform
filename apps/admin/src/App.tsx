@@ -519,7 +519,24 @@ function AuthenticatedShell({
               />
             )}
             {currentPage === "unit-edit" && (
-              <UnitEditPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
+              <UnitEditPage
+                onNavigate={handleNavigate}
+                condoId={selectedCondo?._id ?? null}
+                unitId={selectedUnitId}
+                unitFallback={selectedUnit}
+                onUnitLoaded={(unit) => {
+                  setSelectedUnitId(unit.id);
+                  setSelectedUnit(unit);
+                }}
+                onUnitUpdated={(unit) => {
+                  setSelectedUnitId(unit.id);
+                  setSelectedUnit(unit);
+                }}
+                onUnitDeleted={() => {
+                  setSelectedUnitId(null);
+                  setSelectedUnit(null);
+                }}
+              />
             )}
             {currentPage === "settings" && <SettingsPage />}
             {currentPage === "notifications" && <NotificationsPage />}

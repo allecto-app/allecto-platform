@@ -76,6 +76,91 @@ export const addMembership = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    unitId: v.id("units"),
+    code: v.string(),
+    block: v.optional(v.string()),
+    floor: v.optional(v.string()),
+  },
+  handler: async (ctx, { unitId, code, block, floor }) => {
+    const unit = await ctx.db.get(unitId);
+    if (!unit) {
+      throw new Error("Unit not found");
+    }
+
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      throw new Error("Unit code is required");
+    }
+
+    if (trimmedCode !== unit.code) {
+      const duplicate = await ctx.db
+        .query("units")
+        .withIndex("byCondoCode", (q) => q.eq("condoId", unit.condoId).eq("code", trimmedCode))
+        .unique();
+      if (duplicate) {
+        throw new Error("Unit code already exists for this condo");
+      }
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(unitId, {
+      code: trimmedCode,
+      block: block?.trim() ? block.trim() : undefined,
+      floor: floor?.trim() ? floor.trim() : undefined,
+      updatedAt: now,
+    });
+
+    const updated = await ctx.db.get(unitId);
+    const condo = updated ? await ctx.db.get(updated.condoId) : null;
+
+    if (!updated) {
+      throw new Error("Failed to load updated unit");
+    }
+
+    return {
+      id: updated._id,
+      condoId: updated.condoId,
+      code: updated.code,
+      block: updated.block ?? null,
+      floor: updated.floor ?? null,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      condoName: condo?.name ?? null,
+    };
+  },
+});
+
+export const remove = mutation({
+  args: { unitId: v.id("units") },
+  handler: async (ctx, { unitId }) => {
+    const unit = await ctx.db.get(unitId);
+    if (!unit) {
+      return false;
+    }
+
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("byUnit", (q) => q.eq("unitId", unitId))
+      .collect();
+    for (const membership of memberships) {
+      await ctx.db.delete(membership._id);
+    }
+
+    const votes = await ctx.db
+      .query("votes")
+      .withIndex("byUnit", (q) => q.eq("unitId", unitId))
+      .collect();
+    for (const vote of votes) {
+      await ctx.db.delete(vote._id);
+    }
+
+    await ctx.db.delete(unitId);
+    return true;
+  },
+});
+
 export const updateMembershipRole = mutation({
   args: {
     membershipId: v.id("memberships"),

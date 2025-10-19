@@ -39,6 +39,9 @@ type AugmentedApi = typeof baseApi & {
   units: {
     listByCondo: QueryRef;
     detail: QueryRef;
+    upsert: MutationRef;
+    update: MutationRef;
+    remove: MutationRef;
     addMembership: MutationRef;
     updateMembershipRole: MutationRef;
     removeMembership: MutationRef;
