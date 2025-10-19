@@ -33,6 +33,7 @@ interface ResidentsListPageProps {
   onNavigate: (page: string) => void;
   condo: Doc<"condos"> | null;
   canInviteSyndic: boolean;
+  onSelectResident?: (resident: Doc<"residents">) => void;
 }
 
 const INVITE_STATUS_LABEL: Record<
@@ -45,7 +46,7 @@ const INVITE_STATUS_LABEL: Record<
   revoked: { label: "Revogado", variant: "destructive" },
 };
 
-export function ResidentsListPage({ onNavigate, condo, canInviteSyndic }: ResidentsListPageProps) {
+export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelectResident }: ResidentsListPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -201,7 +202,10 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic }: Reside
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onNavigate("resident-detail")}
+                            onClick={() => {
+                              onSelectResident?.(resident);
+                              onNavigate("resident-detail");
+                            }}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>

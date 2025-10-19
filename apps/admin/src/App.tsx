@@ -213,6 +213,8 @@ function AuthenticatedShell({
   const [userMode, setUserMode] = useState<UserMode>(canSeePlatform ? "platform" : "tenant");
   const initialCondoId = auth.type === "resident" ? auth.condoId : null;
   const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
+  const [selectedResidentId, setSelectedResidentId] = useState<Id<"residents"> | null>(null);
+  const [selectedResident, setSelectedResident] = useState<Doc<"residents"> | null>(null);
 
   const platformCondos = useQuery(
     api.platform.listCondos,
@@ -430,10 +432,19 @@ function AuthenticatedShell({
                 onNavigate={handleNavigate}
                 condo={selectedCondo}
                 canInviteSyndic={canInviteSyndic}
+                onSelectResident={(resident) => {
+                  setSelectedResidentId(resident._id);
+                  setSelectedResident(resident);
+                }}
               />
             )}
             {currentPage === "resident-detail" && (
-              <ResidentDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
+              <ResidentDetailPage
+                onNavigate={handleNavigate}
+                condoId={selectedCondo?._id ?? null}
+                residentId={selectedResidentId}
+                residentFallback={selectedResident}
+              />
             )}
             {currentPage === "resident-edit" && (
               <ResidentEditPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />

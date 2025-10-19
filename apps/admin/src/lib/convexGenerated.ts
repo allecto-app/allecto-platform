@@ -41,6 +41,10 @@ type AugmentedApi = typeof baseApi & {
   notifications: {
     listLogs: QueryRef;
   };
+  residentDetail: {
+    get: QueryRef;
+    resendOtp: ActionRef;
+  };
 };
 
 type AugmentedInternal = typeof baseInternal & {

@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { UserX, UserCheck, Mail, Edit } from "lucide-react";
+import { UserX, UserCheck, Mail, Edit, Loader2 } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -24,90 +26,128 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../components/ui/sheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Label } from "../components/ui/label";
 import { toast } from "sonner";
-import { Id } from "../lib/convexGenerated";
+import { Id, api, Doc } from "../lib/convexGenerated";
+import { useAction, useQuery } from "convex/react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+const TEMPLATE_LABELS: Record<string, string> = {
+  convocation: "Convocação",
+  reminderD2: "Lembrete D-2",
+  reminderD4: "Lembrete D-4",
+  closed: "Fechamento",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  resident: "Morador",
+  syndic: "Síndico",
+  manager: "Gestor",
+  council: "Conselho",
+};
 
 interface ResidentDetailPageProps {
   onNavigate: (page: string) => void;
   condoId: Id<"condos"> | null;
+  residentId?: Id<"residents"> | null;
+  residentFallback?: Doc<"residents"> | null;
 }
 
-// Mock data for the resident
-const resident = {
-  id: 1,
-  name: "João Silva",
-  email: "joao@example.com",
-  phone: "(11) 99999-0001",
-  role: "Resident",
-  status: "active",
-  condo: "Jardim das Flores",
-  createdAt: "15/12/2024",
-  updatedAt: "08/01/2025",
-};
-
-const units = [
-  { id: 1, code: "101", block: "A", role: "owner" },
-  { id: 2, code: "102", block: "A", role: "tenant" },
-];
-
-const activities = [
-  { id: 1, event: "Voto registrado", description: "Ata de Assembleia Ordinária 2025", date: "10/01/2025 14:30", type: "vote" },
-  { id: 2, event: "OTP enviado", description: "Código de acesso via SMS", date: "05/01/2025 09:15", type: "otp" },
-  { id: 3, event: "Convite aceito", description: "Primeiro acesso ao sistema", date: "02/01/2025 16:45", type: "invite" },
-  { id: 4, event: "Convite enviado", description: "Email de convite para morador", date: "01/01/2025 10:00", type: "invite" },
-];
-
-const availableUnits = [
-  { code: "201", block: "A" },
-  { code: "202", block: "A" },
-  { code: "301", block: "B" },
-  { code: "302", block: "B" },
-];
-
-export function ResidentDetailPage({ onNavigate }: ResidentDetailPageProps) {
+export function ResidentDetailPage({ onNavigate, condoId: _condoId, residentId, residentFallback }: ResidentDetailPageProps) {
   const [linkUnitOpen, setLinkUnitOpen] = useState(false);
-  const [selectedUnit, setSelectedUnit] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
-  const [residentStatus, setResidentStatus] = useState(resident.status);
 
-  const handleDeactivate = () => {
-    setResidentStatus("inactive");
-    toast.success("Morador desativado com sucesso!");
-  };
+  const detail = useQuery(
+    api.residentDetail.get,
+    residentId
+      ? { residentId }
+      : residentFallback?.email
+      ? { email: residentFallback.email }
+      : "skip",
+  );
+  const resendResidentOtp = useAction(api.residentDetail.resendOtp);
 
-  const handleReactivate = () => {
-    setResidentStatus("active");
-    toast.success("Morador reativado com sucesso!");
-  };
+  const residentFromQuery = detail?.resident ?? null;
+  const resident = residentFromQuery ??
+    (residentFallback
+      ? {
+          id: residentFallback._id,
+          name: residentFallback.name,
+          email: residentFallback.email ?? null,
+          phone: residentFallback.phone ?? null,
+          role: residentFallback.role,
+          isActive: residentFallback.isActive,
+          condoId: residentFallback.condoId,
+          condoName: null,
+          condoSubdomain: null,
+          createdAt: residentFallback.createdAt,
+          updatedAt: residentFallback.updatedAt,
+        }
+      : null);
+  const units = detail?.units ?? [];
+  const activities = (detail?.activities ?? []).map((activity) => ({
+    ...activity,
+    formattedDate: format(new Date(activity.createdAt), "dd/MM/yyyy HH:mm", {
+      locale: ptBR,
+    }),
+  }));
+  const isLoading = residentId != null && detail === undefined;
 
-  const handleInviteAgain = () => {
-    toast.success("Convite reenviado com sucesso!");
-  };
+  const formattedCreatedAt = resident?.createdAt
+    ? format(new Date(resident.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
+    : "-";
+  const formattedUpdatedAt = resident?.updatedAt
+    ? format(new Date(resident.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })
+    : "-";
 
-  const handleLinkUnit = () => {
-    if (selectedUnit && selectedRole) {
-      toast.success(`Unidade ${selectedUnit} vinculada como ${selectedRole === "owner" ? "proprietário" : "inquilino"}`);
-      setLinkUnitOpen(false);
-      setSelectedUnit("");
-      setSelectedRole("");
+  const handleInviteAgain = async () => {
+    if (!resident?.email) {
+      toast.error("Residente sem email cadastrado");
+      return;
+    }
+    try {
+      await resendResidentOtp({ residentId: resident.id });
+      toast.success("Convite reenviado com sucesso!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível reenviar o convite");
     }
   };
+  const handleDeactivate = () => toast.error("Desativação ainda não implementada");
+  const handleReactivate = () => toast.success("Reativação ainda não implementada");
+  const handleUnlinkUnit = (unitCode: string) =>
+    toast.error(`Desvincular unidade ${unitCode} ainda não implementado`);
+  const handleEdit = () => onNavigate("resident-edit");
 
-  const handleUnlinkUnit = (unitCode: string) => {
-    toast.success(`Unidade ${unitCode} desvinculada com sucesso!`);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center py-12 text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando morador...
+      </div>
+    );
+  }
 
-  const handleEdit = () => {
-    onNavigate("resident-edit");
-  };
+  if (!resident) {
+    return (
+      <div>
+        <PageHeader
+          title="Morador não encontrado"
+          breadcrumb={["Moradores", "Detalhe"]}
+          primaryAction={{ label: "Voltar", onClick: () => onNavigate("residents") }}
+        />
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Nenhum morador foi encontrado para o identificador informado.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div>
       <PageHeader
-        title={resident.name}
-        breadcrumb={["Moradores", resident.name]}
+        title={resident?.name ?? "Morador"}
+        breadcrumb={["Moradores", resident?.name ?? "Detalhe"]}
         primaryAction={{
           label: "Editar",
           onClick: handleEdit,
@@ -115,10 +155,15 @@ export function ResidentDetailPage({ onNavigate }: ResidentDetailPageProps) {
         secondaryAction={{
           label: "Convidar Novamente",
           onClick: handleInviteAgain,
+          disabled: !resident.email,
         }}
+        contextPill={resident.condoName || resident.condoSubdomain ? {
+          name: resident.condoName ?? "Condomínio",
+          subdomain: resident.condoSubdomain ?? "-",
+        } : undefined}
       />
 
-      {residentStatus === "inactive" && (
+      {resident?.isActive === false && (
         <Alert className="mb-6 border-warning bg-warning/10">
           <AlertDescription className="flex items-center justify-between">
             <span>Este morador está inativo e não pode acessar o sistema.</span>
@@ -142,34 +187,36 @@ export function ResidentDetailPage({ onNavigate }: ResidentDetailPageProps) {
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
                 <div className="text-muted-foreground">Nome</div>
-                <div>{resident.name}</div>
+                <div>{resident?.name ?? "-"}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Email</div>
-                <div>{resident.email}</div>
+                <div>{resident?.email ?? "-"}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Telefone</div>
-                <div>{resident.phone}</div>
+                <div>{resident?.phone ?? "-"}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Condomínio</div>
                 <div>
-                  <Badge variant="outline">{resident.condo}</Badge>
+                  <Badge variant="outline">
+                    {resident?.condoName ?? resident?.condoSubdomain ?? "-"}
+                  </Badge>
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Função</div>
                 <div>
-                  <Badge variant={resident.role === "Manager" ? "default" : "secondary"}>
-                    {resident.role}
+                  <Badge variant={resident.role === "syndic" ? "default" : "secondary"}>
+                    {ROLE_LABELS[resident.role] ?? resident.role}
                   </Badge>
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Status</div>
                 <div>
-                  {residentStatus === "active" ? (
+                  {resident?.isActive ? (
                     <Badge>Ativo</Badge>
                   ) : (
                     <Badge variant="secondary">Inativo</Badge>
@@ -178,11 +225,11 @@ export function ResidentDetailPage({ onNavigate }: ResidentDetailPageProps) {
               </div>
               <div>
                 <div className="text-muted-foreground">Criado em</div>
-                <div>{resident.createdAt}</div>
+                <div>{formattedCreatedAt}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Atualizado em</div>
-                <div>{resident.updatedAt}</div>
+                <div>{formattedUpdatedAt}</div>
               </div>
             </CardContent>
           </Card>
@@ -211,16 +258,18 @@ export function ResidentDetailPage({ onNavigate }: ResidentDetailPageProps) {
                   </TableHeader>
                   <TableBody>
                     {units.map((unit) => (
-                      <TableRow key={unit.id}>
+                      <TableRow key={unit.membershipId}>
                         <TableCell>{unit.code}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">Bloco {unit.block}</Badge>
+                        <Badge variant="outline">Bloco {unit.block ?? "-"}</Badge>
                         </TableCell>
                         <TableCell>
                           {unit.role === "owner" ? (
                             <Badge>Proprietário</Badge>
-                          ) : (
+                          ) : unit.role === "tenant" ? (
                             <Badge variant="secondary">Inquilino</Badge>
+                          ) : (
+                            <Badge variant="outline">-</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -262,22 +311,45 @@ export function ResidentDetailPage({ onNavigate }: ResidentDetailPageProps) {
               <CardTitle>Atividade Recente</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {activities.map((activity) => (
-                  <div key={activity.id} className="border-l-2 border-border pl-4 pb-4 last:pb-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div>{activity.event}</div>
-                        <div className="text-muted-foreground">{activity.description}</div>
+              {activities.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  Nenhuma atividade registrada para este morador.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activities.map((activity) => {
+                    const templateLabel = activity.type
+                      ? TEMPLATE_LABELS[activity.type] ?? activity.type
+                      : "Registro";
+                    return (
+                      <div
+                        key={activity.id}
+                        className="border-l-2 border-border pl-4 pb-4 last:pb-0"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div>{templateLabel}</div>
+                            <div className="text-muted-foreground">
+                              {activity.description ??
+                                (activity.channel
+                                  ? `Evento via ${activity.channel.toUpperCase()}`
+                                  : "-")}
+                            </div>
+                          </div>
+                          {activity.channel && (
+                            <Badge variant="outline">
+                              {activity.channel.toUpperCase()}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="mt-1 text-muted-foreground">
+                          {activity.formattedDate}
+                        </div>
                       </div>
-                      {activity.type === "vote" && <Badge variant="outline">Voto</Badge>}
-                      {activity.type === "otp" && <Badge variant="secondary">OTP</Badge>}
-                      {activity.type === "invite" && <Badge>Convite</Badge>}
-                    </div>
-                    <div className="mt-1 text-muted-foreground">{activity.date}</div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -325,41 +397,9 @@ export function ResidentDetailPage({ onNavigate }: ResidentDetailPageProps) {
               Selecione uma unidade e o tipo de vínculo
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="unit-select">Unidade</Label>
-              <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-                <SelectTrigger id="unit-select">
-                  <SelectValue placeholder="Selecione uma unidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUnits.map((unit) => (
-                    <SelectItem key={unit.code} value={unit.code}>
-                      Bloco {unit.block} - {unit.code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role-select">Tipo de Vínculo</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger id="role-select">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owner">Proprietário</SelectItem>
-                  <SelectItem value="tenant">Inquilino</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              onClick={handleLinkUnit}
-              className="w-full"
-              disabled={!selectedUnit || !selectedRole}
-            >
-              Vincular
-            </Button>
+          <div className="mt-6 space-y-4 text-sm text-muted-foreground">
+            Vincular unidades via painel ainda não está disponível nesta versão.
+            Entre em contato com o time de engenharia para priorizar esta funcionalidade.
           </div>
         </SheetContent>
       </Sheet>
