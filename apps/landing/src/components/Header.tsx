@@ -29,9 +29,9 @@ export function Header() {
           </nav>
           
           <div className="flex items-center gap-4">
-            <Button variant="ghost" className="hidden md:inline-flex text-primary">
+            <a className="hidden md:inline-flex text-primary" href="https://portal.allecto.app" target="_blank" rel="noreferrer">
               Login
-            </Button>
+            </a>
             <Button className="bg-primary hover:bg-accent text-primary-foreground">
               Começar grátis
             </Button>

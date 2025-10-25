@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 
 export function FinalCTA() {
   return (
-    <section className="py-24 bg-gradient-to-br from-primary via-accent to-primary relative overflow-hidden">
+    <section className="py-24 bg-gradient-to-br from-primary via-accent to-primary relative overflow-hidden" id="contato">
       <div className="absolute inset-0 bg-grid-white/10 bg-[size:20px_20px]"></div>
       <div className="absolute top-0 right-0 w-96 h-96 bg-secondary rounded-full blur-3xl opacity-20"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent rounded-full blur-3xl opacity-20"></div>
@@ -26,7 +26,7 @@ export function FinalCTA() {
           <Button 
             size="lg" 
             variant="outline" 
-            className="border-2 border-white text-white hover:bg-white/10 px-8"
+            className="border-2 border-white text-white bg-transparent hover:bg-white/10 px-8"
           >
             Falar com vendas
           </Button>

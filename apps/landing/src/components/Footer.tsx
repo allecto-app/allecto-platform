@@ -17,8 +17,8 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-2 text-gray-400">
               <Mail className="w-4 h-4" />
-              <a href="mailto:contato@allectoapp.com.br" className="hover:text-white transition-colors">
-                contato@allectoapp.com.br
+              <a href="mailto:suporte@allecto.app" className="hover:text-white transition-colors">
+                suporte@allecto.app
               </a>
             </div>
           </div>
@@ -26,14 +26,14 @@ export function Footer() {
           <div>
             <h3 className="text-white mb-4">Produto</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-white transition-colors">Recursos</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Preços</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Segurança</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Demonstração</a></li>
+              <li><a href="#recursos" className="hover:text-white transition-colors">Recursos</a></li>
+              <li><a href="#precos" className="hover:text-white transition-colors">Preços</a></li>
+              <li><a href="#faq" className="hover:text-white transition-colors">Segurança</a></li>
+              <li><a href="#contato" className="hover:text-white transition-colors">Demonstração</a></li>
             </ul>
           </div>
           
-          <div>
+          {/* <div>
             <h3 className="text-white mb-4">Empresa</h3>
             <ul className="space-y-2">
               <li><a href="#" className="hover:text-white transition-colors">Sobre nós</a></li>
@@ -41,7 +41,7 @@ export function Footer() {
               <li><a href="#" className="hover:text-white transition-colors">Carreiras</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Contato</a></li>
             </ul>
-          </div>
+          </div> */}
         </div>
         
         <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
