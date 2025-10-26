@@ -8,9 +8,19 @@ import { Label } from "../components/ui/label";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../components/ui/input-otp";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
 import { api } from "../lib/convexGenerated";
 import { AdminAuthSession } from "../lib/authSession";
 import { useHostInfo } from "../lib/hostContext";
+import { toast } from "sonner";
 
 interface AuthPageProps {
   onLogin: (session: AdminAuthSession) => void;
@@ -38,10 +48,22 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [residentError, setResidentError] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotStep, setForgotStep] = useState<"request" | "verify">("request");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotDevCode, setForgotDevCode] = useState<string | null>(null);
+  const [isRequestingReset, setIsRequestingReset] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const adminSignIn = useMutation(api.auth.adminSignIn);
   const requestResidentOtp = useMutation(api.auth.requestResidentOtp);
   const residentSignIn = useMutation(api.auth.residentSignIn);
+  const requestPasswordReset = useMutation(api.auth.requestPasswordReset);
+  const resetPassword = useMutation(api.auth.resetPassword);
 
   useEffect(() => {
     if (residentModeForced) {
@@ -62,8 +84,38 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setResidentDevCode(null);
     setPassword("");
     setEmail("");
+    setForgotOpen(false);
+    resetForgotState();
+    setForgotEmail("");
     if (!residentModeForced) {
       setResidentSubdomain("");
+    }
+  };
+
+  function resetForgotState() {
+    setForgotStep("request");
+    setForgotCode("");
+    setForgotNewPassword("");
+    setForgotConfirmPassword("");
+    setForgotError(null);
+    setForgotDevCode(null);
+    setIsRequestingReset(false);
+    setIsResettingPassword(false);
+  }
+
+  const handleForgotOpenChange = (open: boolean) => {
+    setForgotOpen(open);
+    if (open) {
+      setForgotEmail((prev) => (prev ? prev : email));
+      setForgotStep("request");
+      setForgotError(null);
+      setForgotDevCode(null);
+      setForgotCode("");
+      setForgotNewPassword("");
+      setForgotConfirmPassword("");
+    } else {
+      resetForgotState();
+      setForgotEmail("");
     }
   };
 
@@ -76,6 +128,70 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     resetForms();
     if (residentModeForced) {
       setResidentSubdomain(hostSubdomain);
+    }
+  };
+
+  const handleRequestPasswordReset = async () => {
+    setForgotError(null);
+    const emailValue = forgotEmail.trim().toLowerCase();
+    if (!emailValue) {
+      setForgotError("Informe um email válido.");
+      return;
+    }
+    setIsRequestingReset(true);
+    try {
+      const result = await requestPasswordReset({ email: emailValue });
+      setForgotDevCode(result?.devCode ?? null);
+      setForgotCode("");
+      setForgotNewPassword("");
+      setForgotConfirmPassword("");
+      if (forgotStep !== "verify") {
+        setForgotStep("verify");
+      }
+    } catch (error) {
+      console.error("Failed to request password reset", error);
+      setForgotError("Não foi possível enviar o código. Tente novamente.");
+    } finally {
+      setIsRequestingReset(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setForgotError(null);
+    const emailValue = forgotEmail.trim().toLowerCase();
+    if (!emailValue) {
+      setForgotError("Informe um email válido.");
+      return;
+    }
+    if (forgotCode.trim().length !== 6) {
+      setForgotError("Informe o código de 6 dígitos.");
+      return;
+    }
+    if (forgotNewPassword.length < 8) {
+      setForgotError("A nova senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError("As senhas informadas não coincidem.");
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      await resetPassword({
+        email: emailValue,
+        code: forgotCode.trim(),
+        newPassword: forgotNewPassword,
+      });
+      toast.success("Senha redefinida com sucesso! Faça login com a nova senha.");
+      setEmail(emailValue);
+      setPassword("");
+      handleForgotOpenChange(false);
+    } catch (error) {
+      console.error("Failed to reset password", error);
+      setForgotError("Não foi possível redefinir a senha. Verifique o código e tente novamente.");
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -227,9 +343,143 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Senha</Label>
-                      <button type="button" className="text-primary hover:underline">
-                        Esqueceu a senha?
-                      </button>
+                      <Dialog open={forgotOpen} onOpenChange={handleForgotOpenChange}>
+                        <DialogTrigger asChild>
+                          <button type="button" className="text-primary hover:underline">
+                            Esqueceu a senha?
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          {forgotStep === "request" ? (
+                            <>
+                              <DialogHeader>
+                                <DialogTitle>Redefinir senha</DialogTitle>
+                                <DialogDescription>
+                                  Informe o email cadastrado para receber um código de redefinição.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="forgot-email">Email</Label>
+                                  <Input
+                                    id="forgot-email"
+                                    type="email"
+                                    placeholder="admin@exemplo.com"
+                                    value={forgotEmail}
+                                    onChange={(event) => setForgotEmail(event.target.value)}
+                                  />
+                                </div>
+                                {forgotError && (
+                                  <p className="text-sm text-destructive">{forgotError}</p>
+                                )}
+                              </div>
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleForgotOpenChange(false)}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  onClick={handleRequestPasswordReset}
+                                  disabled={isRequestingReset}
+                                >
+                                  {isRequestingReset ? "Enviando..." : "Enviar código"}
+                                </Button>
+                              </DialogFooter>
+                            </>
+                          ) : (
+                            <>
+                              <DialogHeader>
+                                <DialogTitle>Confirme o código</DialogTitle>
+                                <DialogDescription>
+                                  Verifique seu email e informe o código de 6 dígitos para definir uma nova senha.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="reset-code">Código de 6 dígitos</Label>
+                                  <InputOTP
+                                    value={forgotCode}
+                                    onChange={setForgotCode}
+                                    maxLength={6}
+                                  >
+                                    <InputOTPGroup>
+                                      {Array.from({ length: 6 }).map((_, index) => (
+                                        <InputOTPSlot key={index} index={index} />
+                                      ))}
+                                    </InputOTPGroup>
+                                  </InputOTP>
+                                  {forgotDevCode && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Código (ambiente de testes):{" "}
+                                      <span className="font-mono">{forgotDevCode}</span>
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="new-password">Nova senha</Label>
+                                  <Input
+                                    id="new-password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={forgotNewPassword}
+                                    onChange={(event) => setForgotNewPassword(event.target.value)}
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    A senha deve ter pelo menos 8 caracteres.
+                                  </p>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+                                  <Input
+                                    id="confirm-password"
+                                    type="password"
+                                    placeholder="Repita a nova senha"
+                                    value={forgotConfirmPassword}
+                                    onChange={(event) =>
+                                      setForgotConfirmPassword(event.target.value)
+                                    }
+                                  />
+                                </div>
+                                {forgotError && (
+                                  <p className="text-sm text-destructive">{forgotError}</p>
+                                )}
+                              </div>
+                              <DialogFooter className="sm:justify-between">
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={handleRequestPasswordReset}
+                                    disabled={isRequestingReset}
+                                  >
+                                    {isRequestingReset ? "Reenviando..." : "Reenviar código"}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setForgotStep("request");
+                                      setForgotError(null);
+                                      setForgotCode("");
+                                      setForgotDevCode(null);
+                                    }}
+                                  >
+                                    Voltar
+                                  </Button>
+                                </div>
+                                <Button
+                                  onClick={handleResetPassword}
+                                  disabled={isResettingPassword}
+                                >
+                                  {isResettingPassword ? "Atualizando..." : "Atualizar senha"}
+                                </Button>
+                              </DialogFooter>
+                            </>
+                          )}
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     <Input
                       id="password"

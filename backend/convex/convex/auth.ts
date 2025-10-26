@@ -31,6 +31,10 @@ function generateSessionToken() {
     return bytesToHex(bytes);
 }
 
+function generateResetCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 export const requestOtp = mutation({
     args: { condoId: v.id("condos"), email: v.optional(v.string()), phone: v.optional(v.string()) },
     handler: async (ctx, a) => {
@@ -233,6 +237,150 @@ export const residentSignIn = mutation({
             name: resident.name,
             expiresAt,
         };
+    },
+});
+
+export const requestPasswordReset = mutation({
+    args: {
+        email: v.string(),
+    },
+    handler: async (ctx, { email }) => {
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!normalizedEmail) {
+            return { ok: true };
+        }
+
+        const user = await ctx.db
+            .query("platformUsers")
+            .withIndex("byEmail", (q) => q.eq("email", normalizedEmail))
+            .unique();
+
+        if (!user || !user.passwordHash) {
+            // Always respond success to avoid leaking account existence
+            return { ok: true };
+        }
+
+        const now = Date.now();
+        const code = generateResetCode();
+        const codeHash = bcrypt.hashSync(code, BCRYPT_COST);
+        const expiresAt = now + 15 * 60 * 1000;
+
+        const existing = await ctx.db
+            .query("passwordResets")
+            .withIndex("byEmail", (q) => q.eq("email", normalizedEmail))
+            .first();
+
+        if (existing) {
+            await ctx.db.patch(existing._id, {
+                codeHash,
+                expiresAt,
+                createdAt: now,
+                usedAt: undefined,
+            });
+        } else {
+            await ctx.db.insert("passwordResets", {
+                email: normalizedEmail,
+                codeHash,
+                expiresAt,
+                createdAt: now,
+                usedAt: undefined,
+            });
+        }
+
+        const subject = "Redefinição de senha - Allecto Admin";
+        const html = `
+          <p>Olá${user.name ? ` ${user.name}` : ""}!</p>
+          <p>Recebemos uma solicitação para redefinir a sua senha do portal Allecto Admin.</p>
+          <p>Use o código abaixo para continuar com a redefinição:</p>
+          <p style="font-size:24px;font-weight:bold;letter-spacing:6px;">${code}</p>
+          <p>O código expira em 15 minutos.</p>
+          <p>Se você não solicitou esta ação, ignore este email.</p>
+        `;
+        const text = `Olá${user.name ? ` ${user.name}` : ""}!
+
+Recebemos uma solicitação para redefinir a sua senha do portal Allecto Admin.
+
+Use este código para continuar a redefinição: ${code}
+
+O código expira em 15 minutos.
+Se você não solicitou esta ação, basta ignorar esta mensagem.`;
+
+        if (!process.env.RESEND_API_KEY) {
+            console.warn(
+                "[auth.requestPasswordReset] RESEND_API_KEY not configured; reset code for",
+                normalizedEmail,
+                "é",
+                code,
+            );
+        } else {
+            try {
+                await resend.emails.send({
+                    from: FROM,
+                    to: normalizedEmail,
+                    subject,
+                    html,
+                    text,
+                });
+            } catch (error) {
+                console.error("Failed to send password reset email", error);
+            }
+        }
+
+        const includeDevCode = process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY;
+        return { ok: true, devCode: includeDevCode ? code : undefined };
+    },
+});
+
+export const resetPassword = mutation({
+    args: {
+        email: v.string(),
+        code: v.string(),
+        newPassword: v.string(),
+    },
+    handler: async (ctx, { email, code, newPassword }) => {
+        const normalizedEmail = email.trim().toLowerCase();
+        const trimmedCode = code.trim();
+        const sanitizedPassword = newPassword.trim();
+
+        if (!normalizedEmail || trimmedCode.length === 0 || sanitizedPassword.length === 0) {
+            throw new Error("INVALID_CODE");
+        }
+        if (sanitizedPassword.length < 8) {
+            throw new Error("WEAK_PASSWORD");
+        }
+
+        const resetRecord = await ctx.db
+            .query("passwordResets")
+            .withIndex("byEmail", (q) => q.eq("email", normalizedEmail))
+            .first();
+
+        if (
+            !resetRecord ||
+            resetRecord.usedAt ||
+            resetRecord.expiresAt <= Date.now()
+        ) {
+            throw new Error("INVALID_CODE");
+        }
+
+        const validCode = bcrypt.compareSync(trimmedCode, resetRecord.codeHash);
+        if (!validCode) {
+            throw new Error("INVALID_CODE");
+        }
+
+        const user = await ctx.db
+            .query("platformUsers")
+            .withIndex("byEmail", (q) => q.eq("email", normalizedEmail))
+            .unique();
+        if (!user) {
+            throw new Error("INVALID_CODE");
+        }
+
+        const newHash = bcrypt.hashSync(sanitizedPassword, BCRYPT_COST);
+        await ctx.db.patch(user._id, { passwordHash: newHash });
+
+        await ctx.db.patch(resetRecord._id, { usedAt: Date.now() });
+
+        return { ok: true };
     },
 });
 

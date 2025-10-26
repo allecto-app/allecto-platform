@@ -151,8 +151,16 @@ export default defineSchema({
     name: v.optional(v.string()),
     roles: v.array(v.string()), // ["super_admin","support","ops"]
     createdAt: v.number(),
-    passwordHash: v.optional(v.string()),
-    lastLoginAt: v.optional(v.number()),
+  passwordHash: v.optional(v.string()),
+  lastLoginAt: v.optional(v.number()),
+}).index("byEmail", ["email"]),
+
+  passwordResets: defineTable({
+    email: v.string(),
+    codeHash: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    usedAt: v.optional(v.number()),
   }).index("byEmail", ["email"]),
 
   loginAttempts: defineTable({
