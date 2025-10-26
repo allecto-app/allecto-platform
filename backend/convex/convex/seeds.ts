@@ -133,11 +133,36 @@ export const demo = mutation({
 
         // 5) Minute (open for 5 days)
         const closesAt = now + 5 * 24 * 3600 * 1000;
+        const documentId = await ctx.db.insert("documents", {
+            title: "Assembleia Ordinária - Demo",
+            orgId: condoId.toString(),
+            assemblyId: undefined,
+            storageId: "seed-storage-id",
+            contentType: "application/pdf",
+            size: 0,
+            sha256: "0".repeat(64),
+            visibility: "org",
+            allowedRoles: ["admin", "syndic", "resident"],
+            allowedUserIds: [],
+            createdByUserId: r1.toString(),
+            createdAt: now,
+            lastViewedAt: undefined,
+            viewCount: 0,
+        });
+        await ctx.db.insert("documentEvents", {
+            documentId,
+            orgId: condoId.toString(),
+            userId: r1.toString(),
+            event: "upload",
+            createdAt: now,
+        });
+
         const minuteId = await ctx.db.insert("minutes", {
             condoId,
             title: "Assembleia Ordinária - Demo",
             summary: "Pauta de exemplo para demonstração.",
-            pdfUrl: "https://example.com/ata.pdf",
+            pdfUrl: undefined,
+            documentId,
             publishedAt: now,
             closesAt,
             status: "open",
@@ -180,6 +205,8 @@ export const deleteDemo = mutation({
             minutes: 0,
             votes: 0,
             notificationLogs: 0,
+            documents: 0,
+            documentEvents: 0,
         };
 
         const minutes = await ctx.db
@@ -197,6 +224,24 @@ export const deleteDemo = mutation({
             }
             await ctx.db.delete(minute._id);
             totals.minutes += 1;
+        }
+
+        const condoIdString = condoId.toString();
+        const documents = await ctx.db
+            .query("documents")
+            .withIndex("by_org", (q) => q.eq("orgId", condoIdString))
+            .collect();
+        for (const document of documents) {
+            const events = await ctx.db
+                .query("documentEvents")
+                .withIndex("by_document", (q) => q.eq("documentId", document._id))
+                .collect();
+            for (const event of events) {
+                await ctx.db.delete(event._id);
+                totals.documentEvents += 1;
+            }
+            await ctx.db.delete(document._id);
+            totals.documents += 1;
         }
 
         const logs = await ctx.db

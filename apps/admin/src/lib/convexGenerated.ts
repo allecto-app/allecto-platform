@@ -46,6 +46,14 @@ type AugmentedApi = typeof baseApi & {
     publish: MutationRef;
     close: MutationRef;
   };
+  documents: {
+    generateUploadUrl: MutationRef;
+    finalizeUpload: MutationRef;
+    get: QueryRef;
+    list: QueryRef;
+    getViewToken: MutationRef;
+    listEvents: QueryRef;
+  };
   units: {
     listByCondo: QueryRef;
     detail: QueryRef;
@@ -85,6 +93,8 @@ export type TableNames =
   | "minutes"
   | "votes"
   | "notificationLogs"
+  | "documents"
+  | "documentEvents"
   | "otps"
   | "platformUsers"
   | "loginAttempts"
@@ -157,7 +167,8 @@ type DocByTable = {
     condoId: Id<"condos">;
     title: string;
     summary?: string;
-    pdfUrl: string;
+    pdfUrl?: string;
+    documentId?: Id<"documents">;
     publishedAt: number;
     closesAt: number;
     status: string;
@@ -167,6 +178,29 @@ type DocByTable = {
     closeScheduled: boolean;
     createdAt: number;
     updatedAt: number;
+  };
+  documents: DefaultDoc<"documents"> & {
+    title: string;
+    orgId: string;
+    assemblyId?: string;
+    storageId: string;
+    contentType: string;
+    size: number;
+    sha256: string;
+    visibility: "org" | "assembly" | "private";
+    allowedRoles: string[];
+    allowedUserIds: string[];
+    createdByUserId: string;
+    createdAt: number;
+    lastViewedAt?: number;
+    viewCount: number;
+  };
+  documentEvents: DefaultDoc<"documentEvents"> & {
+    documentId: Id<"documents">;
+    orgId: string;
+    userId: string;
+    event: "upload" | "view";
+    createdAt: number;
   };
   notificationLogs: DefaultDoc<"notificationLogs"> & {
     condoId: Id<"condos">;

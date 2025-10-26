@@ -7,10 +7,11 @@ const MinuteStatus = v.union(v.literal("open"), v.literal("closed"));
 
 export const publish = mutation({
     args: {
+        sessionToken: v.optional(v.string()),
         condoId: v.id("condos"),
         title: v.string(),
         summary: v.optional(v.string()),
-        pdfUrl: v.string(),
+        documentId: v.id("documents"),
         closesAt: v.number(),
         createdBy: v.id("residents"),
     },
@@ -18,11 +19,22 @@ export const publish = mutation({
         const now = Date.now();
         if (a.closesAt <= now) throw new Error("closesAt must be future");
 
+        const document = await ctx.db.get(a.documentId);
+        if (!document) {
+            throw new Error("Document not found");
+        }
+
+        const condoIdString = a.condoId.toString();
+        if (document.orgId !== condoIdString) {
+            throw new Error("DOCUMENT_ORG_MISMATCH");
+        }
+
         const minuteId = await ctx.db.insert("minutes", {
             condoId: a.condoId,
             title: a.title,
             summary: a.summary,
-            pdfUrl: a.pdfUrl,
+            pdfUrl: undefined,
+            documentId: a.documentId,
             publishedAt: now,
             closesAt: a.closesAt,
             status: "open",

@@ -19,7 +19,7 @@ async function digestToken(token: string) {
     return bytesToHex(new Uint8Array(buffer));
 }
 
-async function loadSession(ctx: any, sessionToken: string | null | undefined) {
+export async function loadSession(ctx: any, sessionToken: string | null | undefined) {
     if (typeof sessionToken !== "string" || sessionToken.length < 32) {
         throw new Error(UNAUTHORIZED);
     }

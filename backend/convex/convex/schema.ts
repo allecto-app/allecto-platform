@@ -63,7 +63,8 @@ export default defineSchema({
     condoId: v.id("condos"),
     title: v.string(),
     summary: v.optional(v.string()),
-    pdfUrl: v.string(),
+    pdfUrl: v.optional(v.string()),
+    documentId: v.optional(v.id("documents")),
     publishedAt: v.number(),
     closesAt: v.number(),
     status: v.string(), // "open" | "closed"
@@ -90,6 +91,36 @@ export default defineSchema({
     .index("byMinuteUnit", ["minuteId", "unitId"])
     .index("byResidentMinute", ["residentId", "minuteId"])
     .index("byUnit", ["unitId"]),
+
+  documents: defineTable({
+    title: v.string(),
+    orgId: v.string(),
+    assemblyId: v.optional(v.string()),
+    storageId: v.string(),
+    contentType: v.string(),
+    size: v.number(),
+    sha256: v.string(),
+    visibility: v.union(v.literal("org"), v.literal("assembly"), v.literal("private")),
+    allowedRoles: v.array(v.string()),
+    allowedUserIds: v.array(v.string()),
+    createdByUserId: v.string(),
+    createdAt: v.number(),
+    lastViewedAt: v.optional(v.number()),
+    viewCount: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_assembly", ["assemblyId"]),
+
+  documentEvents: defineTable({
+    documentId: v.id("documents"),
+    orgId: v.string(),
+    userId: v.string(),
+    event: v.union(v.literal("upload"), v.literal("view")),
+    createdAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_org", ["orgId"])
+    .index("by_user", ["userId"]),
 
   notificationLogs: defineTable({
     condoId: v.id("condos"),

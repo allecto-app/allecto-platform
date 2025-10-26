@@ -10,11 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 import { EmptyState } from "../components/admin/EmptyState";
-import { api, Doc } from "../lib/convexGenerated";
+import { PdfUploader } from "../components/documents/PdfUploader";
+import { ViewPdfButton } from "../components/documents/ViewPdfButton";
+import { useDocuments } from "../hooks/useDocuments";
+import { api, Doc, Id } from "../lib/convexGenerated";
 
 interface MinutesNewPageProps {
   onNavigate: (page: string) => void;
   condo: Doc<"condos"> | null;
+  sessionToken: string;
 }
 
 const CLOSING_OPTIONS = [
@@ -23,18 +27,26 @@ const CLOSING_OPTIONS = [
   { label: "7 dias", value: 7 },
 ];
 
-export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
+export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPageProps) {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [pdfUrl, setPdfUrl] = useState("");
   const [closesIn, setClosesIn] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [selectedDocumentTitle, setSelectedDocumentTitle] = useState<string | null>(null);
+
+  const condoId = condo?._id ?? null;
+  const orgId = condo ? (condo._id as unknown as string) : null;
 
   const residents = useQuery(
     api.residents.list,
-    condo ? { condoId: condo._id } : "skip",
+    condoId ? { condoId } : "skip",
   ) as Doc<"residents">[] | undefined;
   const publishMinute = useMutation(api.minutes.publish);
+  const { documents, isLoading: documentsLoading } = useDocuments({
+    orgId,
+    sessionToken,
+  });
 
   const author = useMemo(() => {
     if (!residents) return null;
@@ -45,9 +57,20 @@ export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
     );
   }, [residents]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!condo) {
+  const selectedDocument = useMemo(() => {
+    if (!documents || !selectedDocumentId) return null;
+    return (
+      documents.find(
+        (doc) => (doc._id as unknown as string) === selectedDocumentId,
+      ) ?? null
+    );
+  }, [documents, selectedDocumentId]);
+
+  const effectiveDocumentTitle = selectedDocument?.title ?? selectedDocumentTitle ?? null;
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!condoId) {
       toast.error("Selecione um condomínio para publicar a ata.");
       return;
     }
@@ -59,19 +82,29 @@ export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
       toast.error("Selecione o prazo de encerramento.");
       return;
     }
+    if (!selectedDocumentId) {
+      toast.error("Anexe ou selecione um documento PDF para a ata.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       const closesAt = Date.now() + Number(closesIn) * 24 * 60 * 60 * 1000;
       await publishMinute({
-        condoId: condo._id,
+        sessionToken,
+        condoId,
         title,
         summary,
-        pdfUrl,
+        documentId: selectedDocumentId as unknown as Id<"documents">,
         closesAt,
         createdBy: author._id,
       });
       toast.success("Ata publicada com sucesso!");
+      setTitle("");
+      setSummary("");
+      setClosesIn("");
+      setSelectedDocumentId(null);
+      setSelectedDocumentTitle(null);
       onNavigate("minutes");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao publicar ata";
@@ -111,7 +144,7 @@ export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
                 id="title"
                 placeholder="Digite o título da ata"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(event) => setTitle(event.target.value)}
                 required
               />
             </div>
@@ -123,7 +156,7 @@ export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
                 placeholder="Digite um resumo da ata"
                 rows={5}
                 value={summary}
-                onChange={(e) => setSummary(e.target.value)}
+                onChange={(event) => setSummary(event.target.value)}
                 required
               />
               <p className="text-muted-foreground">
@@ -132,19 +165,82 @@ export function MinutesNewPage({ onNavigate, condo }: MinutesNewPageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="pdf">URL do PDF</Label>
-              <Input
-                id="pdf"
-                type="url"
-                placeholder="https://exemplo.com/ata.pdf"
-                value={pdfUrl}
-                onChange={(e) => setPdfUrl(e.target.value)}
-                required
-              />
-              <p className="text-muted-foreground">
-                Link para o documento PDF da ata
-              </p>
+              <Label>Documento PDF</Label>
+              {documentsLoading ? (
+                <p className="text-muted-foreground text-sm">Carregando documentos...</p>
+              ) : documents && documents.length > 0 ? (
+                <Select
+                  value={selectedDocumentId ?? undefined}
+                  onValueChange={(value) => setSelectedDocumentId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um documento recém-enviado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {documents.map((doc) => {
+                      const docId = doc._id as unknown as string;
+                      return (
+                        <SelectItem key={docId} value={docId}>
+                          {doc.title}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Envie um PDF abaixo para vinculá-lo à ata.
+                </p>
+              )}
+              {effectiveDocumentTitle ? (
+                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 p-3 text-sm text-muted-foreground">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">{effectiveDocumentTitle}</span>
+                    {selectedDocument ? (
+                      <>
+                        <span>{selectedDocument.viewCount} visualizações</span>
+                        {selectedDocument.lastViewedAt ? (
+                          <span>
+                            Último acesso{" "}
+                            {new Intl.DateTimeFormat("pt-BR", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            }).format(new Date(selectedDocument.lastViewedAt))}
+                          </span>
+                        ) : (
+                          <span>Ainda não visualizado</span>
+                        )}
+                      </>
+                    ) : (
+                      <span>Documento recém-enviado</span>
+                    )}
+                  </div>
+                  {selectedDocumentId && (
+                    <ViewPdfButton
+                      docId={selectedDocumentId}
+                      sessionToken={sessionToken}
+                      orgId={selectedDocument?.orgId ?? orgId ?? undefined}
+                      label="Abrir PDF"
+                      variant="outline"
+                      size="sm"
+                    />
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Vincule um documento existente ou envie um novo PDF abaixo.
+                </p>
+              )}
             </div>
+
+            <PdfUploader
+              orgId={orgId}
+              sessionToken={sessionToken}
+              onUploaded={({ id, title: uploadedTitle }) => {
+                setSelectedDocumentId(id);
+                setSelectedDocumentTitle(uploadedTitle);
+              }}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="closes">Fecha em</Label>

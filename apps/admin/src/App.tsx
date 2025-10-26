@@ -470,10 +470,18 @@ function AuthenticatedShell({
               <DashboardPage condos={condos} selectedCondo={selectedCondo} />
             )}
             {currentPage === "minutes" && (
-              <MinutesListPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
+              <MinutesListPage
+                onNavigate={handleNavigate}
+                condoId={selectedCondo?._id ?? null}
+                sessionToken={auth.token}
+              />
             )}
             {currentPage === "minutes-new" && (
-              <MinutesNewPage onNavigate={handleNavigate} condo={selectedCondo} />
+              <MinutesNewPage
+                onNavigate={handleNavigate}
+                condo={selectedCondo}
+                sessionToken={auth.token}
+              />
             )}
             {currentPage === "minutes-detail" && (
               <MinutesDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />

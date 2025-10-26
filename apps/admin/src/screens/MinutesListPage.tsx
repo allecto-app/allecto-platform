@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { FileText, Eye, X, Loader2 } from "lucide-react";
+import { FileText, X, Loader2 } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent } from "../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
@@ -11,16 +11,25 @@ import { Label } from "../components/ui/label";
 import { EmptyState } from "../components/admin/EmptyState";
 import { toast } from "sonner";
 import { api, Id, Doc } from "../lib/convexGenerated";
+import { useDocuments } from "../hooks/useDocuments";
+import { ViewPdfButton } from "../components/documents/ViewPdfButton";
 
 interface MinutesListPageProps {
   onNavigate: (page: string) => void;
   condoId: Id<"condos"> | null;
+  sessionToken: string;
 }
 
 const formatDate = (timestamp: number) =>
   new Intl.DateTimeFormat("pt-BR").format(new Date(timestamp));
 
-export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
+const formatDateTime = (timestamp: number) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(timestamp));
+
+export function MinutesListPage({ onNavigate, condoId, sessionToken }: MinutesListPageProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [closingId, setClosingId] = useState<Id<"minutes"> | null>(null);
 
@@ -29,6 +38,11 @@ export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
     condoId ? { condoId } : "skip",
   );
   const closeMinuteMutation = useMutation(api.minutes.close);
+  const orgId = condoId ? condoId.toString() : null;
+  const { documents, isLoading: documentsLoading } = useDocuments({
+    orgId,
+    sessionToken,
+  });
 
   const filteredMinutes = useMemo(() => {
     if (!minutes) return [];
@@ -38,6 +52,14 @@ export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
     });
   }, [minutes, statusFilter]);
   const isLoading = !!condoId && !minutes;
+
+  const documentMap = useMemo(() => {
+    const entries = new Map<string, Doc<"documents">>();
+    documents?.forEach((doc) => {
+      entries.set(doc._id as unknown as string, doc);
+    });
+    return entries;
+  }, [documents]);
 
   const handleCloseMinute = async (minuteId: Id<"minutes">) => {
     try {
@@ -111,53 +133,125 @@ export function MinutesListPage({ onNavigate, condoId }: MinutesListPageProps) {
                   <TableHead>Publicado em</TableHead>
                   <TableHead>Fecha em</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Documento</TableHead>
+                  <TableHead>Visualizações</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMinutes.map((minute: Doc<"minutes">) => (
-                  <TableRow key={minute._id}>
-                    <TableCell>{minute.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(minute.publishedAt)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(minute.closesAt)}
-                    </TableCell>
-                    <TableCell>
-                      {minute.status === "open" ? (
-                        <Badge>Aberta</Badge>
-                      ) : (
-                        <Badge variant="secondary">Fechada</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onNavigate("minutes-detail")}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {minute.status === "open" && (
+                {filteredMinutes.map((minute: Doc<"minutes">) => {
+                  const documentId = minute.documentId as unknown as string | undefined;
+                  const document = documentId ? documentMap.get(documentId) ?? null : null;
+                  return (
+                    <TableRow key={minute._id}>
+                      <TableCell>{minute.title}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(minute.publishedAt)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(minute.closesAt)}
+                      </TableCell>
+                      <TableCell>
+                        {minute.status === "open" ? (
+                          <Badge>Aberta</Badge>
+                        ) : (
+                          <Badge variant="secondary">Fechada</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {documentsLoading ? (
+                          <span className="text-muted-foreground">Carregando...</span>
+                        ) : document ? (
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">{document.title}</span>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              <Badge variant="outline" className="uppercase">
+                                {document.visibility}
+                              </Badge>
+                              <span>
+                                Enviado em {formatDateTime(document.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+                        ) : minute.pdfUrl ? (
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">Documento legado</span>
+                            <a
+                              href={minute.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary underline"
+                            >
+                              Abrir link existente
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-destructive text-sm">
+                            Documento não encontrado
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {document ? (
+                          <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                            <span>{document.viewCount} visualizações</span>
+                            {document.lastViewedAt ? (
+                              <span>Último acesso {formatDateTime(document.lastViewedAt)}</span>
+                            ) : (
+                              <span>Nunca acessado</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {document ? (
+                            <ViewPdfButton
+                              docId={document._id as unknown as string}
+                              sessionToken={sessionToken}
+                              orgId={document.orgId}
+                            />
+                          ) : minute.pdfUrl ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(minute.pdfUrl!, "_blank", "noopener,noreferrer")}
+                            >
+                              Abrir link
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" disabled>
+                              Visualizar
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            disabled={closingId === minute._id}
-                            onClick={() => handleCloseMinute(minute._id)}
+                            onClick={() => onNavigate("minutes-detail")}
                           >
-                            {closingId === minute._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <X className="h-4 w-4" />
-                            )}
+                            Detalhes
                           </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {minute.status === "open" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={closingId === minute._id}
+                              onClick={() => handleCloseMinute(minute._id)}
+                            >
+                              {closingId === minute._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <X className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
