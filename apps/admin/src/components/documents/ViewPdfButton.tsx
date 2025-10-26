@@ -2,13 +2,13 @@ import { useCallback, useState, type ComponentProps } from "react";
 import { useMutation } from "convex/react";
 import { Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "../../lib/convexGenerated";
+import { api, type Id } from "../../lib/convexGenerated";
 import { Button } from "../ui/button";
 
 type ButtonProps = ComponentProps<typeof Button>;
 
 type ViewPdfButtonProps = {
-  docId: string;
+  docId: Id<"documents">;
   sessionToken?: string | null;
   orgId?: string | null;
   label?: string;
@@ -37,7 +37,7 @@ export function ViewPdfButton({
     try {
       setIsLoading(true);
       const { token } = await getToken({
-        docId: docId as any,
+        docId,
         sessionToken: sessionToken ?? undefined,
         orgId: orgId ?? undefined,
       });

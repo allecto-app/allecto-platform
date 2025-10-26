@@ -32,11 +32,11 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
   const [summary, setSummary] = useState("");
   const [closesIn, setClosesIn] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<Id<"documents"> | null>(null);
   const [selectedDocumentTitle, setSelectedDocumentTitle] = useState<string | null>(null);
 
   const condoId = condo?._id ?? null;
-  const orgId = condo ? (condo._id as unknown as string) : null;
+  const orgId = condo ? String(condo._id) : null;
 
   const residents = useQuery(
     api.residents.list,
@@ -59,11 +59,7 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
 
   const selectedDocument = useMemo(() => {
     if (!documents || !selectedDocumentId) return null;
-    return (
-      documents.find(
-        (doc) => (doc._id as unknown as string) === selectedDocumentId,
-      ) ?? null
-    );
+    return documents.find((doc) => doc._id === selectedDocumentId) ?? null;
   }, [documents, selectedDocumentId]);
 
   const effectiveDocumentTitle = selectedDocument?.title ?? selectedDocumentTitle ?? null;
@@ -95,7 +91,7 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
         condoId,
         title,
         summary,
-        documentId: selectedDocumentId as unknown as Id<"documents">,
+        documentId: selectedDocumentId,
         closesAt,
         createdBy: author._id,
       });
@@ -171,20 +167,17 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
               ) : documents && documents.length > 0 ? (
                 <Select
                   value={selectedDocumentId ?? undefined}
-                  onValueChange={(value) => setSelectedDocumentId(value)}
+                  onValueChange={(value) => setSelectedDocumentId(value as Id<"documents">)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um documento recém-enviado" />
                   </SelectTrigger>
                   <SelectContent>
-                    {documents.map((doc) => {
-                      const docId = doc._id as unknown as string;
-                      return (
-                        <SelectItem key={docId} value={docId}>
-                          {doc.title}
-                        </SelectItem>
-                      );
-                    })}
+                    {documents.map((doc) => (
+                      <SelectItem key={doc._id} value={doc._id}>
+                        {doc.title}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               ) : (
@@ -237,7 +230,7 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
               orgId={orgId}
               sessionToken={sessionToken}
               onUploaded={({ id, title: uploadedTitle }) => {
-                setSelectedDocumentId(id);
+                setSelectedDocumentId(id as Id<"documents">);
                 setSelectedDocumentTitle(uploadedTitle);
               }}
             />

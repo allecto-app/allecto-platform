@@ -210,7 +210,7 @@ export function MinutesListPage({ onNavigate, condoId, sessionToken, onSelectMin
                         <div className="flex justify-end gap-2">
                           {document ? (
                             <ViewPdfButton
-                              docId={document._id as unknown as string}
+                              docId={document._id}
                               sessionToken={sessionToken}
                               orgId={document.orgId}
                             />

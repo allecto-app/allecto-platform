@@ -620,7 +620,13 @@ function AuthenticatedShell({
                 }}
               />
             )}
-            {currentPage === "notifications" && <NotificationsPage />}
+            {currentPage === "notifications" && (
+              <NotificationsPage
+                condoId={selectedCondo?._id ?? null}
+                condo={selectedCondo}
+                sessionToken={auth.token}
+              />
+            )}
           </div>
         </main>
       </div>

@@ -281,7 +281,7 @@ export function MinutesDetailPage({
                   )}
                 </dl>
                 <ViewPdfButton
-                  docId={documentRecord._id as unknown as string}
+                  docId={documentRecord._id}
                   sessionToken={sessionToken}
                   orgId={documentRecord.orgId}
                   label="Visualizar PDF"
