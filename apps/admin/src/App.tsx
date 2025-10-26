@@ -458,6 +458,7 @@ function AuthenticatedShell({
           onSelectCondo={showPlatformSections ? handleSelectCondo : undefined}
           onLogout={handleLogout}
           userName={auth.name}
+          sessionToken={auth.token}
         />
         <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
           <div className="mx-auto max-w-7xl">

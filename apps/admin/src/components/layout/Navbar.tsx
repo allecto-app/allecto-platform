@@ -1,4 +1,6 @@
-import { Search, Bell, User, Menu } from "lucide-react";
+import { useMemo } from "react";
+import { useQuery } from "convex/react";
+import { Search, Bell, User, Menu, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -12,7 +14,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Alert, AlertDescription } from "../ui/alert";
 import { CondoSwitcher } from "./CondoSwitcher";
-import { Doc, Id } from "../../lib/convexGenerated";
+import { api, Doc, Id } from "../../lib/convexGenerated";
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -23,6 +25,7 @@ interface NavbarProps {
   onSelectCondo?: (condoId: Id<"condos"> | null) => void;
   onLogout?: () => void;
   userName?: string;
+  sessionToken?: string;
 }
 
 export function Navbar({
@@ -34,9 +37,22 @@ export function Navbar({
   onSelectCondo,
   onLogout,
   userName,
+  sessionToken,
 }: NavbarProps) {
   const isPlatformMode = mode === "platform";
   const userInitial = userName ? userName.charAt(0).toUpperCase() : null;
+  const condoId = selectedCondo?._id ?? null;
+  const notificationArgs = useMemo(() => {
+    if (!sessionToken) return "skip" as const;
+    return {
+      condoId: condoId ?? undefined,
+      limit: 5,
+    } as const;
+  }, [condoId, sessionToken]);
+  const notifications = useQuery(api.notifications.listLogs, notificationArgs);
+  const isLoadingNotifications = condoId !== null && notifications === undefined;
+  const headerNotifications = Array.isArray(notifications) ? notifications.slice(0, 5) : [];
+  const unreadCount = headerNotifications.length;
 
   return (
     <>
@@ -73,34 +89,55 @@ export function Navbar({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
-                <Badge
-                  variant="destructive"
-                  className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]"
-                >
-                  3
-                </Badge>
+                {isLoadingNotifications ? (
+                  <Loader2 className="absolute -right-1 -top-1 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                ) : unreadCount > 0 ? (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]"
+                  >
+                    {unreadCount}
+                  </Badge>
+                ) : null}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel>Notificações</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {isLoadingNotifications ? (
+                <DropdownMenuItem disabled>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando notificações...
+                  </div>
+                </DropdownMenuItem>
+              ) : headerNotifications.length === 0 ? (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground">Nenhuma notificação recente.</span>
+                </DropdownMenuItem>
+              ) : (
+                headerNotifications.map((notification) => (
+                  <DropdownMenuItem
+                    key={notification._id as string}
+                    onClick={() => onNavigate("notifications")}
+                  >
+                    <div className="flex flex-col gap-1">
+                      <span className="capitalize">{notification.template}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {new Intl.DateTimeFormat("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "2-digit",
+                          month: "2-digit",
+                        }).format(new Date(notification.createdAt))}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onNavigate("notifications")}>
-                <div className="flex flex-col gap-1">
-                  <span>Nova ata publicada</span>
-                  <span className="text-muted-foreground">Há 2 horas</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onNavigate("notifications")}>
-                <div className="flex flex-col gap-1">
-                  <span>Lembrete enviado</span>
-                  <span className="text-muted-foreground">Há 5 horas</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onNavigate("notifications")}>
-                <div className="flex flex-col gap-1">
-                  <span>Voto contabilizado</span>
-                  <span className="text-muted-foreground">Há 1 dia</span>
-                </div>
+                Ver todas as notificações
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
