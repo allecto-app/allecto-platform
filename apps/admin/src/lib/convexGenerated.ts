@@ -45,6 +45,7 @@ type AugmentedApi = typeof baseApi & {
   };
   minutes: {
     list: QueryRef;
+    get: QueryRef;
     publish: MutationRef;
     close: MutationRef;
   };
