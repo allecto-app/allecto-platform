@@ -24,9 +24,23 @@ export function DashboardPage({ condos, selectedCondo }: DashboardPageProps) {
     api.minutes.list,
     selectedCondo ? { condoId: selectedCondo._id } : "skip",
   ) as Doc<"minutes">[] | undefined;
+  const voteStats = useQuery(
+    api.votes.statsByCondo,
+    selectedCondo ? { condoId: selectedCondo._id } : "skip",
+  ) as { votesToday: number; participationRate: number } | undefined;
 
   const totalCondos = condos?.length ?? 0;
   const openMinutes = (minutes ?? []).filter((minute) => minute.status === "open").length;
+  const votesTodayValue = selectedCondo
+    ? voteStats === undefined
+      ? "--"
+      : voteStats.votesToday
+    : "--";
+  const participationValue = selectedCondo
+    ? voteStats === undefined
+      ? "--"
+      : `${Math.round((voteStats.participationRate ?? 0) * 100)}%`
+    : "--";
 
   const recentActivity = useMemo(() => {
     const list = minutes ?? [];
@@ -59,12 +73,12 @@ export function DashboardPage({ condos, selectedCondo }: DashboardPageProps) {
           />
           <KPICard
             title="Votos Hoje"
-            value="--"
+            value={votesTodayValue}
             icon={Vote}
           />
           <KPICard
             title="Taxa de Participação"
-            value="--"
+            value={participationValue}
             icon={TrendingUp}
           />
         </div>

@@ -51,6 +51,7 @@ type AugmentedApi = typeof baseApi & {
     getMine: QueryRef;
     summary: QueryRef;
     listForMinute: QueryRef;
+    statsByCondo: QueryRef;
   };
   documents: {
     generateUploadUrl: MutationRef;

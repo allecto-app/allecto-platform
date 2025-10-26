@@ -113,3 +113,39 @@ export const listForMinute = query({
             });
     },
 });
+
+export const statsByCondo = query({
+    args: { condoId: v.id("condos") },
+    handler: async (ctx, { condoId }) => {
+        const minutes = await ctx.db
+            .query("minutes")
+            .withIndex("byCondo", (q) => q.eq("condoId", condoId))
+            .collect();
+
+        const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        let votesToday = 0;
+        const votingUnits = new Set<string>();
+
+        for (const minute of minutes) {
+            const minuteVotes = await ctx.db
+                .query("votes")
+                .withIndex("byMinute", (q) => q.eq("minuteId", minute._id))
+                .collect();
+            for (const vote of minuteVotes) {
+                if (vote.createdAt >= dayAgo) {
+                    votesToday += 1;
+                }
+                votingUnits.add(String(vote.unitId));
+            }
+        }
+
+        const units = await ctx.db
+            .query("units")
+            .withIndex("byCondo", (q) => q.eq("condoId", condoId))
+            .collect();
+
+        const participationRate = units.length > 0 ? votingUnits.size / units.length : 0;
+
+        return { votesToday, participationRate };
+    },
+});
