@@ -18,6 +18,7 @@ interface MinutesListPageProps {
   onNavigate: (page: string) => void;
   condoId: Id<"condos"> | null;
   sessionToken: string;
+  onSelectMinute: (minute: Doc<"minutes">) => void;
 }
 
 const formatDate = (timestamp: number) =>
@@ -29,7 +30,7 @@ const formatDateTime = (timestamp: number) =>
     timeStyle: "short",
   }).format(new Date(timestamp));
 
-export function MinutesListPage({ onNavigate, condoId, sessionToken }: MinutesListPageProps) {
+export function MinutesListPage({ onNavigate, condoId, sessionToken, onSelectMinute }: MinutesListPageProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [closingId, setClosingId] = useState<Id<"minutes"> | null>(null);
 
@@ -229,7 +230,7 @@ export function MinutesListPage({ onNavigate, condoId, sessionToken }: MinutesLi
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onNavigate("minutes-detail")}
+                            onClick={() => onSelectMinute(minute)}
                           >
                             Detalhes
                           </Button>

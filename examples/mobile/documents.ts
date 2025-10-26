@@ -10,7 +10,7 @@
  * ```ts
  * import { useSecurePdfViewer, pickAndUploadPdf } from "./documents";
  *
- * const { WebView } = useSecurePdfViewer({ convexClient, docId });
+ * const { WebView } = useSecurePdfViewer({ convexClient, docId, orgId, sessionToken });
  * ```
  */
 import { useEffect, useMemo, useState } from "react";

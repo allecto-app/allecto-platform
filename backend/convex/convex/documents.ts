@@ -209,9 +209,13 @@ export const get = query({
   args: {
     docId: v.id("documents"),
     sessionToken: v.optional(v.string()),
+    orgId: v.optional(v.string()),
   },
-  handler: async (ctx, { docId, sessionToken }) => {
-    const actor = await requireActor(ctx, { sessionToken: sessionToken ?? null });
+  handler: async (ctx, { docId, sessionToken, orgId }) => {
+    const actor = await requireActor(ctx, {
+      sessionToken: sessionToken ?? null,
+      orgIdHint: orgId ?? null,
+    });
     const doc = await ctx.db.get(docId);
     if (!doc) {
       throw new Error("NOT_FOUND");
@@ -342,9 +346,13 @@ export const listEvents = query({
     docId: v.id("documents"),
     sessionToken: v.optional(v.string()),
     limit: v.optional(v.number()),
+    orgId: v.optional(v.string()),
   },
-  handler: async (ctx, { docId, sessionToken, limit }) => {
-    const actor = await requireActor(ctx, { sessionToken: sessionToken ?? null });
+  handler: async (ctx, { docId, sessionToken, limit, orgId }) => {
+    const actor = await requireActor(ctx, {
+      sessionToken: sessionToken ?? null,
+      orgIdHint: orgId ?? null,
+    });
     const doc = await ctx.db.get(docId);
     if (!doc) {
       throw new Error("NOT_FOUND");

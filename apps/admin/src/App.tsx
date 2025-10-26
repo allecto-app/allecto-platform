@@ -221,6 +221,8 @@ function AuthenticatedShell({
   const [selectedCondoOverride, setSelectedCondoOverride] = useState<CondoDoc | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState<Id<"units"> | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<UnitRecord | null>(null);
+  const [selectedMinuteId, setSelectedMinuteId] = useState<Id<"minutes"> | null>(null);
+  const [selectedMinute, setSelectedMinute] = useState<Doc<"minutes"> | null>(null);
 
   const platformCondos = useQuery(
     api.platform.listCondos,
@@ -329,6 +331,8 @@ function AuthenticatedShell({
     if (!selectedCondo) {
       setSelectedUnitId(null);
       setSelectedUnit(null);
+      setSelectedMinuteId(null);
+      setSelectedMinute(null);
     }
   }, [selectedCondo]);
 
@@ -344,6 +348,10 @@ function AuthenticatedShell({
     if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(page)) {
       return;
     }
+    if (page !== "minutes-detail") {
+      setSelectedMinuteId(null);
+      setSelectedMinute(null);
+    }
     setCurrentPage(page);
   };
 
@@ -357,10 +365,18 @@ function AuthenticatedShell({
     }
     setSelectedCondoId(condoId);
     setUserMode(condoId ? "tenant" : "platform");
+    setSelectedMinuteId(null);
+    setSelectedMinute(null);
   };
 
   const handleLogout = async () => {
     await onLogout();
+  };
+
+  const handleSelectMinute = (minute: Doc<"minutes">) => {
+    setSelectedMinuteId(minute._id);
+    setSelectedMinute(minute);
+    setCurrentPage("minutes-detail");
   };
 
   const isLoadingCondos =
@@ -474,6 +490,7 @@ function AuthenticatedShell({
                 onNavigate={handleNavigate}
                 condoId={selectedCondo?._id ?? null}
                 sessionToken={auth.token}
+                onSelectMinute={handleSelectMinute}
               />
             )}
             {currentPage === "minutes-new" && (
@@ -484,7 +501,14 @@ function AuthenticatedShell({
               />
             )}
             {currentPage === "minutes-detail" && (
-              <MinutesDetailPage onNavigate={handleNavigate} condoId={selectedCondo?._id ?? null} />
+              <MinutesDetailPage
+                onNavigate={handleNavigate}
+                condoId={selectedCondo?._id ?? null}
+                condo={selectedCondo}
+                minuteId={selectedMinuteId}
+                minuteFallback={selectedMinute}
+                sessionToken={auth.token}
+              />
             )}
             {currentPage === "residents" && (
               <ResidentsListPage

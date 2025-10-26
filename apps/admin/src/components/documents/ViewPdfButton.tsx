@@ -56,7 +56,7 @@ export function ViewPdfButton({
     } finally {
       setIsLoading(false);
     }
-  }, [convexUrl, docId, getToken, onOpened, sessionToken]);
+  }, [convexUrl, docId, getToken, onOpened, orgId, sessionToken]);
 
   return (
     <Button

@@ -73,3 +73,43 @@ export const summary = query({
         return { total, agree, disagree, agreePct: total ? agree / total : 0 };
     },
 });
+
+export const listForMinute = query({
+    args: { minuteId: v.id("minutes") },
+    handler: async (ctx, { minuteId }) => {
+        const votes = await ctx.db
+            .query("votes")
+            .withIndex("byMinute", (q) => q.eq("minuteId", minuteId))
+            .collect();
+
+        const residentIds = Array.from(new Set(votes.map((vote) => vote.residentId)));
+        const unitIds = Array.from(new Set(votes.map((vote) => vote.unitId)));
+
+        const residents = await Promise.all(residentIds.map((id) => ctx.db.get(id)));
+        const units = await Promise.all(unitIds.map((id) => ctx.db.get(id)));
+
+        const residentMap = new Map(residents.filter(Boolean).map((resident) => [resident!._id, resident!]));
+        const unitMap = new Map(units.filter(Boolean).map((unit) => [unit!._id, unit!]));
+
+        return votes
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .map((vote) => {
+                const resident = residentMap.get(vote.residentId);
+                const unit = unitMap.get(vote.unitId);
+                return {
+                    _id: vote._id,
+                    minuteId: vote.minuteId,
+                    unitId: vote.unitId,
+                    residentId: vote.residentId,
+                    choice: vote.choice,
+                    comment: vote.comment ?? null,
+                    createdAt: vote.createdAt,
+                    residentName: resident?.name ?? "Morador(a)",
+                    residentRole: resident?.role ?? null,
+                    unitCode: unit?.code ?? null,
+                    unitBlock: unit?.block ?? null,
+                    unitFloor: unit?.floor ?? null,
+                };
+            });
+    },
+});

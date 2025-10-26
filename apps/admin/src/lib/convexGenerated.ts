@@ -46,6 +46,12 @@ type AugmentedApi = typeof baseApi & {
     publish: MutationRef;
     close: MutationRef;
   };
+  votes: {
+    cast: MutationRef;
+    getMine: QueryRef;
+    summary: QueryRef;
+    listForMinute: QueryRef;
+  };
   documents: {
     generateUploadUrl: MutationRef;
     finalizeUpload: MutationRef;
