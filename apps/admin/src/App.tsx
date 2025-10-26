@@ -25,7 +25,7 @@ import { AuditPage } from "./screens/AuditPage";
 import { SupportPage } from "./screens/SupportPage";
 import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
-import { Palette, Package } from "lucide-react";
+import { Palette, Package, Loader2 } from "lucide-react";
 import { api, Doc, Id } from "./lib/convexGenerated";
 import { applyBrandingTheme } from "./lib/brandingTheme";
 import type { ResidentRecord } from "./types/resident";
@@ -39,12 +39,54 @@ type CondoDoc = Doc<"condos">;
 
 
 const AUTH_STORAGE_KEY = "allecto-admin-auth";
+const PAGE_STORAGE_KEY = "allecto-admin-current-page";
+
+function readStoredSession(
+  hostSubdomain: string | null,
+  isCondoHost: boolean,
+): AdminAuthSession | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    const parsed = JSON.parse(stored) as Partial<AdminAuthSession>;
+    const baseValid =
+      parsed &&
+      typeof parsed.token === "string" &&
+      parsed.token.length >= 32 &&
+      Array.isArray(parsed.roles) &&
+      typeof parsed.expiresAt === "number" &&
+      parsed.expiresAt > Date.now() &&
+      (parsed.type === "platform" || parsed.type === "resident");
+    const platformValid =
+      baseValid && parsed.type === "platform" && typeof parsed.userId === "string";
+    const residentValid =
+      baseValid &&
+      parsed.type === "resident" &&
+      typeof parsed.userId === "string" &&
+      typeof parsed.condoId === "string" &&
+      typeof parsed.condoName === "string" &&
+      typeof parsed.condoSubdomain === "string";
+    const hostAligned = !isCondoHost
+      ? true
+      : parsed?.type === "resident" && parsed.condoSubdomain === hostSubdomain;
+
+    if (hostAligned && (platformValid || residentValid)) {
+      return parsed as AdminAuthSession;
+    }
+  } catch {
+    // fall through and clear below
+  }
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  return null;
+}
 
 export default function App() {
   const hostInfo = useHostInfo();
   const hostSubdomain = hostInfo.subdomain ?? null;
   const isCondoHost = hostInfo.isCondoSubdomain;
   const [auth, setAuth] = useState<AdminAuthSession | null>(null);
+  const [isAuthResolved, setIsAuthResolved] = useState(false);
 
   async function syncSessionCookie(token: string, expiresAt: number) {
     try {
@@ -60,53 +102,19 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem(AUTH_STORAGE_KEY);
-      if (!stored) return;
-      const parsed = JSON.parse(stored) as Partial<AdminAuthSession>;
-      const baseValid =
-        parsed &&
-        typeof parsed.token === "string" &&
-        parsed.token.length >= 32 &&
-        Array.isArray(parsed.roles) &&
-        typeof parsed.expiresAt === "number" &&
-        parsed.expiresAt > Date.now() &&
-        (parsed.type === "platform" || parsed.type === "resident");
-      const platformValid =
-        baseValid &&
-        parsed.type === "platform" &&
-        typeof parsed.userId === "string";
-      const residentValid =
-        baseValid &&
-        parsed.type === "resident" &&
-        typeof parsed.userId === "string" &&
-        typeof parsed.condoId === "string" &&
-        typeof parsed.condoName === "string" &&
-        typeof parsed.condoSubdomain === "string";
-
-      const hostAligned = !isCondoHost
-        ? true
-        : parsed?.type === "resident" && parsed.condoSubdomain === hostSubdomain;
-
-      if (hostAligned && (platformValid || residentValid)) {
-        setAuth(parsed as AdminAuthSession);
-      } else {
-        window.localStorage.removeItem(AUTH_STORAGE_KEY);
-      }
-    } catch {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
+    const stored = readStoredSession(hostSubdomain, isCondoHost);
+    setAuth(stored);
+    setIsAuthResolved(true);
   }, [hostSubdomain, isCondoHost]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!isAuthResolved || typeof window === "undefined") return;
     if (auth) {
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
     } else {
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
-  }, [auth]);
+  }, [auth, isAuthResolved]);
 
   useEffect(() => {
     if (!auth || !auth.token || auth.token.length < 32 || auth.expiresAt <= Date.now()) {
@@ -163,6 +171,18 @@ export default function App() {
     setAuth(null);
   };
 
+  if (!isAuthResolved) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/30">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Carregando...</span>
+        </div>
+        <Toaster />
+      </div>
+    );
+  }
+
   if (!auth) {
     return (
       <>
@@ -205,12 +225,9 @@ function AuthenticatedShell({
       auth.roles.includes("ops"));
   const isResident = auth.type === "resident";
 
-  const initialPage = canSeePlatform
-    ? "tenants"
-    : isResident || isCondoDomain
-    ? "minutes"
-    : "dashboard";
-
+  const defaultPage = canSeePlatform ? "tenants" : isResident || isCondoDomain ? "minutes" : "dashboard";
+  const storedPage = typeof window !== "undefined" ? window.localStorage.getItem(PAGE_STORAGE_KEY) : null;
+  const initialPage = storedPage ?? defaultPage;
   const [currentPage, setCurrentPage] = useState<string>(initialPage);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>(canSeePlatform ? "platform" : "tenant");
@@ -344,6 +361,11 @@ function AuthenticatedShell({
     }
   }, [canSeePlatform, currentPage, isResident, isCondoDomain]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PAGE_STORAGE_KEY, currentPage);
+  }, [currentPage]);
+
   const handleNavigate = (page: string) => {
     if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(page)) {
       return;
@@ -353,7 +375,15 @@ function AuthenticatedShell({
       setSelectedMinute(null);
     }
     setCurrentPage(page);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PAGE_STORAGE_KEY, page);
+    }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PAGE_STORAGE_KEY, currentPage);
+  }, [currentPage]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed((prev) => !prev);
