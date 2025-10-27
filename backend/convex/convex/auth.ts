@@ -2,7 +2,7 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 import bcrypt from "bcryptjs";
-import { resend, FROM } from "./_email";
+import { FROM, sendEmail } from "./_email";
 
 const GENERIC_AUTH_ERROR = "Invalid email or password";
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -50,7 +50,31 @@ export const requestOtp = mutation({
             expiresAt,
             createdAt: now,
         });
-        // TODO send via provider
+        if (a.email) {
+            const subject = "Seu código de acesso - Allecto";
+            const html = `
+              <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+                <p>Olá!</p>
+                <p>Seu código de acesso é:</p>
+                <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${code}</p>
+                <p>Ele expira em 15 minutos.</p>
+                <p>Se você não solicitou este acesso, ignore este email.</p>
+              </div>
+            `;
+            const text = `Olá!
+
+Seu código de acesso é: ${code}
+
+Ele expira em 15 minutos.
+Se você não solicitou este acesso, ignore este email.`;
+            await sendEmail({
+                from: FROM,
+                to: a.email,
+                subject,
+                html,
+                text,
+            });
+        }
         return { ok: true, devCode: code };
     },
 });
@@ -137,26 +161,13 @@ Se você não solicitou este acesso, ignore este email.
 
 Equipe Allecto`;
 
-        if (!process.env.RESEND_API_KEY) {
-            console.warn(
-                "[auth.requestResidentOtp] RESEND_API_KEY not configured; OTP for",
-                cleanedEmail,
-                "é",
-                code,
-            );
-        } else {
-            try {
-                await resend.emails.send({
-                    from: FROM,
-                    to: cleanedEmail,
-                    subject,
-                    html,
-                    text,
-                });
-            } catch (error) {
-                console.error("Failed to send resident OTP email", error);
-            }
-        }
+        await sendEmail({
+            from: FROM,
+            to: cleanedEmail,
+            subject,
+            html,
+            text,
+        });
 
         return { ok: true, devCode: code };
     },
@@ -305,26 +316,13 @@ Use este código para continuar a redefinição: ${code}
 O código expira em 15 minutos.
 Se você não solicitou esta ação, basta ignorar esta mensagem.`;
 
-        if (!process.env.RESEND_API_KEY) {
-            console.warn(
-                "[auth.requestPasswordReset] RESEND_API_KEY not configured; reset code for",
-                normalizedEmail,
-                "é",
-                code,
-            );
-        } else {
-            try {
-                await resend.emails.send({
-                    from: FROM,
-                    to: normalizedEmail,
-                    subject,
-                    html,
-                    text,
-                });
-            } catch (error) {
-                console.error("Failed to send password reset email", error);
-            }
-        }
+        await sendEmail({
+            from: FROM,
+            to: normalizedEmail,
+            subject,
+            html,
+            text,
+        });
 
         const includeDevCode = process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY;
         return { ok: true, devCode: includeDevCode ? code : undefined };
