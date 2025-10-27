@@ -3,7 +3,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeEmail, randomToken, sha256 } from "./_secu";
-import { resend as resendClient, FROM } from "./_email";
+import { sendEmail, DEFAULT_FROM } from "./lib/email";
 import { inviteError, DEFAULT_TTL_HOURS } from "./invites.shared";
 import { internal } from "./_generated/api";
 
@@ -83,22 +83,17 @@ Se você não solicitou este convite, ignore esta mensagem.
 Abraços,
 Equipe Allecto`;
 
-      if (!process.env.RESEND_API_KEY) {
-        console.warn(
-          "[invites.createAndEmail] RESEND_API_KEY not configured; skipping email send.",
-        );
-        console.info(
-          "[invites.createAndEmail] Accept URL for manual testing:",
-          acceptUrl,
-        );
-      } else {
-        await resendClient.emails.send({
-          from: FROM,
+      try {
+        await sendEmail({
           to: normalizedEmail,
           subject,
           html,
           text,
+          from: DEFAULT_FROM,
         });
+      } catch (error) {
+        console.error("[invites.createAndEmail] failed to send email; accept URL:", acceptUrl);
+        throw error;
       }
     } catch (error) {
       console.error("Failed to send invite email", error);

@@ -2,7 +2,7 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 import bcrypt from "bcryptjs";
-import { FROM, sendEmail } from "./_email";
+import { internal } from "./_generated/api";
 
 const GENERIC_AUTH_ERROR = "Invalid email or password";
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -67,13 +67,16 @@ Seu código de acesso é: ${code}
 
 Ele expira em 15 minutos.
 Se você não solicitou este acesso, ignore este email.`;
-            await sendEmail({
-                from: FROM,
-                to: a.email,
-                subject,
-                html,
-                text,
-            });
+            try {
+                await ctx.scheduler.runAfter(0, internal.email.send, {
+                    to: a.email,
+                    subject,
+                    html,
+                    text,
+                });
+            } catch (error) {
+                console.error("Failed to send OTP email", error);
+            }
         }
         return { ok: true, devCode: code };
     },
@@ -161,13 +164,16 @@ Se você não solicitou este acesso, ignore este email.
 
 Equipe Allecto`;
 
-        await sendEmail({
-            from: FROM,
-            to: cleanedEmail,
-            subject,
-            html,
-            text,
-        });
+        try {
+            await ctx.scheduler.runAfter(0, internal.email.send, {
+                to: cleanedEmail,
+                subject,
+                html,
+                text,
+            });
+        } catch (error) {
+            console.error("Failed to send resident OTP email", error);
+        }
 
         return { ok: true, devCode: code };
     },
@@ -316,13 +322,16 @@ Use este código para continuar a redefinição: ${code}
 O código expira em 15 minutos.
 Se você não solicitou esta ação, basta ignorar esta mensagem.`;
 
-        await sendEmail({
-            from: FROM,
-            to: normalizedEmail,
-            subject,
-            html,
-            text,
-        });
+        try {
+            await ctx.scheduler.runAfter(0, internal.email.send, {
+                to: normalizedEmail,
+                subject,
+                html,
+                text,
+            });
+        } catch (error) {
+            console.error("Failed to send password reset email", error);
+        }
 
         const includeDevCode = process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY;
         return { ok: true, devCode: includeDevCode ? code : undefined };

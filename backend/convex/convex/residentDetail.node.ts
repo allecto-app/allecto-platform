@@ -2,7 +2,7 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { resend, FROM } from "./_email";
+import { sendEmail, DEFAULT_FROM } from "./lib/email";
 import { normalizeEmail } from "./_secu";
 
 export const resendOtp = action({
@@ -50,16 +50,16 @@ Se você não solicitou este acesso, ignore este email.
 
 Equipe Allecto`;
 
-    if (!process.env.RESEND_API_KEY) {
-      console.warn("[residentDetail.resendOtp] RESEND_API_KEY missing; OTP:", code);
-    } else {
-      await resend.emails.send({
-        from: FROM,
+    try {
+      await sendEmail({
         to: resident.email,
         subject,
         html,
         text,
+        from: DEFAULT_FROM,
       });
+    } catch (error) {
+      console.error("[residentDetail.resendOtp] Failed to send OTP email", error);
     }
 
     return { ok: true };
