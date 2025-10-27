@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut } from "lucide-react";
+import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -121,14 +121,24 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, 
             </span>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleCollapse}
-          className={cn("h-8 w-8", collapsed && "mx-auto")}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="h-8 w-8 shrink-0 md:hidden"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className={cn("hidden h-8 w-8 md:inline-flex", collapsed && "mx-auto")}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="h-[calc(100vh-4rem)]">

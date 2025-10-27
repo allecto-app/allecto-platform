@@ -286,6 +286,7 @@ export function MinutesDetailPage({
                   orgId={documentRecord.orgId}
                   label="Visualizar PDF"
                   variant="outline"
+                  className="w-full sm:w-auto"
                 />
               </div>
             )}

@@ -30,9 +30,9 @@ export function PageHeader({
   contextPill,
 }: PageHeaderProps) {
   return (
-    <div className="mb-6">
+    <div className="mb-6 space-y-3">
       {breadcrumb && breadcrumb.length > 0 && (
-        <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           {breadcrumb.map((item, index) => (
             <div key={index} className="flex items-center gap-2">
               {index > 0 && <ChevronRight className="h-4 w-4" />}
@@ -41,8 +41,8 @@ export function PageHeader({
           ))}
         </div>
       )}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <h1>{title}</h1>
           {contextPill && (
             <Badge variant="outline" className="gap-1">
@@ -52,12 +52,13 @@ export function PageHeader({
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
           {secondaryAction && (
             <Button
               variant="outline"
               onClick={secondaryAction.onClick}
               disabled={secondaryAction.disabled}
+              className="w-full sm:w-auto"
             >
               {secondaryAction.label}
             </Button>
@@ -67,6 +68,7 @@ export function PageHeader({
               variant={primaryAction.variant || "default"}
               onClick={primaryAction.onClick}
               disabled={primaryAction.disabled}
+              className="w-full sm:w-auto"
             >
               {primaryAction.label}
             </Button>

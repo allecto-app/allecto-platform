@@ -358,9 +358,9 @@ export function UnitDetailPage({
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>Moradores Vinculados</CardTitle>
-              <Button onClick={() => setLinkResidentOpen(true)}>
+              <Button onClick={() => setLinkResidentOpen(true)} className="w-full sm:w-auto">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Vincular Morador
               </Button>

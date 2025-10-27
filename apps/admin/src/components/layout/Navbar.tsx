@@ -64,9 +64,15 @@ export function Navbar({
           </AlertDescription>
         </Alert>
       )}
-      <header className="flex h-16 items-center gap-4 border-b border-border bg-background px-6">
+      <header className="flex items-center gap-3 border-b border-border bg-background px-4 py-3 md:h-16 md:flex-nowrap md:gap-4 md:px-6 md:py-0">
         {onToggleSidebar && (
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={onToggleSidebar}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={onToggleSidebar}
+            aria-label="Abrir menu de navegação"
+          >
             <Menu className="h-5 w-5" />
           </Button>
         )}
@@ -79,12 +85,7 @@ export function Navbar({
           />
         )}
 
-        <div className="relative flex flex-1 max-w-md items-center gap-2">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input type="search" placeholder="Buscar..." className="w-full pl-9" />
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex w-full items-center justify-end gap-2 md:ml-auto md:w-auto">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">

@@ -33,7 +33,7 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[280px] justify-between"
+          className="w-full max-w-[230px] justify-between"
         >
           {selectedCondo ? (
             <div className="flex items-center gap-2 overflow-hidden">

@@ -24,14 +24,15 @@ import { OnboardingPage } from "./screens/OnboardingPage";
 import { AuditPage } from "./screens/AuditPage";
 import { SupportPage } from "./screens/SupportPage";
 import { Toaster } from "./components/ui/sonner";
-import { Button } from "./components/ui/button";
 import { Palette, Package, Loader2 } from "lucide-react";
+import { Button } from "./components/ui/button";
 import { api, Doc, Id } from "./lib/convexGenerated";
 import { applyBrandingTheme } from "./lib/brandingTheme";
 import type { ResidentRecord } from "./types/resident";
 import type { UnitRecord } from "./types/unit";
 import { AdminAuthSession } from "./lib/authSession";
 import { useHostInfo } from "./lib/hostContext";
+import { cn } from "./components/ui/utils";
 
 type UserMode = "platform" | "tenant";
 
@@ -230,6 +231,7 @@ function AuthenticatedShell({
   const initialPage = storedPage ?? defaultPage;
   const [currentPage, setCurrentPage] = useState<string>(initialPage);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userMode, setUserMode] = useState<UserMode>(canSeePlatform ? "platform" : "tenant");
   const initialCondoId = auth.type === "resident" ? auth.condoId : null;
   const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
@@ -370,6 +372,7 @@ function AuthenticatedShell({
     if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(page)) {
       return;
     }
+    setIsMobileSidebarOpen(false);
     if (page !== "minutes-detail") {
       setSelectedMinuteId(null);
       setSelectedMinute(null);
@@ -385,9 +388,45 @@ function AuthenticatedShell({
     window.localStorage.setItem(PAGE_STORAGE_KEY, currentPage);
   }, [currentPage]);
 
-  const toggleSidebar = () => {
+  const handleDesktopSidebarToggle = () => {
     setSidebarCollapsed((prev) => !prev);
   };
+
+  const closeMobileSidebar = () => {
+    setIsMobileSidebarOpen(false);
+  };
+
+  const handleSidebarToggle = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsMobileSidebarOpen((prev) => !prev);
+      return;
+    }
+    handleDesktopSidebarToggle();
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const originalOverflow = document.body.style.overflow;
+    if (isMobileSidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isMobileSidebarOpen]);
 
   const handleSelectCondo = (condoId: Id<"condos"> | null) => {
     if (!canSeePlatform || isCondoDomain) {
@@ -400,6 +439,7 @@ function AuthenticatedShell({
   };
 
   const handleLogout = async () => {
+    closeMobileSidebar();
     await onLogout();
   };
 
@@ -407,6 +447,15 @@ function AuthenticatedShell({
     setSelectedMinuteId(minute._id);
     setSelectedMinute(minute);
     setCurrentPage("minutes-detail");
+    closeMobileSidebar();
+  };
+
+  const handleSidebarNavigate = (page: string) => {
+    if (page === "__logout") {
+      void handleLogout();
+      return;
+    }
+    handleNavigate(page);
   };
 
   const isLoadingCondos =
@@ -463,204 +512,234 @@ function AuthenticatedShell({
     (isResident && (auth.roles.includes("syndic") || auth.roles.includes("manager")));
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        currentPage={currentPage}
-        onNavigate={(page) => {
-          if (page === "__logout") {
-            void handleLogout();
-            return;
-          }
-          handleNavigate(page);
-        }}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebar}
-        mode={sidebarMode}
-        selectedCondo={selectedCondo}
-      />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Navbar
-          onToggleSidebar={toggleSidebar}
-          onNavigate={handleNavigate}
-          mode={showPlatformSections ? userMode : "tenant"}
-          condos={condos}
-          selectedCondo={selectedCondo}
-          onSelectCondo={showPlatformSections ? handleSelectCondo : undefined}
-          onLogout={handleLogout}
-          userName={auth.name}
-          sessionToken={auth.token}
-        />
-        <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
-          <div className="mx-auto max-w-7xl">
-            {showPlatformSections && currentPage === "tenants" && (
-              <TenantsPage
-                onNavigate={handleNavigate}
-                condos={condos}
-                isLoading={isLoadingCondos}
-                onSelectCondo={handleSelectCondo}
-                selectedCondoId={selectedCondoId}
-              />
-            )}
-            {showPlatformSections && currentPage === "onboarding" && (
-              <OnboardingPage
-                onNavigate={handleNavigate}
-                onSelectCondo={handleSelectCondo}
-                sessionToken={auth.token}
-              />
-            )}
-            {showPlatformSections && currentPage === "audit" && <AuditPage />}
-            {showPlatformSections && currentPage === "support" && (
-              <SupportPage onNavigate={handleNavigate} onSelectCondo={handleSelectCondo} />
-            )}
+    <>
+      <div className="flex h-screen overflow-hidden">
+        <div className="hidden md:flex md:flex-shrink-0">
+          <Sidebar
+            currentPage={currentPage}
+            onNavigate={handleSidebarNavigate}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={handleDesktopSidebarToggle}
+            mode={sidebarMode}
+            selectedCondo={selectedCondo}
+          />
+        </div>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Navbar
+            onToggleSidebar={handleSidebarToggle}
+            onNavigate={handleNavigate}
+            mode={showPlatformSections ? userMode : "tenant"}
+            condos={condos}
+            selectedCondo={selectedCondo}
+            onSelectCondo={showPlatformSections ? handleSelectCondo : undefined}
+            onLogout={handleLogout}
+            userName={auth.name}
+            sessionToken={auth.token}
+          />
+          <main className="flex-1 overflow-y-auto bg-muted/30 p-4 sm:p-6">
+            <div className="mx-auto max-w-7xl">
+              {showPlatformSections && currentPage === "tenants" && (
+                <TenantsPage
+                  onNavigate={handleNavigate}
+                  condos={condos}
+                  isLoading={isLoadingCondos}
+                  onSelectCondo={handleSelectCondo}
+                  selectedCondoId={selectedCondoId}
+                />
+              )}
+              {showPlatformSections && currentPage === "onboarding" && (
+                <OnboardingPage
+                  onNavigate={handleNavigate}
+                  onSelectCondo={handleSelectCondo}
+                  sessionToken={auth.token}
+                />
+              )}
+              {showPlatformSections && currentPage === "audit" && <AuditPage />}
+              {showPlatformSections && currentPage === "support" && (
+                <SupportPage onNavigate={handleNavigate} onSelectCondo={handleSelectCondo} />
+              )}
 
-            {currentPage === "dashboard" && (
-              <DashboardPage condos={condos} selectedCondo={selectedCondo} />
-            )}
-            {currentPage === "minutes" && (
-              <MinutesListPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-                sessionToken={auth.token}
-                onSelectMinute={handleSelectMinute}
-              />
-            )}
-            {currentPage === "minutes-new" && (
-              <MinutesNewPage
-                onNavigate={handleNavigate}
-                condo={selectedCondo}
-                sessionToken={auth.token}
-              />
-            )}
-            {currentPage === "minutes-detail" && (
-              <MinutesDetailPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-                condo={selectedCondo}
-                minuteId={selectedMinuteId}
-                minuteFallback={selectedMinute}
-                sessionToken={auth.token}
-              />
-            )}
-            {currentPage === "residents" && (
-              <ResidentsListPage
-                onNavigate={handleNavigate}
-                condo={selectedCondo}
-                canInviteSyndic={canInviteSyndic}
-                onSelectResident={(resident) => {
-                  const record: ResidentRecord = {
-                    id: resident._id,
-                    name: resident.name,
-                    email: resident.email ?? null,
-                    phone: resident.phone ?? null,
-                    role: resident.role,
-                    isActive: resident.isActive,
-                    condoId: resident.condoId,
-                    condoName: null,
-                    condoSubdomain: null,
-                    createdAt: resident.createdAt,
-                    updatedAt: resident.updatedAt,
-                  };
-                  setSelectedResidentId(record.id);
-                  setSelectedResident(record);
-                }}
-              />
-            )}
-            {currentPage === "resident-detail" && (
-              <ResidentDetailPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-                residentId={selectedResidentId}
-                residentFallback={selectedResident}
-                onResidentLoaded={(resident) => {
-                  setSelectedResidentId(resident.id);
-                  setSelectedResident(resident);
-                }}
-              />
-            )}
-            {currentPage === "resident-edit" && (
-              <ResidentEditPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-                residentId={selectedResidentId}
-                residentFallback={selectedResident}
-                onResidentUpdated={(resident) => {
-                  setSelectedResidentId(resident.id);
-                  setSelectedResident(resident);
-                }}
-              />
-            )}
-            {currentPage === "units" && (
-              <UnitsListPage
-                onNavigate={handleNavigate}
-                condo={selectedCondo}
-                onSelectUnit={(unit) => {
-                  const record: UnitRecord = {
-                    id: unit._id,
-                    condoId: unit.condoId,
-                    code: unit.code,
-                    block: unit.block ?? null,
-                    floor: unit.floor ?? null,
-                    createdAt: unit.createdAt,
-                    updatedAt: unit.updatedAt,
-                    condoName: selectedCondo?.name ?? null,
-                  };
-                  setSelectedUnitId(record.id);
-                  setSelectedUnit(record);
-                }}
-              />
-            )}
-            {currentPage === "unit-detail" && (
-              <UnitDetailPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-                unitId={selectedUnitId}
-                unitFallback={selectedUnit}
-                onUnitLoaded={(unit) => {
-                  setSelectedUnitId(unit.id);
-                  setSelectedUnit(unit);
-                }}
-              />
-            )}
-            {currentPage === "unit-edit" && (
-              <UnitEditPage
-                onNavigate={handleNavigate}
-                condoId={selectedCondo?._id ?? null}
-                unitId={selectedUnitId}
-                unitFallback={selectedUnit}
-                onUnitLoaded={(unit) => {
-                  setSelectedUnitId(unit.id);
-                  setSelectedUnit(unit);
-                }}
-                onUnitUpdated={(unit) => {
-                  setSelectedUnitId(unit.id);
-                  setSelectedUnit(unit);
-                }}
-                onUnitDeleted={() => {
-                  setSelectedUnitId(null);
-                  setSelectedUnit(null);
-                }}
-              />
-            )}
-            {currentPage === "settings" && (
-              <SettingsPage
-                condo={selectedCondo}
-                onBrandingApplied={(branding) => applyBrandingTheme(branding)}
-                onCondoUpdated={(condoDoc) => {
-                  setSelectedCondoOverride(condoDoc);
-                  applyBrandingTheme(condoDoc.branding);
-                }}
-              />
-            )}
-            {currentPage === "notifications" && (
-              <NotificationsPage
-                condoId={selectedCondo?._id ?? null}
-                condo={selectedCondo}
-                sessionToken={auth.token}
-              />
-            )}
-          </div>
-        </main>
+              {currentPage === "dashboard" && (
+                <DashboardPage condos={condos} selectedCondo={selectedCondo} />
+              )}
+              {currentPage === "minutes" && (
+                <MinutesListPage
+                  onNavigate={handleNavigate}
+                  condoId={selectedCondo?._id ?? null}
+                  sessionToken={auth.token}
+                  onSelectMinute={handleSelectMinute}
+                />
+              )}
+              {currentPage === "minutes-new" && (
+                <MinutesNewPage
+                  onNavigate={handleNavigate}
+                  condo={selectedCondo}
+                  sessionToken={auth.token}
+                />
+              )}
+              {currentPage === "minutes-detail" && (
+                <MinutesDetailPage
+                  onNavigate={handleNavigate}
+                  condoId={selectedCondo?._id ?? null}
+                  condo={selectedCondo}
+                  minuteId={selectedMinuteId}
+                  minuteFallback={selectedMinute}
+                  sessionToken={auth.token}
+                />
+              )}
+              {currentPage === "residents" && (
+                <ResidentsListPage
+                  onNavigate={handleNavigate}
+                  condo={selectedCondo}
+                  canInviteSyndic={canInviteSyndic}
+                  onSelectResident={(resident) => {
+                    const record: ResidentRecord = {
+                      id: resident._id,
+                      name: resident.name,
+                      email: resident.email ?? null,
+                      phone: resident.phone ?? null,
+                      role: resident.role,
+                      isActive: resident.isActive,
+                      condoId: resident.condoId,
+                      condoName: null,
+                      condoSubdomain: null,
+                      createdAt: resident.createdAt,
+                      updatedAt: resident.updatedAt,
+                    };
+                    setSelectedResidentId(record.id);
+                    setSelectedResident(record);
+                  }}
+                />
+              )}
+              {currentPage === "resident-detail" && (
+                <ResidentDetailPage
+                  onNavigate={handleNavigate}
+                  condoId={selectedCondo?._id ?? null}
+                  residentId={selectedResidentId}
+                  residentFallback={selectedResident}
+                  onResidentLoaded={(resident) => {
+                    setSelectedResidentId(resident.id);
+                    setSelectedResident(resident);
+                  }}
+                />
+              )}
+              {currentPage === "resident-edit" && (
+                <ResidentEditPage
+                  onNavigate={handleNavigate}
+                  condoId={selectedCondo?._id ?? null}
+                  residentId={selectedResidentId}
+                  residentFallback={selectedResident}
+                  onResidentUpdated={(resident) => {
+                    setSelectedResidentId(resident.id);
+                    setSelectedResident(resident);
+                  }}
+                />
+              )}
+              {currentPage === "units" && (
+                <UnitsListPage
+                  onNavigate={handleNavigate}
+                  condo={selectedCondo}
+                  onSelectUnit={(unit) => {
+                    const record: UnitRecord = {
+                      id: unit._id,
+                      condoId: unit.condoId,
+                      code: unit.code,
+                      block: unit.block ?? null,
+                      floor: unit.floor ?? null,
+                      createdAt: unit.createdAt,
+                      updatedAt: unit.updatedAt,
+                      condoName: selectedCondo?.name ?? null,
+                    };
+                    setSelectedUnitId(record.id);
+                    setSelectedUnit(record);
+                  }}
+                />
+              )}
+              {currentPage === "unit-detail" && (
+                <UnitDetailPage
+                  onNavigate={handleNavigate}
+                  condoId={selectedCondo?._id ?? null}
+                  unitId={selectedUnitId}
+                  unitFallback={selectedUnit}
+                  onUnitLoaded={(unit) => {
+                    setSelectedUnitId(unit.id);
+                    setSelectedUnit(unit);
+                  }}
+                />
+              )}
+              {currentPage === "unit-edit" && (
+                <UnitEditPage
+                  onNavigate={handleNavigate}
+                  condoId={selectedCondo?._id ?? null}
+                  unitId={selectedUnitId}
+                  unitFallback={selectedUnit}
+                  onUnitLoaded={(unit) => {
+                    setSelectedUnitId(unit.id);
+                    setSelectedUnit(unit);
+                  }}
+                  onUnitUpdated={(unit) => {
+                    setSelectedUnitId(unit.id);
+                    setSelectedUnit(unit);
+                  }}
+                  onUnitDeleted={() => {
+                    setSelectedUnitId(null);
+                    setSelectedUnit(null);
+                  }}
+                />
+              )}
+              {currentPage === "settings" && (
+                <SettingsPage
+                  condo={selectedCondo}
+                  onBrandingApplied={(branding) => applyBrandingTheme(branding)}
+                  onCondoUpdated={(condoDoc) => {
+                    setSelectedCondoOverride(condoDoc);
+                    applyBrandingTheme(condoDoc.branding);
+                  }}
+                />
+              )}
+              {currentPage === "notifications" && (
+                <NotificationsPage
+                  condoId={selectedCondo?._id ?? null}
+                  condo={selectedCondo}
+                  sessionToken={auth.token}
+                />
+              )}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+      <div
+        className={cn(
+          "fixed inset-0 z-40 flex transform transition-transform duration-300 md:hidden",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+        )}
+        aria-hidden={!isMobileSidebarOpen}
+      >
+        <button
+          type="button"
+          className={cn(
+            "absolute inset-0 bg-black/40 transition-opacity",
+            isMobileSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          )}
+          onClick={closeMobileSidebar}
+          aria-label="Fechar menu lateral"
+        />
+        <div
+          className="relative h-full w-72 max-w-[85vw] shadow-xl"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu de navegação"
+        >
+          <Sidebar
+            currentPage={currentPage}
+            onNavigate={handleSidebarNavigate}
+            collapsed={false}
+            onToggleCollapse={closeMobileSidebar}
+            mode={sidebarMode}
+            selectedCondo={selectedCondo}
+          />
+        </div>
+      </div>
+    </>
   );
 }
