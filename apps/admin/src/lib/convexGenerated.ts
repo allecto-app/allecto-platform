@@ -81,6 +81,11 @@ type AugmentedApi = typeof baseApi & {
     get: QueryRef;
     resendOtp: ActionRef;
   };
+  billing: {
+    createCheckoutSession: ActionRef;
+    createPortalSession: ActionRef;
+    entitlements: QueryRef;
+  };
 };
 
 type AugmentedInternal = typeof baseInternal & {
@@ -89,6 +94,9 @@ type AugmentedInternal = typeof baseInternal & {
     _createInviteRecord: InternalFunctionRef;
     _markInviteRevoked: InternalFunctionRef;
     _logSecurityEvent: InternalFunctionRef;
+  };
+  billing: {
+    handleStripeWebhook: InternalFunctionRef;
   };
 };
 
@@ -106,6 +114,8 @@ export type TableNames =
   | "documents"
   | "documentEvents"
   | "otps"
+  | "stripeCustomers"
+  | "subscriptions"
   | "platformUsers"
   | "loginAttempts"
   | "sessions"
@@ -211,6 +221,35 @@ type DocByTable = {
     userId: string;
     event: "upload" | "view";
     createdAt: number;
+  };
+  stripeCustomers: DefaultDoc<"stripeCustomers"> & {
+    tenantId: Id<"condos">;
+    stripeCustomerId: string;
+    email: string;
+    createdAt: number;
+    updatedAt?: number;
+  };
+  subscriptions: DefaultDoc<"subscriptions"> & {
+    tenantId: Id<"condos">;
+    stripeSubscriptionId: string;
+    productId: string;
+    priceId: string;
+    status:
+      | "active"
+      | "trialing"
+      | "past_due"
+      | "canceled"
+      | "unpaid"
+      | "incomplete"
+      | "incomplete_expired";
+    currentPeriodStart: number;
+    currentPeriodEnd: number;
+    cancelAt?: number;
+    cancelAtPeriodEnd?: boolean;
+    trialEnd?: number;
+    latestInvoiceId?: string;
+    latestInvoiceStatus?: string;
+    updatedAt: number;
   };
   notificationLogs: DefaultDoc<"notificationLogs"> & {
     condoId: Id<"condos">;

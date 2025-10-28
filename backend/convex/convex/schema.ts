@@ -146,6 +146,44 @@ export default defineSchema({
     .index("byCondoEmail", ["condoId", "email"])
     .index("byCondoPhone", ["condoId", "phone"]),
 
+  stripeCustomers: defineTable({
+    tenantId: v.id("condos"),
+    stripeCustomerId: v.string(),
+    email: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("byTenant", ["tenantId"])
+    .index("byStripeCustomerId", ["stripeCustomerId"])
+    .index("byEmail", ["email"]),
+
+  subscriptions: defineTable({
+    tenantId: v.id("condos"),
+    stripeSubscriptionId: v.string(),
+    productId: v.string(),
+    priceId: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("trialing"),
+      v.literal("past_due"),
+      v.literal("canceled"),
+      v.literal("unpaid"),
+      v.literal("incomplete"),
+      v.literal("incomplete_expired")
+    ),
+    currentPeriodStart: v.number(),
+    currentPeriodEnd: v.number(),
+    cancelAt: v.optional(v.number()),
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    trialEnd: v.optional(v.number()),
+    latestInvoiceId: v.optional(v.string()),
+    latestInvoiceStatus: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("byTenant", ["tenantId"])
+    .index("byStripeSubscriptionId", ["stripeSubscriptionId"])
+    .index("byPriceId", ["priceId"]),
+
   platformUsers: defineTable({
     email: v.string(),
     name: v.optional(v.string()),

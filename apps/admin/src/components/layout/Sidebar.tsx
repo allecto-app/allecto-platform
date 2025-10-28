@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X } from "lucide-react";
+import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X, CreditCard } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -30,6 +30,7 @@ const tenantNavigation = [
   { name: "Moradores", icon: Users, page: "residents" },
   { name: "Unidades", icon: Building2, page: "units" },
   { name: "Notificações", icon: Bell, page: "notifications" },
+  { name: "Assinatura", icon: CreditCard, page: "billing" },
   { name: "Configurações", icon: Settings, page: "settings" },
 ];
 

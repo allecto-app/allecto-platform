@@ -18,6 +18,7 @@ import { UnitsListPage } from "./screens/UnitsListPage";
 import { UnitDetailPage } from "./screens/UnitDetailPage";
 import { UnitEditPage } from "./screens/UnitEditPage";
 import { SettingsPage } from "./screens/SettingsPage";
+import { BillingPage } from "./screens/BillingPage";
 import { NotificationsPage } from "./screens/NotificationsPage";
 import { TenantsPage } from "./screens/TenantsPage";
 import { OnboardingPage } from "./screens/OnboardingPage";
@@ -696,6 +697,9 @@ function AuthenticatedShell({
                     applyBrandingTheme(condoDoc.branding);
                   }}
                 />
+              )}
+              {currentPage === "billing" && (
+                <BillingPage condo={selectedCondo} sessionToken={auth.token} />
               )}
               {currentPage === "notifications" && (
                 <NotificationsPage

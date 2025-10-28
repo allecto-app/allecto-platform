@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "convex/react";
-import { Search, Bell, User, Menu, Loader2 } from "lucide-react";
+import { Bell, User, Menu, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +14,7 @@ import { Badge } from "../ui/badge";
 import { Alert, AlertDescription } from "../ui/alert";
 import { CondoSwitcher } from "./CondoSwitcher";
 import { api, Doc, Id } from "../../lib/convexGenerated";
+import { useEntitlements } from "../../hooks/useEntitlements";
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -53,6 +53,8 @@ export function Navbar({
   const isLoadingNotifications = condoId !== null && notifications === undefined;
   const headerNotifications = Array.isArray(notifications) ? notifications.slice(0, 5) : [];
   const unreadCount = headerNotifications.length;
+  const { data: entitlements } = useEntitlements(condoId ? (selectedCondo?._id ?? null) : null);
+  const showDunningBanner = Boolean(entitlements?.inDunning);
 
   return (
     <>
@@ -61,6 +63,25 @@ export function Navbar({
           <AlertDescription className="text-center">
             <strong>Super Admin Mode</strong> — Condo:{" "}
             {selectedCondo ? `${selectedCondo.name} (${selectedCondo.subdomain})` : "None selected"}
+          </AlertDescription>
+        </Alert>
+      )}
+      {showDunningBanner && (
+        <Alert variant="destructive" className="rounded-none border-x-0 border-t-0">
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4" />
+              <span>
+                Pagamento pendente detectado. Atualize seus dados de cobrança para evitar interrupções.
+              </span>
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onNavigate("billing")}
+            >
+              Revisar assinatura
+            </Button>
           </AlertDescription>
         </Alert>
       )}

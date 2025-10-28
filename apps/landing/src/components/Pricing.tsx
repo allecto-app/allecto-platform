@@ -1,121 +1,105 @@
+'use client';
+
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { Billing } from "@allecto-app/contracts";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Check } from "lucide-react";
 
-const plans = [
-  {
-    name: "Condomínio Pequeno",
-    description: "Até 50 unidades",
-    price: "R$ 149",
-    period: "/mês",
-    features: [
-      "Assembleias ilimitadas",
-      "Votações seguras",
-      "Envio de documentos",
-      "Notificações por e-mail",
-      "Suporte por e-mail"
-    ],
-    popular: false
-  },
-  {
-    name: "Condomínio Médio",
-    description: "Até 200 unidades",
-    price: "R$ 299",
-    period: "/mês",
-    features: [
-      "Todos os recursos do plano Pequeno",
-      "Notificações push",
-      "Painel analítico avançado",
-      "Assinatura digital",
-      "Suporte prioritário",
-      "Integração com administradoras"
-    ],
-    popular: true
-  },
-  {
-    name: "Condomínio Grande",
-    description: "Plano personalizado",
-    price: "Sob consulta",
-    period: "",
-    features: [
-      "Todos os recursos do plano Médio",
-      "Múltiplos condomínios",
-      "API personalizada",
-      "Treinamento dedicado",
-      "Gerente de conta",
-      "SLA garantido"
-    ],
-    popular: false
-  }
-];
+const PUBLIC_TIER_MAP: Record<Billing.BillingTierKey, string> = {
+  essencial: "start",
+  plus: "plus",
+  pro: "pro",
+};
 
 export function Pricing() {
+  const searchParams = useSearchParams();
+  const tenantId = searchParams.get("tenantId");
+
+  const plans = useMemo(() => Billing.BILLING_PLANS, []);
+
   return (
-    <section className="py-24 bg-gray-50" id="precos">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl tracking-tight text-gray-900 mb-4">
+    <section className="bg-gray-50 py-24" id="precos">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-16 text-center">
+          <h2 className="mb-4 text-3xl tracking-tight text-gray-900 md:text-4xl">
             Planos transparentes
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="mx-auto max-w-2xl text-xl text-gray-600">
             Escolha o plano ideal para o tamanho do seu condomínio
           </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-8">
-          {plans.map((plan, index) => (
-            <Card 
-              key={index} 
-              className={`relative border-2 ${
-                plan.popular 
-                  ? 'border-primary shadow-2xl scale-105' 
-                  : 'border-gray-200 hover:border-primary/30'
-              } transition-all duration-300`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-secondary text-secondary-foreground px-4 py-1">
-                    Mais Popular
-                  </Badge>
-                </div>
-              )}
-              <CardHeader className="text-center pb-8 pt-8">
-                <h3 className="text-2xl text-gray-900 mb-2">
-                  {plan.name}
-                </h3>
-                <p className="text-gray-600 mb-4">{plan.description}</p>
-                <div className="space-y-1">
-                  <div className="text-4xl text-gray-900">
-                    {plan.price}
+
+        <div className="grid gap-8 md:grid-cols-3">
+          {plans.map((plan) => {
+            const price = Billing.formatPriceBRL(plan.priceCents);
+            const checkoutTier = PUBLIC_TIER_MAP[plan.tierKey];
+            const checkoutHref = tenantId
+              ? `/api/checkout?tenantId=${encodeURIComponent(tenantId)}&tierKey=${checkoutTier}`
+              : undefined;
+
+            return (
+              <Card
+                key={plan.tierKey}
+                className={`relative border-2 transition-all duration-300 ${
+                  plan.badge ? "border-primary shadow-2xl" : "border-gray-200 hover:border-primary/40"
+                }`}
+              >
+                {plan.badge && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-secondary px-4 py-1 text-secondary-foreground shadow">
+                      {plan.badge}
+                    </Badge>
                   </div>
-                  {plan.period && (
-                    <div className="text-gray-500">{plan.period}</div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <ul className="space-y-3">
-                  {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button 
-                  className={`w-full ${
-                    plan.popular 
-                      ? 'bg-primary hover:bg-accent text-primary-foreground' 
-                      : 'bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-300'
-                  }`}
-                  size="lg"
-                >
-                  Começar agora
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                )}
+                <CardHeader className="pt-10 text-center">
+                  <h3 className="text-2xl font-semibold text-gray-900">{plan.name}</h3>
+                  <div className="mt-4 space-y-1">
+                    <div className="text-4xl font-bold text-gray-900">{price}</div>
+                    <div className="text-sm text-gray-500">por mês</div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6 pb-10">
+                  <ul className="space-y-3 text-left">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3 text-gray-700">
+                        <Check className="mt-1 h-5 w-5 flex-shrink-0 text-secondary" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className={`w-full ${
+                      plan.badge
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "bg-white text-gray-900 hover:bg-gray-50"
+                    }`}
+                    variant={plan.badge ? "default" : "outline"}
+                    size="lg"
+                    asChild={Boolean(checkoutHref)}
+                    disabled={!checkoutHref}
+                  >
+                    {checkoutHref ? (
+                      <a href={checkoutHref}>Assinar agora</a>
+                    ) : (
+                      <span>Informe o condomínio</span>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+        {!tenantId && (
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Para iniciar o checkout, acesse este link com o identificador do seu condomínio:
+            <code className="ml-2 rounded bg-gray-200 px-2 py-1 text-xs text-gray-700">
+              ?tenantId=condo_xxx
+            </code>
+          </p>
+        )}
       </div>
     </section>
   );

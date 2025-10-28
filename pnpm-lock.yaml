@@ -201,6 +201,9 @@ importers:
 
   apps/landing:
     dependencies:
+      '@allecto-app/contracts':
+        specifier: 0.0.0
+        version: 0.0.0
       '@radix-ui/react-accordion':
         specifier: 1.2.3
         version: 1.2.3(@types/react-dom@19.2.2(@types/react@18.3.26))(@types/react@18.3.26)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -388,6 +391,9 @@ importers:
       resend:
         specifier: ^3.2.0
         version: 3.5.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      stripe:
+        specifier: ^16.0.0
+        version: 16.12.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -2895,6 +2901,10 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
+  qs@6.14.0:
+    resolution: {integrity: sha512-YWWTjgABSKcvs/nWBi9PycY/JiPJqOD4JA6o9Sej2AtvSGarXxKC3OQSk4pAarbdQlKAh5D4FCQkJNkW+GAn3w==}
+    engines: {node: '>=0.6'}
+
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
@@ -3162,6 +3172,10 @@ packages:
   strip-json-comments@3.1.1:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
+
+  stripe@16.12.0:
+    resolution: {integrity: sha512-H7eFVLDxeTNNSn4JTRfL2//LzCbDrMSZ+2q1c7CanVWgK2qIW5TwS+0V7N9KcKZZNpYh/uCqK0PyZh/2UsaAtQ==}
+    engines: {node: '>=12.*'}
 
   styled-jsx@5.1.1:
     resolution: {integrity: sha512-pW7uC1l4mBZ8ugbiZrcIsiIvVx1UmTfw7UkC3Um2tmfUq9Bhk8IiyEIPl6F8agHgjzku6j0xQEZbfA5uSgSaCw==}
@@ -5954,6 +5968,10 @@ snapshots:
 
   punycode@2.3.1: {}
 
+  qs@6.14.0:
+    dependencies:
+      side-channel: 1.1.0
+
   queue-microtask@1.2.3: {}
 
   react-day-picker@8.10.1(date-fns@3.6.0)(react@18.3.1):
@@ -6284,6 +6302,11 @@ snapshots:
   strip-bom@3.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@16.12.0:
+    dependencies:
+      '@types/node': 24.7.1
+      qs: 6.14.0
 
   styled-jsx@5.1.1(react@18.3.1):
     dependencies:
