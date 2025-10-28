@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import { requireCondoRole, requirePlatformRole } from "../../guards";
+import { sha256 } from "../../_secu";
 
 export type TierKey = "essencial" | "plus" | "pro";
 
@@ -18,6 +19,15 @@ export const PRICE_ENV_KEYS: Record<TierKey, string> = {
   plus: "PRICE_ID_PLUS_MONTHLY",
   pro: "PRICE_ID_PRO_MONTHLY",
 };
+
+const PRICE_VALUE_TO_TIER = new Map<string, TierKey>(
+  Object.entries(PRICE_ENV_KEYS)
+    .map(([tier, envKey]) => {
+      const value = process.env[envKey];
+      return value ? ([value, tier as TierKey] as const) : null;
+    })
+    .filter(Boolean) as Array<[string, TierKey]>,
+);
 
 export const RESIDENT_BILLING_ROLES = ["syndic", "manager"] as const;
 export const PLATFORM_BILLING_ROLES = ["super_admin", "support", "ops"] as const;
@@ -43,11 +53,64 @@ export function ensureAbsoluteUrl(label: string, value: string) {
   }
 }
 
-export async function resolveBillingEmail(
+type ResolveOptions = {
+  sessionToken?: string | null;
+  onboardingToken?: string | null;
+  expectedTier?: TierKey;
+};
+
+export type BillingContext =
+  | {
+      email: string;
+      source: "resident" | "platform";
+    }
+  | {
+      email: string;
+      source: "onboarding";
+      onboardingSessionId: Id<"onboardingSessions">;
+      tierKey: TierKey;
+    };
+
+export async function resolveBillingContext(
   ctx: any,
   tenantId: Id<"condos">,
-  sessionToken?: string | null,
-) {
+  options: ResolveOptions,
+): Promise<BillingContext> {
+  const { sessionToken, onboardingToken, expectedTier } = options;
+
+  if (onboardingToken) {
+    const tokenHash = await sha256(onboardingToken);
+    const onboardingSession = await ctx.db
+      .query("onboardingSessions")
+      .withIndex("byTokenHash", (q: any) => q.eq("tokenHash", tokenHash))
+      .first();
+    if (
+      !onboardingSession ||
+      onboardingSession.tenantId !== tenantId ||
+      onboardingSession.status === "expired" ||
+      onboardingSession.status === "completed"
+    ) {
+      throw new Error("INVALID_ONBOARDING_TOKEN");
+    }
+    const now = Date.now();
+    if (onboardingSession.expiresAt < now) {
+      await ctx.db.patch(onboardingSession._id, { status: "expired" });
+      throw new Error("ONBOARDING_TOKEN_EXPIRED");
+    }
+    if (
+      expectedTier &&
+      onboardingSession.tierKey !== expectedTier
+    ) {
+      throw new Error("ONBOARDING_TIER_MISMATCH");
+    }
+    return {
+      email: onboardingSession.email,
+      source: "onboarding",
+      onboardingSessionId: onboardingSession._id,
+      tierKey: onboardingSession.tierKey,
+    };
+  }
+
   if (!sessionToken) {
     throw new Error("UNAUTHENTICATED");
   }
@@ -60,10 +123,10 @@ export async function resolveBillingEmail(
       sessionToken,
     );
     if (result?.resident?.email) {
-      return { email: result.resident.email, source: "resident" as const };
+      return { email: result.resident.email, source: "resident" };
     }
     if (result?.user?.email) {
-      return { email: result.user.email, source: "platform" as const };
+      return { email: result.user.email, source: "platform" };
     }
   } catch {
     // fall through to platform roles
@@ -77,5 +140,21 @@ export async function resolveBillingEmail(
   if (!user?.email) {
     throw new Error("Platform user email missing");
   }
-  return { email: user.email, source: "platform" as const };
+  return { email: user.email, source: "platform" };
+}
+
+export async function markOnboardingSessionStatus(
+  ctx: any,
+  sessionId: Id<"onboardingSessions">,
+  status: "checkout_started" | "completed" | "expired",
+) {
+  await ctx.db.patch(sessionId, {
+    status,
+    updatedAt: Date.now(),
+  });
+}
+
+export function tierFromPriceId(priceId: string | null | undefined): TierKey | null {
+  if (!priceId) return null;
+  return PRICE_VALUE_TO_TIER.get(priceId) ?? null;
 }

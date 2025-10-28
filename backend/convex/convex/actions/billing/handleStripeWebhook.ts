@@ -5,6 +5,7 @@ import { internalAction } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import { getStripeClient, upsertCustomerRecord } from "../../stripe/client";
+import { markOnboardingSessionStatus, tierFromPriceId } from "./helpers";
 
 const RELEVANT_EVENTS = new Set([
   "checkout.session.completed",
@@ -54,6 +55,37 @@ async function ensureTenantExists(ctx: any, tenantId: Id<"condos"> | null): Prom
   return tenant ? tenantId : null;
 }
 
+async function markPendingOnboardingCompleted(ctx: any, tenantId: Id<"condos">) {
+  const sessions = await ctx.db
+    .query("onboardingSessions")
+    .withIndex("byTenant", (q: any) => q.eq("tenantId", tenantId))
+    .collect();
+  for (const session of sessions) {
+    if (session.status === "completed" || session.status === "expired") continue;
+    await markOnboardingSessionStatus(ctx, session._id, "completed");
+  }
+}
+
+async function updateCondoBillingState(
+  ctx: any,
+  tenantId: Id<"condos">,
+  status: Stripe.Subscription.Status | undefined,
+  priceId: string | null,
+) {
+  const updates: Record<string, unknown> = {
+    billingStatus: status ?? "unknown",
+    updatedAt: Date.now(),
+  };
+  const tier = tierFromPriceId(priceId);
+  if (tier) {
+    updates.billingTier = tier;
+  }
+  await ctx.db.patch(tenantId, updates);
+  if (status === "active" || status === "trialing") {
+    await markPendingOnboardingCompleted(ctx, tenantId);
+  }
+}
+
 type UpsertOptions = {
   latestInvoiceId?: string;
   latestInvoiceStatus?: string;
@@ -98,10 +130,11 @@ async function upsertSubscriptionRecord(
 
   if (existing) {
     await ctx.db.patch(existing._id, record);
-    return;
+  } else {
+    await ctx.db.insert("subscriptions", record);
   }
 
-  await ctx.db.insert("subscriptions", record);
+  return { priceId: priceId ?? null, status: record.status };
 }
 
 async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout.Session) {
@@ -142,7 +175,10 @@ async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout
     session.customer_details?.email ?? subscription.customer_email ?? null,
   );
 
-  await upsertSubscriptionRecord(ctx, tenantId, subscription);
+  const upsertResult = await upsertSubscriptionRecord(ctx, tenantId, subscription);
+  if (upsertResult) {
+    await updateCondoBillingState(ctx, tenantId, upsertResult.status, upsertResult.priceId);
+  }
 }
 
 async function handleSubscriptionEvent(ctx: any, payload: Stripe.Subscription) {
@@ -162,7 +198,10 @@ async function handleSubscriptionEvent(ctx: any, payload: Stripe.Subscription) {
   }
 
   await upsertCustomerRecord(ctx, tenantId, customerId, payload.customer_email ?? null);
-  await upsertSubscriptionRecord(ctx, tenantId, payload);
+  const upsertResult = await upsertSubscriptionRecord(ctx, tenantId, payload);
+  if (upsertResult) {
+    await updateCondoBillingState(ctx, tenantId, upsertResult.status, upsertResult.priceId);
+  }
 }
 
 async function handleInvoiceEvent(ctx: any, invoice: Stripe.Invoice, eventType: string) {
@@ -200,11 +239,14 @@ async function handleInvoiceEvent(ctx: any, invoice: Stripe.Invoice, eventType: 
   const statusOverride =
     eventType === "invoice.payment_failed" ? ("past_due" as Stripe.Subscription.Status) : undefined;
 
-  await upsertSubscriptionRecord(ctx, tenantId, subscription, {
+  const upsertResult = await upsertSubscriptionRecord(ctx, tenantId, subscription, {
     latestInvoiceId: invoice.id ?? undefined,
     latestInvoiceStatus: invoice.status ?? undefined,
     statusOverride,
   });
+  if (upsertResult) {
+    await updateCondoBillingState(ctx, tenantId, upsertResult.status, upsertResult.priceId);
+  }
 }
 
 type WebhookResponse = {

@@ -3,7 +3,7 @@
 import { action } from "../../_generated/server";
 import { v } from "convex/values";
 import { getStripeClient, getOrCreateCustomer } from "../../stripe/client";
-import { ensureAbsoluteUrl, resolveBillingEmail } from "./helpers";
+import { ensureAbsoluteUrl, resolveBillingContext } from "./helpers";
 
 export const createPortalSession = action({
   args: {
@@ -17,7 +17,11 @@ export const createPortalSession = action({
       throw new Error("TENANT_NOT_FOUND");
     }
 
-    const { email } = await resolveBillingEmail(ctx, args.tenantId, args.sessionToken ?? null);
+    const context = await resolveBillingContext(ctx, args.tenantId, {
+      sessionToken: args.sessionToken ?? null,
+    });
+
+    const email = context.email;
     const stripe = getStripeClient();
     const customerId = await getOrCreateCustomer(ctx, args.tenantId, email);
     const returnUrl = ensureAbsoluteUrl("returnUrl", args.returnUrl);

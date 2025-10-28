@@ -1,24 +1,70 @@
 'use client';
 
 import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Billing } from "@allecto-app/contracts";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Check } from "lucide-react";
 
-const PUBLIC_TIER_MAP: Record<Billing.BillingTierKey, string> = {
+type TierKey = "essencial" | "plus" | "pro";
+
+const PUBLIC_TIER_MAP: Record<TierKey, string> = {
   essencial: "start",
   plus: "plus",
   pro: "pro",
 };
 
-export function Pricing() {
-  const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId");
+const FALLBACK_PLANS = [
+  {
+    tierKey: "essencial" as TierKey,
+    name: "Essencial",
+    priceCents: 28900,
+    features: ["2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
+  },
+  {
+    tierKey: "plus" as TierKey,
+    name: "Plus",
+    priceCents: 74900,
+    badge: "Mais Popular",
+    features: [
+      "Assembleias ilimitadas",
+      "20 GB documentos",
+      "Relatórios avançados",
+      "Suporte 24h",
+    ],
+  },
+  {
+    tierKey: "pro" as TierKey,
+    name: "Pro",
+    priceCents: 109900,
+    features: [
+      "Assembleias/Enquetes ilimitadas",
+      "200 GB documentos",
+      "Auditoria e exportações",
+      "Suporte prioritário (8h)",
+    ],
+  },
+] as const;
 
-  const plans = useMemo(() => Billing.BILLING_PLANS, []);
+function formatPriceBRL(cents: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
+export function Pricing() {
+  const plans = useMemo(() => {
+    if (Billing?.BILLING_PLANS?.length) {
+      return Billing.BILLING_PLANS as typeof FALLBACK_PLANS;
+    }
+    return FALLBACK_PLANS;
+  }, []);
+
+  const priceFormatter = Billing?.formatPriceBRL ?? formatPriceBRL;
 
   return (
     <section className="bg-gray-50 py-24" id="precos">
@@ -34,11 +80,9 @@ export function Pricing() {
 
         <div className="grid gap-8 md:grid-cols-3">
           {plans.map((plan) => {
-            const price = Billing.formatPriceBRL(plan.priceCents);
+            const price = priceFormatter(plan.priceCents);
             const checkoutTier = PUBLIC_TIER_MAP[plan.tierKey];
-            const checkoutHref = tenantId
-              ? `/api/checkout?tenantId=${encodeURIComponent(tenantId)}&tierKey=${checkoutTier}`
-              : undefined;
+            const onboardingHref = `/onboarding?plan=${checkoutTier}`;
 
             return (
               <Card
@@ -78,28 +122,15 @@ export function Pricing() {
                     }`}
                     variant={plan.badge ? "default" : "outline"}
                     size="lg"
-                    asChild={Boolean(checkoutHref)}
-                    disabled={!checkoutHref}
+                    asChild
                   >
-                    {checkoutHref ? (
-                      <a href={checkoutHref}>Assinar agora</a>
-                    ) : (
-                      <span>Informe o condomínio</span>
-                    )}
+                    <Link href={onboardingHref}>Assinar agora</Link>
                   </Button>
                 </CardContent>
               </Card>
             );
           })}
         </div>
-        {!tenantId && (
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Para iniciar o checkout, acesse este link com o identificador do seu condomínio:
-            <code className="ml-2 rounded bg-gray-200 px-2 py-1 text-xs text-gray-700">
-              ?tenantId=condo_xxx
-            </code>
-          </p>
-        )}
       </div>
     </section>
   );

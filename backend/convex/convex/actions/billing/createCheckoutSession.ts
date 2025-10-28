@@ -1,12 +1,12 @@
 'use node';
 import { action } from "../../_generated/server";
 import { v } from "convex/values";
-import type { Id } from "../../_generated/dataModel";
 import { getStripeClient, getOrCreateCustomer } from "../../stripe/client";
 import {
   ensureAbsoluteUrl,
   getPriceIdFromEnv,
-  resolveBillingEmail,
+  markOnboardingSessionStatus,
+  resolveBillingContext,
   tierKeyValidator,
 } from "./helpers";
 
@@ -17,6 +17,7 @@ export const createCheckoutSession = action({
     successUrl: v.string(),
     cancelUrl: v.string(),
     sessionToken: v.optional(v.string()),
+    onboardingToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { tenantId, tierKey } = args;
@@ -25,10 +26,14 @@ export const createCheckoutSession = action({
       throw new Error("TENANT_NOT_FOUND");
     }
 
-    const { email } = await resolveBillingEmail(ctx, tenantId, args.sessionToken ?? null);
-    if (!email) {
-      throw new Error("Billing email is required");
-    }
+    const context = await resolveBillingContext(ctx, tenantId, {
+      sessionToken: args.sessionToken ?? null,
+      onboardingToken: args.onboardingToken ?? null,
+      expectedTier: tierKey,
+    });
+
+    const email = context.email;
+    if (!email) throw new Error("Billing email is required");
 
     const successUrl = ensureAbsoluteUrl("successUrl", args.successUrl);
     const cancelUrl = ensureAbsoluteUrl("cancelUrl", args.cancelUrl);
@@ -73,6 +78,15 @@ export const createCheckoutSession = action({
 
     if (!session.url) {
       throw new Error("Failed to create Stripe Checkout session");
+    }
+
+    if (context.source === "onboarding") {
+      await markOnboardingSessionStatus(ctx, context.onboardingSessionId, "checkout_started");
+      await ctx.db.patch(tenantId, {
+        billingTier: tierKey,
+        billingStatus: "pending_checkout",
+        updatedAt: Date.now(),
+      });
     }
 
     return { url: session.url };

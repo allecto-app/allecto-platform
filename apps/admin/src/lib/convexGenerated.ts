@@ -86,6 +86,9 @@ type AugmentedApi = typeof baseApi & {
     createPortalSession: ActionRef;
     entitlements: QueryRef;
   };
+  onboarding: {
+    startTenantSignup: ActionRef;
+  };
 };
 
 type AugmentedInternal = typeof baseInternal & {
@@ -116,6 +119,7 @@ export type TableNames =
   | "otps"
   | "stripeCustomers"
   | "subscriptions"
+  | "onboardingSessions"
   | "platformUsers"
   | "loginAttempts"
   | "sessions"
@@ -148,6 +152,18 @@ type DocByTable = {
     timezone?: string;
     isActive?: boolean;
     disabledAt?: number;
+    billingTier?: "essencial" | "plus" | "pro";
+    billingStatus?:
+      | "pending_checkout"
+      | "active"
+      | "trialing"
+      | "past_due"
+      | "canceled"
+      | "unpaid"
+      | "incomplete"
+      | "incomplete_expired"
+      | "unknown";
+    onboardingTokenVersion?: number;
     createdAt: number;
     updatedAt: number;
   };
@@ -250,6 +266,19 @@ type DocByTable = {
     latestInvoiceId?: string;
     latestInvoiceStatus?: string;
     updatedAt: number;
+  };
+  onboardingSessions: DefaultDoc<"onboardingSessions"> & {
+    tenantId: Id<"condos">;
+    tierKey: "essencial" | "plus" | "pro";
+    email: string;
+    tokenHash: string;
+    status: "pending" | "checkout_started" | "completed" | "expired";
+    createdAt: number;
+    expiresAt: number;
+    updatedAt?: number;
+    metadata?: {
+      adminName?: string;
+    };
   };
   notificationLogs: DefaultDoc<"notificationLogs"> & {
     condoId: Id<"condos">;

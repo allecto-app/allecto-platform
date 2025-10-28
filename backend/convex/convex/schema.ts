@@ -19,6 +19,23 @@ export default defineSchema({
     timezone: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
     disabledAt: v.optional(v.number()),
+    billingTier: v.optional(
+      v.union(v.literal("essencial"), v.literal("plus"), v.literal("pro")),
+    ),
+    billingStatus: v.optional(
+      v.union(
+        v.literal("pending_checkout"),
+        v.literal("active"),
+        v.literal("trialing"),
+        v.literal("past_due"),
+        v.literal("canceled"),
+        v.literal("unpaid"),
+        v.literal("incomplete"),
+        v.literal("incomplete_expired"),
+        v.literal("unknown"),
+      ),
+    ),
+    onboardingTokenVersion: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -183,6 +200,31 @@ export default defineSchema({
     .index("byTenant", ["tenantId"])
     .index("byStripeSubscriptionId", ["stripeSubscriptionId"])
     .index("byPriceId", ["priceId"]),
+
+  onboardingSessions: defineTable({
+    tenantId: v.id("condos"),
+    tierKey: v.union(
+      v.literal("essencial"),
+      v.literal("plus"),
+      v.literal("pro"),
+    ),
+    email: v.string(),
+    tokenHash: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("checkout_started"),
+      v.literal("completed"),
+      v.literal("expired"),
+    ),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    metadata: v.optional(v.object({
+      adminName: v.optional(v.string()),
+    })),
+  })
+    .index("byTokenHash", ["tokenHash"])
+    .index("byTenant", ["tenantId"]),
 
   platformUsers: defineTable({
     email: v.string(),
