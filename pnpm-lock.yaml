@@ -18,8 +18,8 @@ importers:
   apps/admin:
     dependencies:
       '@allecto-app/contracts':
-        specifier: 0.0.0
-        version: 0.0.0
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@radix-ui/react-accordion':
         specifier: 1.2.3
         version: 1.2.3(@types/react-dom@19.2.2(@types/react@18.3.26))(@types/react@18.3.26)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -202,8 +202,8 @@ importers:
   apps/landing:
     dependencies:
       '@allecto-app/contracts':
-        specifier: 0.0.0
-        version: 0.0.0
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@radix-ui/react-accordion':
         specifier: 1.2.3
         version: 1.2.3(@types/react-dom@19.2.2(@types/react@18.3.26))(@types/react@18.3.26)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -291,6 +291,9 @@ importers:
       cmdk:
         specifier: 1.1.1
         version: 1.1.1(@types/react-dom@19.2.2(@types/react@18.3.26))(@types/react@18.3.26)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      convex:
+        specifier: ^1.27.5
+        version: 1.27.5(react@18.3.1)
       embla-carousel-react:
         specifier: 8.6.0
         version: 8.6.0(react@18.3.1)
@@ -438,9 +441,6 @@ importers:
         version: 5.9.3
 
 packages:
-
-  '@allecto-app/contracts@0.0.0':
-    resolution: {integrity: sha512-3JPnTvNETXz7ROxP9sYzcaA+Ix3ar9Ki5AhVxHYFrf+ssAyLa6lJl77KuOyDIts467Z4CvaO6TRw+GeV6qPvbg==, tarball: https://npm.pkg.github.com/download/@allecto-app/contracts/0.0.0/71de57f3078347ecd9fa7e36f43b9567cda44c04}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -3416,10 +3416,6 @@ packages:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
-
-  '@allecto-app/contracts@0.0.0':
-    dependencies:
-      zod: 3.25.76
 
   '@alloc/quick-lru@5.2.0': {}
 
