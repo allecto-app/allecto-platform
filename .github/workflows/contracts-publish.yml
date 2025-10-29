@@ -1,17 +1,48 @@
 name: Publish Contracts
+
 on:
   push:
     paths:
       - "packages/contracts/**"
+
+permissions:
+  contents: read
+  packages: write # needed to publish to GitHub Packages
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with: { version: 9 }
-      - run: pnpm install
-      - run: pnpm -F @allecto-app/contracts build
-      - run: npm publish --workspace packages/contracts
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@allecto-app"
+          always-auth: true
+
+      # Make the token available to ALL steps that hit the registry
+      # If your package is in the same org, GITHUB_TOKEN works.
+      # If it’s in another org, use a PAT with read/write:packages.
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # or your PAT
+
+      - name: Build workspace
+        run: pnpm -F @allecto-app/contracts build
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+
+      # Ensure your package.json has the correct name: "@allecto-app/contracts"
+      # Option A: add publishConfig.registry in the package itself
+      # Option B: rely on .npmrc + setup-node (shown here)
+      - name: Publish
+        run: npm publish --workspace packages/contracts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # or PAT (write:packages)
