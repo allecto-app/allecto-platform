@@ -33,7 +33,9 @@ export function Header() {
               Login
             </a>
             <Button className="bg-primary hover:bg-accent text-primary-foreground">
-              Começar grátis
+              <a href="#precos">
+                Começar agora
+              </a>
             </Button>
             <Button variant="ghost" size="icon" className="md:hidden text-primary">
               <Menu className="w-6 h-6" />

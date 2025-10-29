@@ -376,6 +376,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.18)
+      tailwindcss-font-inter:
+        specifier: ^4.0.0
+        version: 4.0.0(tailwindcss@3.4.18)
       typescript-eslint:
         specifier: ^8.46.1
         version: 8.46.1(eslint@9.38.0(jiti@2.6.1))(typescript@5.9.3)
@@ -3210,6 +3213,12 @@ packages:
     resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders'
+
+  tailwindcss-font-inter@4.0.0:
+    resolution: {integrity: sha512-kaMPS+5+ORBwekXztmfDNQ2WRzMd389j50LIUlBQRIn1kwFcR9l6wbJyFLFJ3osT87SGMFZXiSABd9TmpFCx0Q==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      tailwindcss: ^3.0.0 || ^4.0.0
 
   tailwindcss@3.4.18:
     resolution: {integrity: sha512-6A2rnmW5xZMdw11LYjhcI5846rt9pbLSabY5XPxo+XWdxwZaFEn47Go4NzFiHu9sNNmr/kXivP1vStfvMaK1GQ==}
@@ -6332,6 +6341,10 @@ snapshots:
   tailwind-merge@2.6.0: {}
 
   tailwindcss-animate@1.0.7(tailwindcss@3.4.18):
+    dependencies:
+      tailwindcss: 3.4.18
+
+  tailwindcss-font-inter@4.0.0(tailwindcss@3.4.18):
     dependencies:
       tailwindcss: 3.4.18
 

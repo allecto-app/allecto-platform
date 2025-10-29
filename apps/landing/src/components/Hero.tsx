@@ -17,10 +17,14 @@ export function Hero() {
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button size="lg" className="bg-primary hover:bg-accent text-primary-foreground px-8">
-                Agendar demonstração
+                <a href="#precos">
+                  Começar agora
+                </a>
               </Button>
-              <Button size="lg" variant="outline" className="border-primary/30 text-primary hover:bg-primary/5">
-                Explorar recursos
+              <Button size="lg" variant="outline" className="border-primary/30 text-primary hover:bg-primary/5 hover:text-secondary">
+                <a href="#recursos">
+                  Explorar recursos
+                </a>
               </Button>
             </div>
           </div>

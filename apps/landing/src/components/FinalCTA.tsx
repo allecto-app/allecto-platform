@@ -20,15 +20,10 @@ export function FinalCTA() {
             size="lg" 
             className="bg-white text-primary hover:bg-white/90 px-8 group"
           >
-            Solicitar demonstração
+            <a href="#precos">
+              Começar agora
+            </a>
             <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Button>
-          <Button 
-            size="lg" 
-            variant="outline" 
-            className="border-2 border-white text-white bg-transparent hover:bg-white/10 px-8"
-          >
-            Falar com vendas
           </Button>
         </div>
       </div>

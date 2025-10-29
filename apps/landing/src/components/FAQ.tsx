@@ -17,10 +17,6 @@ const faqs = [
   {
     question: "Que tipo de suporte vocês oferecem?",
     answer: "Oferecemos suporte por e-mail para todos os planos, com tempo de resposta de até 24 horas. Planos Médio e Grande incluem suporte prioritário e, no caso do plano Grande, um gerente de conta dedicado com treinamento personalizado."
-  },
-  {
-    question: "Posso testar o sistema antes de assinar?",
-    answer: "Absolutamente! Oferecemos uma demonstração gratuita de 14 dias com todos os recursos incluídos. Nossa equipe também pode agendar uma apresentação ao vivo para mostrar como o Allecto funciona para o seu condomínio."
   }
 ];
 

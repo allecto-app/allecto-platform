@@ -21,7 +21,7 @@ const FALLBACK_PLANS = [
     tierKey: "essencial" as TierKey,
     name: "Essencial",
     priceCents: 28900,
-    features: ["2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
+    features: ["Até 99 unidades", "2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
   },
   {
     tierKey: "plus" as TierKey,
@@ -29,6 +29,7 @@ const FALLBACK_PLANS = [
     priceCents: 74900,
     badge: "Mais Popular",
     features: [
+      "Entre 100 e 300 unidades",
       "Assembleias ilimitadas",
       "20 GB documentos",
       "Relatórios avançados",
@@ -40,7 +41,8 @@ const FALLBACK_PLANS = [
     name: "Pro",
     priceCents: 109900,
     features: [
-      "Assembleias/Enquetes ilimitadas",
+      "Para + de 300 unidades",
+      "Assembleias ilimitadas",
       "200 GB documentos",
       "Auditoria e exportações",
       "Suporte prioritário (8h)",
@@ -117,8 +119,8 @@ export function Pricing() {
                   <Button
                     className={`w-full ${
                       plan.badge
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "bg-white text-gray-900 hover:bg-gray-50"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-secondary"
+                        : "bg-white text-gray-900 hover:bg-gray-50 hover:text-secondary"
                     }`}
                     variant={plan.badge ? "default" : "outline"}
                     size="lg"
