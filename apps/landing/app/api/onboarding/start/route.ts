@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await convex.action("onboarding:startTenantSignup", {
+    const result = await convex.mutation("onboarding:startTenantSignup", {
       tierKey,
       condoName,
       subdomain,

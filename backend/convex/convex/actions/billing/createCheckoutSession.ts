@@ -1,14 +1,10 @@
 'use node';
 import { action } from "../../_generated/server";
 import { v } from "convex/values";
-import { getStripeClient, getOrCreateCustomer } from "../../stripe/client";
-import {
-  ensureAbsoluteUrl,
-  getPriceIdFromEnv,
-  markOnboardingSessionStatus,
-  resolveBillingContext,
-  tierKeyValidator,
-} from "./helpers";
+import { api } from "../../_generated/api";
+import { getStripeClient } from "../../stripe/client";
+import { normalizeEmail } from "../../_secu";
+import { ensureAbsoluteUrl, getPriceIdFromEnv, tierKeyValidator } from "./helpers";
 
 export const createCheckoutSession = action({
   args: {
@@ -21,26 +17,56 @@ export const createCheckoutSession = action({
   },
   handler: async (ctx, args) => {
     const { tenantId, tierKey } = args;
-    const tenant = await ctx.db.get(tenantId);
-    if (!tenant) {
-      throw new Error("TENANT_NOT_FOUND");
-    }
-
-    const context = await resolveBillingContext(ctx, tenantId, {
-      sessionToken: args.sessionToken ?? null,
-      onboardingToken: args.onboardingToken ?? null,
+    const context = await ctx.runQuery(api.billing.resolveBillingContext, {
+      tenantId,
+      sessionToken: args.sessionToken ?? undefined,
+      onboardingToken: args.onboardingToken ?? undefined,
       expectedTier: tierKey,
     });
 
     const email = context.email;
-    if (!email) throw new Error("Billing email is required");
+    if (!email) {
+      throw new Error("Billing email is required");
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+
+    const existingRecord = await ctx.runQuery(api.billing.findStripeCustomerRecord, {
+      tenantId,
+      email: normalizedEmail,
+    });
 
     const successUrl = ensureAbsoluteUrl("successUrl", args.successUrl);
     const cancelUrl = ensureAbsoluteUrl("cancelUrl", args.cancelUrl);
 
     const priceId = getPriceIdFromEnv(tierKey);
     const stripe = getStripeClient();
-    const customerId = await getOrCreateCustomer(ctx, tenantId, email);
+    let customerId = existingRecord?.stripeCustomerId ?? null;
+
+    if (customerId) {
+      if (existingRecord?.email !== normalizedEmail) {
+        await stripe.customers.update(customerId, { email: normalizedEmail });
+      }
+      await ctx.runMutation(api.billing.saveStripeCustomerRecord, {
+        tenantId,
+        stripeCustomerId: customerId,
+        email: normalizedEmail,
+        recordId: existingRecord?._id,
+      });
+    } else {
+      const customer = await stripe.customers.create({
+        email: normalizedEmail,
+        metadata: {
+          tenantId: tenantId.toString(),
+        },
+      });
+      customerId = customer.id;
+      await ctx.runMutation(api.billing.saveStripeCustomerRecord, {
+        tenantId,
+        stripeCustomerId: customerId,
+        email: normalizedEmail,
+      });
+    }
 
     const randomSuffix =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -81,11 +107,10 @@ export const createCheckoutSession = action({
     }
 
     if (context.source === "onboarding") {
-      await markOnboardingSessionStatus(ctx, context.onboardingSessionId, "checkout_started");
-      await ctx.db.patch(tenantId, {
-        billingTier: tierKey,
-        billingStatus: "pending_checkout",
-        updatedAt: Date.now(),
+      await ctx.runMutation(api.billing.markCheckoutInitiated, {
+        tenantId,
+        onboardingSessionId: context.onboardingSessionId,
+        tierKey,
       });
     }
 

@@ -104,7 +104,6 @@ export function SignupFlow() {
   const normalizedPlanParam = initialPlanParam.toLowerCase();
   const preselectedPlan = plans.find((plan) => PUBLIC_TIER_MAP[plan.tierKey] === normalizedPlanParam);
 
-  const [step, setStep] = useState<"plan" | "details">(preselectedPlan ? "details" : "plan");
   const [selectedPlan, setSelectedPlan] = useState<PlanOption | null>(preselectedPlan ?? null);
   const [form, setForm] = useState<SignupFormState>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,7 +113,6 @@ export function SignupFlow() {
 
   const handleSelectPlan = (plan: PlanOption) => {
     setSelectedPlan(plan);
-    setStep("details");
     setError(null);
   };
 
@@ -135,17 +133,19 @@ export function SignupFlow() {
     setError(null);
 
     try {
+      const payload = {
+        tierKey: selectedPlan.tierKey,
+        condoName: form.condoName,
+        subdomain: form.subdomain,
+        adminName: form.adminName,
+        adminEmail: form.adminEmail,
+        adminPhone: form.adminPhone,
+      };
+
       const signupResponse = await fetch("/api/onboarding/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tierKey: selectedPlan.tierKey,
-          condoName: form.condoName,
-          subdomain: form.subdomain,
-          adminName: form.adminName,
-          adminEmail: form.adminEmail,
-          adminPhone: form.adminPhone,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!signupResponse.ok) {

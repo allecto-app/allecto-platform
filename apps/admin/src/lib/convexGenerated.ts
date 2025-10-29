@@ -85,9 +85,16 @@ type AugmentedApi = typeof baseApi & {
     createCheckoutSession: ActionRef;
     createPortalSession: ActionRef;
     entitlements: QueryRef;
+    getTenantIfExists: QueryRef;
+    resolveBillingContext: QueryRef;
+    findStripeCustomerRecord: QueryRef;
+    findStripeCustomerById: QueryRef;
+    saveStripeCustomerRecord: MutationRef;
+    markCheckoutInitiated: MutationRef;
+    upsertStripeSubscriptionRecord: MutationRef;
   };
   onboarding: {
-    startTenantSignup: ActionRef;
+    startTenantSignup: MutationRef;
   };
 };
 
@@ -100,6 +107,7 @@ type AugmentedInternal = typeof baseInternal & {
   };
   billing: {
     handleStripeWebhook: InternalFunctionRef;
+    sendOnboardingSuccessEmail: InternalFunctionRef;
   };
 };
 

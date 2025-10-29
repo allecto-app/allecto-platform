@@ -4,8 +4,9 @@ import type Stripe from "stripe";
 import { internalAction } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
-import { getStripeClient, upsertCustomerRecord } from "../../stripe/client";
-import { markOnboardingSessionStatus, tierFromPriceId } from "./helpers";
+import { api, internal } from "../../_generated/api";
+import { getStripeClient } from "../../stripe/client";
+import { normalizeEmail } from "../../_secu";
 
 const RELEVANT_EVENTS = new Set([
   "checkout.session.completed",
@@ -28,14 +29,6 @@ function extractTenantId(metadata?: Stripe.Metadata | null, fallback?: string | 
   return fallback ?? null;
 }
 
-async function findTenantIdByCustomer(ctx: any, customerId: string): Promise<Id<"condos"> | null> {
-  const record = await ctx.db
-    .query("stripeCustomers")
-    .withIndex("byStripeCustomerId", (q: any) => q.eq("stripeCustomerId", customerId))
-    .first();
-  return record ? (record.tenantId as Id<"condos">) : null;
-}
-
 function extractPriceInfo(subscription: Stripe.Subscription) {
   const item = subscription.items?.data?.[0];
   const price = item?.price;
@@ -47,101 +40,78 @@ function extractPriceInfo(subscription: Stripe.Subscription) {
   return { priceId, productId };
 }
 
-async function ensureTenantExists(ctx: any, tenantId: Id<"condos"> | null): Promise<Id<"condos"> | null> {
-  if (!tenantId) {
-    return null;
+async function resolveTenantId(
+  ctx: any,
+  explicitTenantId: Id<"condos"> | null,
+  stripeCustomerId: string,
+): Promise<Id<"condos"> | null> {
+  if (explicitTenantId) {
+    const tenant = await ctx.runQuery(api.billing.getTenantIfExists, {
+      tenantId: explicitTenantId,
+    });
+    if (tenant) {
+      return explicitTenantId;
+    }
   }
-  const tenant = await ctx.db.get(tenantId);
-  return tenant ? tenantId : null;
+
+  const record = await ctx.runQuery(api.billing.findStripeCustomerById, {
+    stripeCustomerId,
+  });
+  return record ? (record.tenantId as Id<"condos">) : null;
 }
 
-async function markPendingOnboardingCompleted(ctx: any, tenantId: Id<"condos">) {
-  const sessions = await ctx.db
-    .query("onboardingSessions")
-    .withIndex("byTenant", (q: any) => q.eq("tenantId", tenantId))
-    .collect();
-  for (const session of sessions) {
-    if (session.status === "completed" || session.status === "expired") continue;
-    await markOnboardingSessionStatus(ctx, session._id, "completed");
-  }
-}
-
-async function updateCondoBillingState(
+async function saveCustomerRecord(
   ctx: any,
   tenantId: Id<"condos">,
-  status: Stripe.Subscription.Status | undefined,
-  priceId: string | null,
+  stripeCustomerId: string,
+  email: string | null | undefined,
 ) {
-  const updates: Record<string, unknown> = {
-    billingStatus: status ?? "unknown",
-    updatedAt: Date.now(),
-  };
-  const tier = tierFromPriceId(priceId);
-  if (tier) {
-    updates.billingTier = tier;
-  }
-  await ctx.db.patch(tenantId, updates);
-  if (status === "active" || status === "trialing") {
-    await markPendingOnboardingCompleted(ctx, tenantId);
-  }
+  const normalized = email ? normalizeEmail(email) : null;
+  const existing = await ctx.runQuery(api.billing.findStripeCustomerById, {
+    stripeCustomerId,
+  });
+  const emailToPersist = normalized ?? existing?.email ?? "";
+  await ctx.runMutation(api.billing.saveStripeCustomerRecord, {
+    tenantId,
+    stripeCustomerId,
+    email: emailToPersist,
+    recordId: existing?._id,
+  });
 }
 
-type UpsertOptions = {
-  latestInvoiceId?: string;
-  latestInvoiceStatus?: string;
-  statusOverride?: Stripe.Subscription.Status;
-};
-
-async function upsertSubscriptionRecord(
-  ctx: any,
-  tenantId: Id<"condos">,
-  subscription: Stripe.Subscription,
-  options?: UpsertOptions,
-) {
+function buildSubscriptionPayload(subscription: Stripe.Subscription) {
   const { priceId, productId } = extractPriceInfo(subscription);
   const now = Date.now();
-  const latestInvoiceFromSubscription =
+  const latestInvoiceId =
     typeof subscription.latest_invoice === "string"
       ? subscription.latest_invoice
       : subscription.latest_invoice?.id;
+  const latestInvoiceStatus =
+    typeof subscription.latest_invoice === "object"
+      ? subscription.latest_invoice?.status ?? undefined
+      : undefined;
 
-  const latestInvoiceId = options?.latestInvoiceId ?? latestInvoiceFromSubscription;
-
-  const record = {
-    tenantId,
+  return {
     stripeSubscriptionId: subscription.id,
     productId: productId ?? "",
     priceId: priceId ?? "",
-    status: options?.statusOverride ?? subscription.status,
+    status: subscription.status,
     currentPeriodStart: toMillis(subscription.current_period_start) ?? now,
     currentPeriodEnd: toMillis(subscription.current_period_end) ?? now,
     cancelAt: toMillis(subscription.cancel_at),
     cancelAtPeriodEnd: subscription.cancel_at_period_end ?? undefined,
     trialEnd: toMillis(subscription.trial_end),
-    latestInvoiceId,
-    latestInvoiceStatus: options?.latestInvoiceStatus ?? undefined,
-    updatedAt: now,
+    latestInvoiceId: latestInvoiceId ?? undefined,
+    latestInvoiceStatus,
   };
-
-  const existing = await ctx.db
-    .query("subscriptions")
-    .withIndex("byStripeSubscriptionId", (q: any) => q.eq("stripeSubscriptionId", subscription.id))
-    .first();
-
-  if (existing) {
-    await ctx.db.patch(existing._id, record);
-  } else {
-    await ctx.db.insert("subscriptions", record);
-  }
-
-  return { priceId: priceId ?? null, status: record.status };
 }
 
 async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout.Session) {
   const stripe = getStripeClient();
   const subscriptionId =
     typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-  const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+  const customerId =
+    typeof session.customer === "string" ? session.customer : session.customer?.id;
 
   if (!subscriptionId || !customerId) {
     return;
@@ -157,27 +127,32 @@ async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout
     null;
 
   let tenantId: Id<"condos"> | null = tenantIdString ? (tenantIdString as Id<"condos">) : null;
-  tenantId = await ensureTenantExists(ctx, tenantId);
-
-  if (!tenantId) {
-    tenantId = await findTenantIdByCustomer(ctx, customerId);
-  }
+  tenantId = await resolveTenantId(ctx, tenantId, customerId);
 
   if (!tenantId) {
     console.warn("[stripeWebhook] Unable to resolve tenant for checkout.session.completed");
     return;
   }
 
-  await upsertCustomerRecord(
+  await saveCustomerRecord(
     ctx,
     tenantId,
     customerId,
     session.customer_details?.email ?? subscription.customer_email ?? null,
   );
 
-  const upsertResult = await upsertSubscriptionRecord(ctx, tenantId, subscription);
-  if (upsertResult) {
-    await updateCondoBillingState(ctx, tenantId, upsertResult.status, upsertResult.priceId);
+  const payload = buildSubscriptionPayload(subscription);
+  await ctx.runMutation(api.billing.upsertStripeSubscriptionRecord, {
+    tenantId,
+    data: payload,
+  });
+
+  if (subscription.status === "active" || subscription.status === "trialing") {
+    await ctx.scheduler.runAfter(0, internal.billing.sendOnboardingSuccessEmail, {
+      tenantId,
+      subscriptionId: subscription.id,
+      invoiceId: null,
+    });
   }
 }
 
@@ -186,30 +161,32 @@ async function handleSubscriptionEvent(ctx: any, payload: Stripe.Subscription) {
 
   let tenantIdString = extractTenantId(payload.metadata);
   let tenantId: Id<"condos"> | null = tenantIdString ? (tenantIdString as Id<"condos">) : null;
-  tenantId = await ensureTenantExists(ctx, tenantId);
-
-  if (!tenantId && customerId) {
-    tenantId = await findTenantIdByCustomer(ctx, customerId);
-  }
+  tenantId = await resolveTenantId(ctx, tenantId, customerId ?? "");
 
   if (!tenantId || !customerId) {
     console.warn(`[stripeWebhook] Skipping subscription ${payload.id}: tenant not found`);
     return;
   }
 
-  await upsertCustomerRecord(ctx, tenantId, customerId, payload.customer_email ?? null);
-  const upsertResult = await upsertSubscriptionRecord(ctx, tenantId, payload);
-  if (upsertResult) {
-    await updateCondoBillingState(ctx, tenantId, upsertResult.status, upsertResult.priceId);
-  }
+  await saveCustomerRecord(ctx, tenantId, customerId, payload.customer_email ?? null);
+
+  const payloadData = buildSubscriptionPayload(payload);
+  await ctx.runMutation(api.billing.upsertStripeSubscriptionRecord, {
+    tenantId,
+    data: payloadData,
+  });
 }
 
-async function handleInvoiceEvent(ctx: any, invoice: Stripe.Invoice, eventType: string) {
+async function handleInvoiceEvent(
+  ctx: any,
+  invoice: Stripe.Invoice,
+  eventType: string,
+) {
   const subscriptionId =
     typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
   const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
 
-  if (!subscriptionId) {
+  if (!subscriptionId || !customerId) {
     console.warn("[stripeWebhook] Invoice without subscription id");
     return;
   }
@@ -223,29 +200,33 @@ async function handleInvoiceEvent(ctx: any, invoice: Stripe.Invoice, eventType: 
     extractTenantId(subscription.metadata, invoice.metadata?.tenantId) ??
     extractTenantId(invoice.metadata);
   let tenantId: Id<"condos"> | null = tenantIdString ? (tenantIdString as Id<"condos">) : null;
-  tenantId = await ensureTenantExists(ctx, tenantId);
+  tenantId = await resolveTenantId(ctx, tenantId, customerId);
 
-  if (!tenantId && customerId) {
-    tenantId = await findTenantIdByCustomer(ctx, customerId);
-  }
-
-  if (!tenantId || !customerId) {
+  if (!tenantId) {
     console.warn(`[stripeWebhook] Skipping invoice ${invoice.id}: tenant not found`);
     return;
   }
 
-  await upsertCustomerRecord(ctx, tenantId, customerId, invoice.customer_email ?? null);
+  await saveCustomerRecord(ctx, tenantId, customerId, invoice.customer_email ?? null);
 
-  const statusOverride =
-    eventType === "invoice.payment_failed" ? ("past_due" as Stripe.Subscription.Status) : undefined;
+  const payloadData = buildSubscriptionPayload(subscription);
+  payloadData.latestInvoiceId = invoice.id ?? payloadData.latestInvoiceId;
+  payloadData.latestInvoiceStatus = invoice.status ?? payloadData.latestInvoiceStatus;
 
-  const upsertResult = await upsertSubscriptionRecord(ctx, tenantId, subscription, {
-    latestInvoiceId: invoice.id ?? undefined,
-    latestInvoiceStatus: invoice.status ?? undefined,
+  const statusOverride = eventType === "invoice.payment_failed" ? "past_due" : undefined;
+
+  await ctx.runMutation(api.billing.upsertStripeSubscriptionRecord, {
+    tenantId,
+    data: payloadData,
     statusOverride,
   });
-  if (upsertResult) {
-    await updateCondoBillingState(ctx, tenantId, upsertResult.status, upsertResult.priceId);
+
+  if (eventType === "invoice.payment_succeeded") {
+    await ctx.scheduler.runAfter(0, internal.billing.sendOnboardingSuccessEmail, {
+      tenantId,
+      subscriptionId: subscription.id,
+      invoiceId: invoice.id ?? null,
+    });
   }
 }
 

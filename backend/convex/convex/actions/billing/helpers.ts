@@ -158,3 +158,34 @@ export function tierFromPriceId(priceId: string | null | undefined): TierKey | n
   if (!priceId) return null;
   return PRICE_VALUE_TO_TIER.get(priceId) ?? null;
 }
+
+export async function markPendingOnboardingCompleted(ctx: any, tenantId: Id<"condos">) {
+  const sessions = await ctx.db
+    .query("onboardingSessions")
+    .withIndex("byTenant", (q: any) => q.eq("tenantId", tenantId))
+    .collect();
+  for (const session of sessions) {
+    if (session.status === "completed" || session.status === "expired") continue;
+    await markOnboardingSessionStatus(ctx, session._id, "completed");
+  }
+}
+
+export async function updateTenantBillingState(
+  ctx: any,
+  tenantId: Id<"condos">,
+  status: string | undefined,
+  priceId: string | null,
+) {
+  const updates: Record<string, unknown> = {
+    billingStatus: status ?? "unknown",
+    updatedAt: Date.now(),
+  };
+  const tier = tierFromPriceId(priceId);
+  if (tier) {
+    updates.billingTier = tier;
+  }
+  await ctx.db.patch(tenantId, updates);
+  if (status === "active" || status === "trialing") {
+    await markPendingOnboardingCompleted(ctx, tenantId);
+  }
+}
