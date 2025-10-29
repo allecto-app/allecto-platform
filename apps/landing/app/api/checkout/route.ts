@@ -3,8 +3,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../../backend/convex/convex/_generated/api";
-import type { Id } from "../../../../../backend/convex/convex/_generated/dataModel";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -50,8 +48,8 @@ export async function GET(request: NextRequest) {
   const cancelUrl = `${origin}/cancel`;
 
   try {
-    const result = await convex.action(api.billing.createCheckoutSession, {
-      tenantId: tenantId as Id<"condos">,
+    const result = await (convex as any).action("billing:createCheckoutSession", {
+      tenantId,
       tierKey,
       successUrl,
       cancelUrl,
@@ -107,8 +105,8 @@ export async function POST(request: NextRequest) {
   const cancelUrl = `${origin}/cancel`;
 
   try {
-    const result = await convex.action(api.billing.createCheckoutSession, {
-      tenantId: tenantId as Id<"condos">,
+    const result = await (convex as any).action("billing:createCheckoutSession", {
+      tenantId,
       tierKey,
       successUrl,
       cancelUrl,

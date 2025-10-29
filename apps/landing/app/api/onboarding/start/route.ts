@@ -2,7 +2,6 @@
 
 import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../../../backend/convex/convex/_generated/api";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -57,7 +56,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await convex.mutation(api.onboarding.startTenantSignup, {
+    const result = await (convex as any).mutation("onboarding:startTenantSignup", {
       tierKey,
       condoName,
       subdomain,
