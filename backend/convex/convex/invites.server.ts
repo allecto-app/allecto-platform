@@ -23,7 +23,7 @@ function getSubtleCrypto(): SubtleDigest {
 
 async function sha256Hex(value: string): Promise<string> {
   const data = new TextEncoder().encode(value);
-  const digest = await getSubtleCrypto().digest("SHA-256", data);
+  const digest = await getSubtleCrypto().digest("SHA-256", data.buffer);
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");

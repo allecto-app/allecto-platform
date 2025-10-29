@@ -285,7 +285,7 @@ export const getViewToken = mutation({
   },
 });
 
-export const view = httpAction(async (ctx, request) => {
+export const view = httpAction(async (ctx: any, request) => {
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
   if (!token) {

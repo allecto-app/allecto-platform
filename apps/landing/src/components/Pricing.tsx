@@ -16,15 +16,23 @@ const PUBLIC_TIER_MAP: Record<TierKey, string> = {
   pro: "pro",
 };
 
-const FALLBACK_PLANS = [
+type PlanOption = {
+  tierKey: TierKey;
+  name: string;
+  priceCents: number;
+  features: string[];
+  badge?: string;
+};
+
+const FALLBACK_PLANS: PlanOption[] = [
   {
-    tierKey: "essencial" as TierKey,
+    tierKey: "essencial",
     name: "Essencial",
     priceCents: 28900,
     features: ["Até 99 unidades", "2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
   },
   {
-    tierKey: "plus" as TierKey,
+    tierKey: "plus",
     name: "Plus",
     priceCents: 74900,
     badge: "Mais Popular",
@@ -37,7 +45,7 @@ const FALLBACK_PLANS = [
     ],
   },
   {
-    tierKey: "pro" as TierKey,
+    tierKey: "pro",
     name: "Pro",
     priceCents: 109900,
     features: [
@@ -48,7 +56,7 @@ const FALLBACK_PLANS = [
       "Suporte prioritário (8h)",
     ],
   },
-] as const;
+];
 
 function formatPriceBRL(cents: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -59,9 +67,16 @@ function formatPriceBRL(cents: number) {
 }
 
 export function Pricing() {
-  const plans = useMemo(() => {
-    if (Billing?.BILLING_PLANS?.length) {
-      return Billing.BILLING_PLANS as typeof FALLBACK_PLANS;
+  const plans = useMemo<PlanOption[]>(() => {
+    const fromContracts = Billing?.BILLING_PLANS;
+    if (Array.isArray(fromContracts) && fromContracts.length > 0) {
+      return fromContracts.map((plan) => ({
+        tierKey: plan.tierKey as TierKey,
+        name: plan.name,
+        priceCents: plan.priceCents,
+        features: [...plan.features],
+        badge: plan.badge,
+      }));
     }
     return FALLBACK_PLANS;
   }, []);

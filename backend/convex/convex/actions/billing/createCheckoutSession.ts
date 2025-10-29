@@ -6,6 +6,8 @@ import { getStripeClient } from "../../stripe/client";
 import { normalizeEmail } from "../../_secu";
 import { ensureAbsoluteUrl, getPriceIdFromEnv, tierKeyValidator } from "./helpers";
 
+const billingApi = api.billing as any;
+
 export const createCheckoutSession = action({
   args: {
     tenantId: v.id("condos"),
@@ -17,7 +19,7 @@ export const createCheckoutSession = action({
   },
   handler: async (ctx, args) => {
     const { tenantId, tierKey } = args;
-    const context = await ctx.runQuery(api.billing.resolveBillingContext, {
+    const context = await ctx.runQuery(billingApi.resolveBillingContext, {
       tenantId,
       sessionToken: args.sessionToken ?? undefined,
       onboardingToken: args.onboardingToken ?? undefined,
@@ -31,7 +33,7 @@ export const createCheckoutSession = action({
 
     const normalizedEmail = normalizeEmail(email);
 
-    const existingRecord = await ctx.runQuery(api.billing.findStripeCustomerRecord, {
+    const existingRecord = await ctx.runQuery(billingApi.findStripeCustomerRecord, {
       tenantId,
       email: normalizedEmail,
     });
@@ -47,7 +49,7 @@ export const createCheckoutSession = action({
       if (existingRecord?.email !== normalizedEmail) {
         await stripe.customers.update(customerId, { email: normalizedEmail });
       }
-      await ctx.runMutation(api.billing.saveStripeCustomerRecord, {
+      await ctx.runMutation(billingApi.saveStripeCustomerRecord, {
         tenantId,
         stripeCustomerId: customerId,
         email: normalizedEmail,
@@ -61,7 +63,7 @@ export const createCheckoutSession = action({
         },
       });
       customerId = customer.id;
-      await ctx.runMutation(api.billing.saveStripeCustomerRecord, {
+      await ctx.runMutation(billingApi.saveStripeCustomerRecord, {
         tenantId,
         stripeCustomerId: customerId,
         email: normalizedEmail,
@@ -107,7 +109,7 @@ export const createCheckoutSession = action({
     }
 
     if (context.source === "onboarding") {
-      await ctx.runMutation(api.billing.markCheckoutInitiated, {
+      await ctx.runMutation(billingApi.markCheckoutInitiated, {
         tenantId,
         onboardingSessionId: context.onboardingSessionId,
         tierKey,

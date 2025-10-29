@@ -1,10 +1,11 @@
 'use node';
 
+import Stripe from "stripe";
 import { internalAction } from "../../_generated/server";
 import { v } from "convex/values";
-import { api, internal } from "../../_generated/api";
 import { sendEmail, DEFAULT_FROM } from "../../lib/email";
 import { normalizeEmail } from "../../_secu";
+import type { Id } from "../../_generated/dataModel";
 
 const PLAN_LABELS: Record<string, string> = {
   essencial: "Essencial",
@@ -53,10 +54,22 @@ type ResidentRecord = {
   email?: string;
 };
 
-async function fetchLatestResident(ctx: any, tenantId: string): Promise<ResidentRecord | null> {
+function resolveCustomerEmail(customer: unknown): string | null {
+  if (
+    customer &&
+    typeof customer === "object" &&
+    "email" in customer &&
+    !("deleted" in customer)
+  ) {
+    return (customer as { email?: string | null }).email ?? null;
+  }
+  return null;
+}
+
+async function fetchLatestResident(ctx: any, tenantId: Id<"condos">): Promise<ResidentRecord | null> {
   const residents = await ctx.db
     .query("residents")
-    .withIndex("byCondo", (q) => q.eq("condoId", tenantId as any))
+    .withIndex("byCondo", (q: any) => q.eq("condoId", tenantId))
     .order("asc")
     .take(10);
 
@@ -64,7 +77,11 @@ async function fetchLatestResident(ctx: any, tenantId: string): Promise<Resident
   return residents[0];
 }
 
-function extractPaymentDetails(invoice: Stripe.Invoice | null | undefined) {
+function toMillis(value: number | null | undefined) {
+  return typeof value === "number" ? value * 1000 : undefined;
+}
+
+async function extractPaymentDetails(stripe: Stripe, invoice: Stripe.Invoice | null | undefined) {
   if (!invoice) {
     return {
       invoiceNumber: "-",
@@ -76,8 +93,16 @@ function extractPaymentDetails(invoice: Stripe.Invoice | null | undefined) {
   }
 
   const paymentIntent =
-    typeof invoice.payment_intent === "object" ? invoice.payment_intent : null;
-  const charges = paymentIntent?.charges?.data ?? [];
+    typeof invoice.payment_intent === "object"
+      ? (invoice.payment_intent as Stripe.PaymentIntent)
+      : null;
+  let charges: Stripe.Charge[] = [];
+  if (paymentIntent?.latest_charge) {
+    const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
+    charges = [charge];
+  } else if (Array.isArray((paymentIntent as any)?.charges?.data)) {
+    charges = ((paymentIntent as any).charges.data ?? []) as Stripe.Charge[];
+  }
   const charge = charges[0];
   const paymentMethod = charge?.payment_method_details;
 
@@ -126,7 +151,7 @@ export const sendOnboardingSuccessEmail = internalAction({
     subscriptionId: v.string(),
     invoiceId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const tenant = (await ctx.db.get(args.tenantId)) as TenantRecord | null;
     if (!tenant) {
       console.warn("[billing.email] Tenant not found", args.tenantId);
@@ -142,9 +167,7 @@ export const sendOnboardingSuccessEmail = internalAction({
       return;
     }
 
-    const stripe = new Stripe(stripeSecret, {
-      apiVersion: "2023-10-16",
-    });
+    const stripe = new Stripe(stripeSecret);
 
     const { subscription, invoice } = await loadStripeData(
       stripe,
@@ -153,7 +176,7 @@ export const sendOnboardingSuccessEmail = internalAction({
     );
 
     const price = subscription.items?.data?.[0]?.price ?? null;
-    const customerEmail = subscription.customer_email ?? residentEmail;
+  const customerEmail = resolveCustomerEmail(subscription.customer) ?? residentEmail;
 
     if (!customerEmail) {
       console.warn("[billing.email] No customer email found for tenant", args.tenantId);
@@ -164,7 +187,7 @@ export const sendOnboardingSuccessEmail = internalAction({
     const planTier = tier ?? tenant.billingTier ?? "essencial";
     const priceFormatted = formatBRL(amount);
     const nextBillingDate = formatDate(toMillis(subscription.current_period_end));
-    const payment = extractPaymentDetails(invoice);
+    const payment = await extractPaymentDetails(stripe, invoice);
 
     const portalUrl = `${PORTAL_BASE_URL}/login`;
     const tenantDisplayName = tenant.branding?.displayName ?? tenant.name;

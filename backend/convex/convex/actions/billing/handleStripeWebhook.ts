@@ -29,6 +29,18 @@ function extractTenantId(metadata?: Stripe.Metadata | null, fallback?: string | 
   return fallback ?? null;
 }
 
+function resolveCustomerEmail(customer: unknown): string | null {
+  if (
+    customer &&
+    typeof customer === "object" &&
+    "email" in customer &&
+    !("deleted" in customer)
+  ) {
+    return (customer as { email?: string | null }).email ?? null;
+  }
+  return null;
+}
+
 function extractPriceInfo(subscription: Stripe.Subscription) {
   const item = subscription.items?.data?.[0];
   const price = item?.price;
@@ -134,11 +146,13 @@ async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout
     return;
   }
 
+  const customerEmailFromSubscription = resolveCustomerEmail(subscription.customer);
+
   await saveCustomerRecord(
     ctx,
     tenantId,
     customerId,
-    session.customer_details?.email ?? subscription.customer_email ?? null,
+    session.customer_details?.email ?? customerEmailFromSubscription ?? null,
   );
 
   const payload = buildSubscriptionPayload(subscription);
@@ -168,7 +182,9 @@ async function handleSubscriptionEvent(ctx: any, payload: Stripe.Subscription) {
     return;
   }
 
-  await saveCustomerRecord(ctx, tenantId, customerId, payload.customer_email ?? null);
+  const customerEmailFromPayload = resolveCustomerEmail(payload.customer);
+
+  await saveCustomerRecord(ctx, tenantId, customerId, customerEmailFromPayload ?? null);
 
   const payloadData = buildSubscriptionPayload(payload);
   await ctx.runMutation(api.billing.upsertStripeSubscriptionRecord, {
@@ -207,7 +223,9 @@ async function handleInvoiceEvent(
     return;
   }
 
-  await saveCustomerRecord(ctx, tenantId, customerId, invoice.customer_email ?? null);
+  const customerEmailFromInvoice = invoice.customer_email ?? resolveCustomerEmail(invoice.customer ?? null);
+
+  await saveCustomerRecord(ctx, tenantId, customerId, customerEmailFromInvoice ?? null);
 
   const payloadData = buildSubscriptionPayload(subscription);
   payloadData.latestInvoiceId = invoice.id ?? payloadData.latestInvoiceId;

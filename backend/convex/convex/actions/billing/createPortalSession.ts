@@ -14,7 +14,9 @@ export const createPortalSession = action({
     sessionToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const context = await ctx.runQuery(api.billing.resolveBillingContext, {
+    const billingApi = api.billing as any;
+
+    const context = await ctx.runQuery(billingApi.resolveBillingContext, {
       tenantId: args.tenantId,
       sessionToken: args.sessionToken ?? undefined,
     });
@@ -26,7 +28,7 @@ export const createPortalSession = action({
 
     const normalizedEmail = normalizeEmail(email);
 
-    const existingRecord = await ctx.runQuery(api.billing.findStripeCustomerRecord, {
+    const existingRecord = await ctx.runQuery(billingApi.findStripeCustomerRecord, {
       tenantId: args.tenantId,
       email: normalizedEmail,
     });
@@ -38,7 +40,7 @@ export const createPortalSession = action({
       if (existingRecord?.email !== normalizedEmail) {
         await stripe.customers.update(customerId, { email: normalizedEmail });
       }
-      await ctx.runMutation(api.billing.saveStripeCustomerRecord, {
+      await ctx.runMutation(billingApi.saveStripeCustomerRecord, {
         tenantId: args.tenantId,
         stripeCustomerId: customerId,
         email: normalizedEmail,
@@ -52,7 +54,7 @@ export const createPortalSession = action({
         },
       });
       customerId = customer.id;
-      await ctx.runMutation(api.billing.saveStripeCustomerRecord, {
+      await ctx.runMutation(billingApi.saveStripeCustomerRecord, {
         tenantId: args.tenantId,
         stripeCustomerId: customerId,
         email: normalizedEmail,

@@ -1,4 +1,4 @@
-import type { ActionCtx, MutationCtx, QueryCtx } from "convex/server";
+import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 import type { GenericId } from "convex/values";
 import { loadSession } from "../guards";
 

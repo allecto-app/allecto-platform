@@ -111,14 +111,14 @@ export const update = mutation({
                 email !== undefined
                     ? email.trim().length > 0
                         ? normalizeEmail(email)
-                        : null
-                    : existing.email ?? null,
+                        : undefined
+                    : existing.email,
             phone:
                 phone !== undefined
                     ? phone.trim().length > 0
                         ? phone.trim()
-                        : null
-                    : existing.phone ?? null,
+                        : undefined
+                    : existing.phone,
             role,
             isActive,
             updatedAt: now,

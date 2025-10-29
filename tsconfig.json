@@ -5,9 +5,23 @@
         "moduleResolution": "Bundler",
         "strict": true,
         "esModuleInterop": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "typeRoots": [
+            "./types",
+            "./node_modules/@types"
+        ]
     },
     "include": [
-        "convex"
+        "apps/**/*",
+        "backend/**/*",
+        "packages/**/*",
+        "types/**/*",
+        "*.ts",
+        "*.tsx"
+    ],
+    "exclude": [
+        "node_modules",
+        "**/dist",
+        "**/build"
     ]
 }

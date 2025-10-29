@@ -7,7 +7,7 @@ import { normalizeEmail } from "./_secu";
 
 export const resendOtp = action({
   args: { residentId: v.id("residents") },
-  handler: async (ctx, { residentId }) => {
+  handler: async (ctx: any, { residentId }) => {
     const resident = await ctx.db.get(residentId);
     if (!resident?.email) {
       throw new Error("Residente sem email cadastrado");

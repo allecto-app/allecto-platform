@@ -1,4 +1,4 @@
-'use node';
+"use node";
 
 import Stripe from "stripe";
 let stripeClient: Stripe | null = null;
@@ -14,7 +14,7 @@ function getStripeSecret(): string {
 export function getStripeClient(): Stripe {
   if (!stripeClient) {
     stripeClient = new Stripe(getStripeSecret(), {
-      apiVersion: "2023-10-16",
+      apiVersion: "2024-06-20",
     });
   }
   return stripeClient;

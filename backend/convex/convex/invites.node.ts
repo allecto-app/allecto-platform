@@ -7,6 +7,8 @@ import { sendEmail, DEFAULT_FROM } from "./lib/email";
 import { inviteError, DEFAULT_TTL_HOURS } from "./invites.shared";
 import { internal } from "./_generated/api";
 
+const internalInvites = internal.invites as any;
+
 export const createAndEmail = action({
   args: {
     token: v.string(),
@@ -22,7 +24,7 @@ export const createAndEmail = action({
     const normalizedEmail = normalizeEmail(email);
     const trimmedName = name?.trim() || undefined;
 
-    const authResult = await ctx.runMutation(internal.invites._authorizeInviteCreator, {
+    const authResult = await ctx.runMutation(internalInvites._authorizeInviteCreator, {
       token,
       condoId,
     });
@@ -34,7 +36,7 @@ export const createAndEmail = action({
     const rawToken = randomToken(32);
     const tokenHash = await sha256(rawToken);
 
-    const { inviteId } = await ctx.runMutation(internal.invites._createInviteRecord, {
+    const { inviteId } = await ctx.runMutation(internalInvites._createInviteRecord, {
       condoId,
       email: normalizedEmail,
       name: trimmedName,
@@ -50,7 +52,7 @@ export const createAndEmail = action({
       url.searchParams.set("token", rawToken);
       acceptUrl = url.toString();
     } catch {
-      await ctx.runMutation(internal.invites._markInviteRevoked, { inviteId });
+      await ctx.runMutation(internalInvites._markInviteRevoked, { inviteId });
       throw inviteError();
     }
 
@@ -97,11 +99,11 @@ Equipe Allecto`;
       }
     } catch (error) {
       console.error("Failed to send invite email", error);
-      await ctx.runMutation(internal.invites._markInviteRevoked, { inviteId });
+      await ctx.runMutation(internalInvites._markInviteRevoked, { inviteId });
       throw inviteError();
     }
 
-    await ctx.runMutation(internal.invites._logSecurityEvent, {
+    await ctx.runMutation(internalInvites._logSecurityEvent, {
       type: "invite_create",
       key: normalizedEmail,
       meta: { condoId, inviteId },

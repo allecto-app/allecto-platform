@@ -3,6 +3,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../../backend/convex/convex/_generated/api";
+import type { Id } from "../../../../../backend/convex/convex/_generated/dataModel";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -12,17 +14,21 @@ if (!convexUrl) {
 
 const convex = new ConvexHttpClient(convexUrl);
 
-const TIER_MAP: Record<string, "essencial" | "plus" | "pro"> = {
+const RAW_TIER_MAP = {
   start: "essencial",
   essencial: "essencial",
   plus: "plus",
   pro: "pro",
-};
+} as const;
+
+const TIER_MAP: Record<string, "essencial" | "plus" | "pro"> = Object.fromEntries(
+  Object.entries(RAW_TIER_MAP).map(([key, value]) => [key.toLowerCase(), value]),
+) as Record<string, "essencial" | "plus" | "pro">;
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const tenantId = searchParams.get("tenantId");
-  const tierParam = searchParams.get("tierKey") ?? "";
+  const tierParam = (searchParams.get("tierKey") ?? "").toLowerCase();
   const onboardingToken = searchParams.get("onboardingToken") ?? undefined;
 
   if (!tenantId || tenantId.length === 0) {
@@ -44,8 +50,8 @@ export async function GET(request: NextRequest) {
   const cancelUrl = `${origin}/cancel`;
 
   try {
-    const result = await convex.action("billing:createCheckoutSession", {
-      tenantId,
+    const result = await convex.action(api.billing.createCheckoutSession, {
+      tenantId: tenantId as Id<"condos">,
       tierKey,
       successUrl,
       cancelUrl,
@@ -77,7 +83,8 @@ export async function POST(request: NextRequest) {
   }
 
   const tenantId = typeof payload.tenantId === "string" ? payload.tenantId.trim() : "";
-  const tierParam = typeof payload.tierKey === "string" ? payload.tierKey : "";
+  const tierParam =
+    typeof payload.tierKey === "string" ? payload.tierKey.toLowerCase() : "";
   const onboardingToken =
     typeof payload.onboardingToken === "string" ? payload.onboardingToken : undefined;
 
@@ -100,8 +107,8 @@ export async function POST(request: NextRequest) {
   const cancelUrl = `${origin}/cancel`;
 
   try {
-    const result = await convex.action("billing:createCheckoutSession", {
-      tenantId,
+    const result = await convex.action(api.billing.createCheckoutSession, {
+      tenantId: tenantId as Id<"condos">,
       tierKey,
       successUrl,
       cancelUrl,
