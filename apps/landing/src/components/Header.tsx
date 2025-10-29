@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Button } from "./ui/button";
 import { Menu } from "lucide-react";
 
@@ -7,10 +8,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <span className="text-xl text-white">A</span>
-            </div>
-            <span className="text-xl text-primary">Allecto App</span>
+            <Image src="/images/logo-allecto.png" alt="Allecto App" width={130} height={46} />
           </div>
           
           <nav className="hidden md:flex items-center gap-8">

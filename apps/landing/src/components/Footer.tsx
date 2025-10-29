@@ -1,4 +1,5 @@
 import { Mail, Linkedin, Twitter, Instagram } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -7,10 +8,7 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="text-xl text-white">A</span>
-              </div>
-              <span className="text-xl text-white">Allecto App</span>
+              <Image src="/images/logo-allecto-white.png" alt="Allecto App" width={130} height={46} />
             </div>
             <p className="text-gray-400 max-w-md">
               Simplifique assembleias condominiais com votação digital segura, transparente e em conformidade com a legislação brasileira.

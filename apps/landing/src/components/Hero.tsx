@@ -1,5 +1,5 @@
 import { Button } from "./ui/button";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
+import Image from "next/image";
 
 export function Hero() {
   return (
@@ -28,17 +28,7 @@ export function Hero() {
               </Button>
             </div>
           </div>
-          <div className="relative">
-            <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-primary/5 to-accent/10">
-              <ImageWithFallback 
-                src="https://images.unsplash.com/photo-1730822077021-49dc49c06547?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZW9wbGUlMjB2b3RpbmclMjBzbWFydHBob25lfGVufDF8fHx8MTc2MTM4NjQzMnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                alt="People using voting app on smartphones"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-secondary rounded-full blur-3xl opacity-20"></div>
-            <div className="absolute -top-6 -left-6 w-32 h-32 bg-accent rounded-full blur-3xl opacity-20"></div>
-          </div>
+          <Image src="/images/hero-1.png" alt="Allecto App" width={1200} height={1200} />
         </div>
       </div>
     </section>

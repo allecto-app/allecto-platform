@@ -21,6 +21,7 @@ import { api } from "../lib/convexGenerated";
 import { AdminAuthSession } from "../lib/authSession";
 import { useHostInfo } from "../lib/hostContext";
 import { toast } from "sonner";
+import Image from "next/image";
 
 interface AuthPageProps {
   onLogin: (session: AdminAuthSession) => void;
@@ -299,15 +300,12 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-accent to-primary p-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary">
-              <span className="text-primary-foreground text-[28px]">A</span>
-            </div>
+          <div className="my-4 flex justify-center">
+            <Image src="/images/logo-allecto.png" alt="Allecto App" width={200} height={46} />
           </div>
-          <CardTitle>Allecto Admin</CardTitle>
           <CardDescription>
             Acesse com credenciais da plataforma ou com o código enviado ao síndico/gestor
           </CardDescription>
