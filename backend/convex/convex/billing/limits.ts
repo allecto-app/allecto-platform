@@ -39,8 +39,19 @@ export function resolveLimits(tierKey: TierKey): TierLimits {
   };
 }
 
-export function validateUnitsAgainstTier(unitsCount: number, tierKey: TierKey): UnitsValidationResult {
+export function validateUnitsAgainstTier(
+  unitsCount: number,
+  tierKey: TierKey
+): UnitsValidationResult {
   const limits = resolveLimits(tierKey);
+
+  if (
+    tierKey === "pro" &&
+    typeof limits.unitMin === "number" &&
+    unitsCount < limits.unitMin
+  ) {
+    return { ok: true };
+  }
 
   if (typeof limits.unitMin === "number" && unitsCount < limits.unitMin) {
     return { ok: false, reason: "below_min" };

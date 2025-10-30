@@ -1,19 +1,11 @@
-import { httpAction, mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { canReadDoc, canUpload, requireActor, type Actor } from "./lib/authz";
+import { canReadDoc, canUpload, requireActor } from "./lib/authz";
 import type { Id } from "./_generated/dataModel";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const PDF_MIME = "application/pdf";
 const VIEW_TTL_SECONDS = Number(process.env.VIEW_JWT_TTL_SECONDS ?? 5 * 60);
-
-function getViewSecret(): string {
-  const secret = process.env.VIEW_JWT_SECRET;
-  if (!secret) {
-    throw new Error("VIEW_JWT_SECRET not configured");
-  }
-  return secret;
-}
 
 function assertPdf(contentType: string) {
   if (contentType !== PDF_MIME) {
@@ -24,87 +16,6 @@ function assertPdf(contentType: string) {
 function assertSize(size: number) {
   if (size <= 0) throw new Error("INVALID_FILE");
   if (size > MAX_PDF_BYTES) throw new Error("FILE_TOO_LARGE");
-}
-
-const textEncoder = new TextEncoder();
-
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function sha256HexOfString(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", textEncoder.encode(value));
-  return toHex(new Uint8Array(digest));
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-type ViewTokenPayload = {
-  docId: string;
-  sub: string;
-  orgId: string;
-  roles: string[];
-  exp: number;
-};
-
-async function signViewToken(payload: ViewTokenPayload): Promise<string> {
-  const encodedPayload = encodeURIComponent(JSON.stringify(payload));
-  const signature = await sha256HexOfString(`${encodedPayload}.${getViewSecret()}`);
-  return `${encodedPayload}.${signature}`;
-}
-
-async function verifyViewToken(token: string): Promise<ViewTokenPayload | null> {
-  const parts = token.split(".");
-  if (parts.length !== 2) {
-    return null;
-  }
-  const [encodedPayload, signature] = parts;
-  const expectedSignature = await sha256HexOfString(`${encodedPayload}.${getViewSecret()}`);
-  if (!constantTimeEqual(signature, expectedSignature)) {
-    return null;
-  }
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(encodedPayload);
-  } catch {
-    return null;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(decoded) as ViewTokenPayload;
-  } catch {
-    return null;
-  }
-  if (
-    !parsed ||
-    typeof parsed !== "object" ||
-    typeof (parsed as ViewTokenPayload).docId !== "string" ||
-    typeof (parsed as ViewTokenPayload).sub !== "string" ||
-    typeof (parsed as ViewTokenPayload).orgId !== "string" ||
-    !Array.isArray((parsed as ViewTokenPayload).roles) ||
-    typeof (parsed as ViewTokenPayload).exp !== "number"
-  ) {
-    return null;
-  }
-  const payload = parsed as ViewTokenPayload;
-  if (!payload.roles.every((role) => typeof role === "string")) {
-    return null;
-  }
-  if (payload.exp < Date.now()) {
-    return null;
-  }
-  return payload;
 }
 
 const finalizeArgs = {
@@ -273,72 +184,26 @@ export const getViewToken = mutation({
       throw new Error("FORBIDDEN");
     }
 
-    const token = await signViewToken({
-      docId: docId as unknown as string,
-      sub: actor.userId,
+    const fileUrl = await ctx.storage.getUrl(doc.storageId);
+    if (!fileUrl) {
+      throw new Error("FILE_URL_UNAVAILABLE");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(doc._id, {
+      lastViewedAt: now,
+      viewCount: doc.viewCount + 1,
+    });
+    await ctx.db.insert("documentEvents", {
+      documentId: doc._id,
       orgId: actor.orgId,
-      roles: actor.roles,
-      exp: Date.now() + VIEW_TTL_SECONDS * 1000,
+      userId: actor.userId,
+      event: "view",
+      createdAt: now,
     });
 
-    return { token, expiresIn: VIEW_TTL_SECONDS };
+    return { url: fileUrl, expiresIn: VIEW_TTL_SECONDS };
   },
-});
-
-export const view = httpAction(async (ctx: any, request) => {
-  const url = new URL(request.url);
-  const token = url.searchParams.get("token");
-  if (!token) {
-    return new Response("Missing token", { status: 400 });
-  }
-
-  const payload = await verifyViewToken(token);
-  if (!payload) {
-    return new Response("Invalid or expired token", { status: 401 });
-  }
-
-  const docId = payload.docId as unknown as Id<"documents">;
-  const doc = await ctx.db.get(docId);
-  if (!doc) {
-    return new Response("Document not found", { status: 404 });
-  }
-
-  const actor: Actor = {
-    userId: payload.sub,
-    orgId: payload.orgId,
-    roles: payload.roles,
-  };
-  if (!canReadDoc(actor, doc)) {
-    return new Response("FORBIDDEN", { status: 403 });
-  }
-
-  const data = await ctx.storage.get(doc.storageId);
-  if (!data) {
-    return new Response("File missing", { status: 404 });
-  }
-
-  const now = Date.now();
-  await ctx.db.patch(doc._id, {
-    lastViewedAt: now,
-    viewCount: doc.viewCount + 1,
-  });
-  await ctx.db.insert("documentEvents", {
-    documentId: doc._id,
-    orgId: actor.orgId,
-    userId: actor.userId,
-    event: "view",
-    createdAt: now,
-  });
-
-  return new Response(data, {
-    status: 200,
-    headers: {
-      "Content-Type": doc.contentType,
-      "Content-Disposition": `inline; filename="${encodeURIComponent(doc.title)}.pdf"`,
-      "Cache-Control": "no-store, private, max-age=0",
-      "Content-Length": String(data.byteLength),
-    },
-  });
 });
 
 export const listEvents = query({

@@ -24,27 +24,20 @@ export function ViewPdfButton({
   disabled,
   ...buttonProps
 }: ViewPdfButtonProps) {
-  const getToken = useMutation(api.documents.getViewToken);
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const getViewUrl = useMutation(api.documents.getViewToken);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleClick = useCallback(async () => {
-    if (!convexUrl) {
-      toast.error("A URL do Convex não está configurada.");
-      return;
-    }
-
     try {
       setIsLoading(true);
-      const { token } = await getToken({
+      const { url } = await getViewUrl({
         docId,
         sessionToken: sessionToken ?? undefined,
         orgId: orgId ?? undefined,
       });
-      if (!token) {
-        throw new Error("Token de visualização inválido.");
+      if (!url) {
+        throw new Error("URL de visualização indisponível.");
       }
-      const url = `${convexUrl}/api/docs/view?token=${encodeURIComponent(token)}`;
       window.open(url, "_blank", "noopener,noreferrer");
       onOpened?.(url);
     } catch (error) {
@@ -56,7 +49,7 @@ export function ViewPdfButton({
     } finally {
       setIsLoading(false);
     }
-  }, [convexUrl, docId, getToken, onOpened, orgId, sessionToken]);
+  }, [docId, getViewUrl, onOpened, orgId, sessionToken]);
 
   return (
     <Button

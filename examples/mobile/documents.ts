@@ -94,31 +94,30 @@ export async function pickAndUploadPdf(convexClient: any, meta: {
   });
 }
 
-export function useSecurePdfViewer({ convexClient, docId, sessionToken, convexUrl, orgId }: {
+export function useSecurePdfViewer({ convexClient, docId, sessionToken, orgId }: {
   convexClient: any;
   docId: string;
   sessionToken?: string;
-  convexUrl: string;
   orgId?: string;
 }) {
-  const [token, setToken] = useState<string | null>(null);
+  const [viewUrl, setViewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const { token: nextToken } = await convexClient.mutation("documents:getViewToken", {
+        const { url } = await convexClient.mutation("documents:getViewToken", {
           docId,
           sessionToken,
           orgId,
         });
         if (mounted) {
-          setToken(nextToken);
+          setViewUrl(url ?? null);
         }
       } catch (error) {
-        console.error("Failed to obtain view token", error);
+        console.error("Failed to obtain view url", error);
         if (mounted) {
-          setToken(null);
+          setViewUrl(null);
         }
       }
     })();
@@ -127,13 +126,9 @@ export function useSecurePdfViewer({ convexClient, docId, sessionToken, convexUr
     };
   }, [convexClient, docId, orgId, sessionToken]);
 
-  const url = useMemo(() => {
-    if (!token) return null;
-    return `${convexUrl}/api/docs/view?token=${encodeURIComponent(token)}`;
-  }, [convexUrl, token]);
+  const url = useMemo(() => viewUrl, [viewUrl]);
 
   return {
-    token,
     url,
     WebView: url
       ? () => <WebView source={{ uri: url }} originWhitelist={["*"]} />

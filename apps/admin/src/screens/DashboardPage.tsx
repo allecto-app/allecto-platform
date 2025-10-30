@@ -1,10 +1,22 @@
 import { useMemo } from "react";
-import { Building2, FileText, Vote, TrendingUp } from "lucide-react";
+import { FileText, Vote, TrendingUp } from "lucide-react";
 import { useQuery } from "convex/react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { KPICard } from "../components/admin/KPICard";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
 import { api, Doc } from "../lib/convexGenerated";
 
@@ -19,18 +31,19 @@ const formatDateTime = (timestamp: number) =>
     timeStyle: "short",
   }).format(new Date(timestamp));
 
-export function DashboardPage({ condos, selectedCondo }: DashboardPageProps) {
+export function DashboardPage({ selectedCondo }: DashboardPageProps) {
   const minutes = useQuery(
     api.minutes.list,
-    selectedCondo ? { condoId: selectedCondo._id } : "skip",
+    selectedCondo ? { condoId: selectedCondo._id } : "skip"
   ) as Doc<"minutes">[] | undefined;
   const voteStats = useQuery(
     api.votes.statsByCondo,
-    selectedCondo ? { condoId: selectedCondo._id } : "skip",
+    selectedCondo ? { condoId: selectedCondo._id } : "skip"
   ) as { votesToday: number; participationRate: number } | undefined;
 
-  const totalCondos = condos?.length ?? 0;
-  const openMinutes = (minutes ?? []).filter((minute) => minute.status === "open").length;
+  const openMinutes = (minutes ?? []).filter(
+    (minute) => minute.status === "open"
+  ).length;
   const votesTodayValue = selectedCondo
     ? voteStats === undefined
       ? "--"
@@ -60,22 +73,9 @@ export function DashboardPage({ condos, selectedCondo }: DashboardPageProps) {
       <PageHeader title="Visão Geral" />
 
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <KPICard
-            title="Condomínios"
-            value={totalCondos}
-            icon={Building2}
-          />
-          <KPICard
-            title="Atas Abertas"
-            value={openMinutes}
-            icon={FileText}
-          />
-          <KPICard
-            title="Votos Hoje"
-            value={votesTodayValue}
-            icon={Vote}
-          />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <KPICard title="Atas Abertas" value={openMinutes} icon={FileText} />
+          <KPICard title="Votos Hoje" value={votesTodayValue} icon={Vote} />
           <KPICard
             title="Taxa de Participação"
             value={participationValue}
@@ -118,7 +118,10 @@ export function DashboardPage({ condos, selectedCondo }: DashboardPageProps) {
                 ))}
                 {recentActivity.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground"
+                    >
                       Nenhuma atividade registrada para este condomínio.
                     </TableCell>
                   </TableRow>
