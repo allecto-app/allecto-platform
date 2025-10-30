@@ -2,12 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Button } from "../components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "../components/ui/input-otp";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "../components/ui/input-otp";
 import {
   Dialog,
   DialogContent,
@@ -31,11 +47,15 @@ type Mode = "platform" | "resident";
 
 export function AuthPage({ onLogin }: AuthPageProps) {
   const hostInfo = useHostInfo();
-  const hostSubdomain = hostInfo.isCondoSubdomain ? hostInfo.subdomain ?? "" : "";
+  const hostSubdomain = hostInfo.isCondoSubdomain
+    ? hostInfo.subdomain ?? ""
+    : "";
   const residentModeForced = hostInfo.isCondoSubdomain;
   const platformLoginEnabled = hostInfo.isPortal && !hostInfo.isCondoSubdomain;
 
-  const [mode, setMode] = useState<Mode>(residentModeForced ? "resident" : "platform");
+  const [mode, setMode] = useState<Mode>(
+    residentModeForced ? "resident" : "platform"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -184,21 +204,31 @@ export function AuthPage({ onLogin }: AuthPageProps) {
         code: forgotCode.trim(),
         newPassword: forgotNewPassword,
       });
-      toast.success("Senha redefinida com sucesso! Faça login com a nova senha.");
+      toast.success(
+        "Senha redefinida com sucesso! Faça login com a nova senha."
+      );
       setEmail(emailValue);
       setPassword("");
       handleForgotOpenChange(false);
     } catch (error) {
       console.error("Failed to reset password", error);
-      setForgotError("Não foi possível redefinir a senha. Verifique o código e tente novamente.");
+      setForgotError(
+        "Não foi possível redefinir a senha. Verifique o código e tente novamente."
+      );
     } finally {
       setIsResettingPassword(false);
     }
   };
 
-  const tabsColumnsClass = platformLoginEnabled ? "grid w-full grid-cols-2" : "grid w-full grid-cols-1";
-  const currentResidentSubdomain = residentModeForced ? hostSubdomain : residentSubdomain;
-  const canSendOtp = Boolean(currentResidentSubdomain.trim() && residentEmail.trim());
+  const tabsColumnsClass = platformLoginEnabled
+    ? "grid w-full grid-cols-2"
+    : "grid w-full grid-cols-1";
+  const currentResidentSubdomain = residentModeForced
+    ? hostSubdomain
+    : residentSubdomain;
+  const canSendOtp = Boolean(
+    currentResidentSubdomain.trim() && residentEmail.trim()
+  );
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,7 +261,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const handleSendResidentOtp = async () => {
     setResidentError(null);
     setResidentDevCode(null);
-    const subdomainValue = (residentModeForced ? hostSubdomain : residentSubdomain)
+    const subdomainValue = (
+      residentModeForced ? hostSubdomain : residentSubdomain
+    )
       .trim()
       .toLowerCase();
     const emailValue = residentEmail.trim().toLowerCase();
@@ -262,7 +294,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       setResidentError("Informe o código recebido");
       return;
     }
-    const subdomainValue = (residentModeForced ? hostSubdomain : residentSubdomain)
+    const subdomainValue = (
+      residentModeForced ? hostSubdomain : residentSubdomain
+    )
       .trim()
       .toLowerCase();
     const emailValue = residentEmail.trim().toLowerCase();
@@ -304,19 +338,27 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="my-4 flex justify-center">
-            <Image src="/images/logo-allecto.png" alt="Allecto App" width={200} height={46} />
+            <Image
+              src="/images/logo-allecto.png"
+              alt="Allecto App"
+              width={200}
+              height={46}
+            />
           </div>
           <CardDescription>
-            Acesse com credenciais da plataforma ou com o código enviado ao síndico/gestor
+            Acesse com credenciais da plataforma ou com o código enviado ao
+            síndico/gestor
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={mode} onValueChange={handleModeChange} className="space-y-4">
+          <Tabs
+            value={mode}
+            onValueChange={handleModeChange}
+            className="space-y-4"
+          >
             <TabsList className={tabsColumnsClass}>
               {platformLoginEnabled && (
-                <TabsTrigger value="platform">
-                  Plataforma
-                </TabsTrigger>
+                <TabsTrigger value="platform">Plataforma</TabsTrigger>
               )}
               <TabsTrigger value="resident">Síndico / Gestor</TabsTrigger>
             </TabsList>
@@ -341,9 +383,15 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Senha</Label>
-                      <Dialog open={forgotOpen} onOpenChange={handleForgotOpenChange}>
+                      <Dialog
+                        open={forgotOpen}
+                        onOpenChange={handleForgotOpenChange}
+                      >
                         <DialogTrigger asChild>
-                          <button type="button" className="text-primary hover:underline">
+                          <button
+                            type="button"
+                            className="text-primary hover:underline"
+                          >
                             Esqueceu a senha?
                           </button>
                         </DialogTrigger>
@@ -353,7 +401,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                               <DialogHeader>
                                 <DialogTitle>Redefinir senha</DialogTitle>
                                 <DialogDescription>
-                                  Informe o email cadastrado para receber um código de redefinição.
+                                  Informe o email cadastrado para receber um
+                                  código de redefinição.
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="space-y-4">
@@ -364,11 +413,15 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                                     type="email"
                                     placeholder="admin@exemplo.com"
                                     value={forgotEmail}
-                                    onChange={(event) => setForgotEmail(event.target.value)}
+                                    onChange={(event) =>
+                                      setForgotEmail(event.target.value)
+                                    }
                                   />
                                 </div>
                                 {forgotError && (
-                                  <p className="text-sm text-destructive">{forgotError}</p>
+                                  <p className="text-sm text-destructive">
+                                    {forgotError}
+                                  </p>
                                 )}
                               </div>
                               <DialogFooter>
@@ -382,7 +435,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                                   onClick={handleRequestPasswordReset}
                                   disabled={isRequestingReset}
                                 >
-                                  {isRequestingReset ? "Enviando..." : "Enviar código"}
+                                  {isRequestingReset
+                                    ? "Enviando..."
+                                    : "Enviar código"}
                                 </Button>
                               </DialogFooter>
                             </>
@@ -391,57 +446,77 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                               <DialogHeader>
                                 <DialogTitle>Confirme o código</DialogTitle>
                                 <DialogDescription>
-                                  Verifique seu email e informe o código de 6 dígitos para definir uma nova senha.
+                                  Verifique seu email e informe o código de 6
+                                  dígitos para definir uma nova senha.
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="space-y-4">
                                 <div className="space-y-2">
-                                  <Label htmlFor="reset-code">Código de 6 dígitos</Label>
+                                  <Label htmlFor="reset-code">
+                                    Código de 6 dígitos
+                                  </Label>
                                   <InputOTP
                                     value={forgotCode}
                                     onChange={setForgotCode}
                                     maxLength={6}
                                   >
                                     <InputOTPGroup>
-                                      {Array.from({ length: 6 }).map((_, index) => (
-                                        <InputOTPSlot key={index} index={index} />
-                                      ))}
+                                      {Array.from({ length: 6 }).map(
+                                        (_, index) => (
+                                          <InputOTPSlot
+                                            key={index}
+                                            index={index}
+                                          />
+                                        )
+                                      )}
                                     </InputOTPGroup>
                                   </InputOTP>
                                   {forgotDevCode && (
                                     <p className="text-xs text-muted-foreground">
                                       Código (ambiente de testes):{" "}
-                                      <span className="font-mono">{forgotDevCode}</span>
+                                      <span className="font-mono">
+                                        {forgotDevCode}
+                                      </span>
                                     </p>
                                   )}
                                 </div>
                                 <div className="space-y-2">
-                                  <Label htmlFor="new-password">Nova senha</Label>
+                                  <Label htmlFor="new-password">
+                                    Nova senha
+                                  </Label>
                                   <Input
                                     id="new-password"
                                     type="password"
                                     placeholder="••••••••"
                                     value={forgotNewPassword}
-                                    onChange={(event) => setForgotNewPassword(event.target.value)}
+                                    onChange={(event) =>
+                                      setForgotNewPassword(event.target.value)
+                                    }
                                   />
                                   <p className="text-xs text-muted-foreground">
                                     A senha deve ter pelo menos 8 caracteres.
                                   </p>
                                 </div>
                                 <div className="space-y-2">
-                                  <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+                                  <Label htmlFor="confirm-password">
+                                    Confirmar nova senha
+                                  </Label>
                                   <Input
                                     id="confirm-password"
                                     type="password"
                                     placeholder="Repita a nova senha"
                                     value={forgotConfirmPassword}
                                     onChange={(event) =>
-                                      setForgotConfirmPassword(event.target.value)
+                                      setForgotConfirmPassword(
+                                        event.target.value
+                                      )
                                     }
                                   />
                                 </div>
                                 {forgotError && (
-                                  <p className="text-sm text-destructive">{forgotError}</p>
+                                  <p className="text-sm text-destructive">
+                                    {forgotError}
+                                  </p>
                                 )}
                               </div>
                               <DialogFooter className="sm:justify-between">
@@ -452,7 +527,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                                     onClick={handleRequestPasswordReset}
                                     disabled={isRequestingReset}
                                   >
-                                    {isRequestingReset ? "Reenviando..." : "Reenviar código"}
+                                    {isRequestingReset
+                                      ? "Reenviando..."
+                                      : "Reenviar código"}
                                   </Button>
                                   <Button
                                     type="button"
@@ -471,7 +548,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                                   onClick={handleResetPassword}
                                   disabled={isResettingPassword}
                                 >
-                                  {isResettingPassword ? "Atualizando..." : "Atualizar senha"}
+                                  {isResettingPassword
+                                    ? "Atualizando..."
+                                    : "Atualizar senha"}
                                 </Button>
                               </DialogFooter>
                             </>
@@ -492,7 +571,11 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                     />
                   </div>
                   {error && <p className="text-destructive text-sm">{error}</p>}
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Entrando..." : "Entrar"}
                   </Button>
                 </form>
@@ -502,7 +585,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
             <TabsContent value="resident">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="resident-subdomain">Subdomínio do condomínio</Label>
+                  <Label htmlFor="resident-subdomain">
+                    Subdomínio do condomínio
+                  </Label>
                   {residentModeForced ? (
                     <Input
                       id="resident-subdomain"
@@ -524,7 +609,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                   )}
                   {residentModeForced && hostSubdomain && (
                     <p className="text-muted-foreground text-xs">
-                      Você está acessando o portal do condomínio <strong>{hostSubdomain}</strong>.
+                      Você está acessando o portal do condomínio{" "}
+                      <strong>{hostSubdomain}</strong>.
                     </p>
                   )}
                 </div>
@@ -553,7 +639,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                   </Button>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-muted-foreground text-sm">Digite o código enviado ao seu email.</p>
+                    <p className="text-muted-foreground text-sm">
+                      Digite o código enviado ao seu email.
+                    </p>
                     <div className="space-y-2">
                       <Label>Código recebido</Label>
                       <InputOTP
@@ -566,12 +654,18 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                       >
                         <InputOTPGroup>
                           {[0, 1, 2, 3, 4, 5].map((index) => (
-                            <InputOTPSlot key={index} index={index} className="h-12 w-12" />
+                            <InputOTPSlot
+                              key={index}
+                              index={index}
+                              className="h-12 w-12"
+                            />
                           ))}
                         </InputOTPGroup>
                       </InputOTP>
                       {residentDevCode && (
-                        <p className="text-muted-foreground text-xs">Código para testes: {residentDevCode}</p>
+                        <p className="text-muted-foreground text-xs">
+                          Código para testes: {residentDevCode}
+                        </p>
                       )}
                     </div>
                     <Button
@@ -584,14 +678,22 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                   </div>
                 )}
 
-                {residentError && <p className="text-destructive text-sm">{residentError}</p>}
+                {residentError && (
+                  <p className="text-destructive text-sm">{residentError}</p>
+                )}
               </div>
             </TabsContent>
           </Tabs>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <p className="text-center text-muted-foreground text-sm">
-            Precisa de ajuda? <a href="#" className="text-primary hover:underline">Contate o suporte</a>
+            Precisa de ajuda?{" "}
+            <a
+              href="mailto:suporte@allecto.app"
+              className="text-primary hover:underline"
+            >
+              Contate o suporte
+            </a>
           </p>
         </CardFooter>
       </Card>

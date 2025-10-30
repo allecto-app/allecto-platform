@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
@@ -9,6 +9,8 @@ import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Check, Loader2 } from "lucide-react";
+import { Header } from "../Header";
+import Link from "next/link";
 
 type TierKey = "essencial" | "plus" | "pro";
 
@@ -76,7 +78,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   signup_failed: "Não foi possível iniciar a assinatura. Tente novamente.",
   checkout_failed: "Não foi possível iniciar o pagamento. Tente novamente.",
   missing_checkout_url: "Checkout indisponível no momento. Tente novamente.",
-  ONBOARDING_TOKEN_EXPIRED: "O link de pagamento expirou. Gere uma nova assinatura.",
+  ONBOARDING_TOKEN_EXPIRED:
+    "O link de pagamento expirou. Gere uma nova assinatura.",
   INVALID_ONBOARDING_TOKEN: "O link de pagamento não é válido.",
   ONBOARDING_TIER_MISMATCH: "Reinicie a assinatura para este plano.",
 };
@@ -115,9 +118,13 @@ export function SignupFlow() {
 
   const initialPlanParam = searchParams.get("plan") ?? "";
   const normalizedPlanParam = initialPlanParam.toLowerCase();
-  const preselectedPlan = plans.find((plan) => PUBLIC_TIER_MAP[plan.tierKey] === normalizedPlanParam);
+  const preselectedPlan = plans.find(
+    (plan) => PUBLIC_TIER_MAP[plan.tierKey] === normalizedPlanParam
+  );
 
-  const [selectedPlan, setSelectedPlan] = useState<PlanOption | null>(preselectedPlan ?? null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanOption | null>(
+    preselectedPlan ?? null
+  );
   const [form, setForm] = useState<SignupFormState>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +136,8 @@ export function SignupFlow() {
     setError(null);
   };
 
-  const handleChange = (field: keyof SignupFormState) =>
+  const handleChange =
+    (field: keyof SignupFormState) =>
     (event: ChangeEvent<HTMLInputElement>) => {
       setForm((prev) => ({ ...prev, [field]: event.target.value }));
     };
@@ -162,7 +170,9 @@ export function SignupFlow() {
       });
 
       if (!signupResponse.ok) {
-        const data = await signupResponse.json().catch(() => ({ error: "signup_failed" }));
+        const data = await signupResponse
+          .json()
+          .catch(() => ({ error: "signup_failed" }));
         throw new Error(data.error ?? "signup_failed");
       }
 
@@ -183,7 +193,9 @@ export function SignupFlow() {
       });
 
       if (!checkoutResponse.ok) {
-        const data = await checkoutResponse.json().catch(() => ({ error: "checkout_failed" }));
+        const data = await checkoutResponse
+          .json()
+          .catch(() => ({ error: "checkout_failed" }));
         throw new Error(data.error ?? "checkout_failed");
       }
 
@@ -206,138 +218,168 @@ export function SignupFlow() {
   const planPrice = priceFormatter(selectedPlanSummary.priceCents);
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-10 px-4 py-20 lg:grid-cols-[2fr_3fr] lg:px-8">
-      <div className="space-y-6">
-        <h1 className="text-3xl font-semibold text-gray-900">Comece com o Allecto</h1>
-        <p className="text-lg text-gray-600">
-          Informe os dados básicos do seu condomínio e conclua a assinatura em minutos. O acesso ao
-          painel é liberado automaticamente após o pagamento.
+    <div className="min-h-screen bg-gradient-to-br from-primary via-accent to-primary font-inter">
+      <Header />
+      <div className="mx-auto grid max-w-5xl my-8">
+        <h1 className="text-3xl font-semibold text-white text-center mb-4">
+          Escolha o plano ideal para o seu condomínio!
+        </h1>
+        <p className="text-lg text-white text-center max-w-3xl mx-auto">
+          Informe os dados básicos do seu condomínio e conclua a assinatura em
+          minutos.
+          <br />O acesso ao painel é liberado automaticamente após a conclusão
+          da assinatura.
         </p>
-
-        <div className="space-y-4">
-          {plans.map((plan) => {
-            const price = priceFormatter(plan.priceCents);
-            const isActive = selectedPlan?.tierKey === plan.tierKey;
-
-            return (
-              <Card
-                key={plan.tierKey}
-                className={`border-2 transition-all ${
-                  isActive ? "border-primary shadow-lg" : "border-muted hover:border-primary/40"
-                }`}
-              >
-                <CardHeader className="flex flex-row items-center justify-between gap-4 pt-6">
-                  <div>
-                    <h3 className="text-2xl font-semibold text-gray-900">{plan.name}</h3>
-                    <p className="text-sm text-gray-500">{price} / mês</p>
-                  </div>
-                  <Button variant={isActive ? "default" : "outline"} onClick={() => handleSelectPlan(plan)}>
-                    {isActive ? "Selecionado" : "Selecionar plano"}
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-3 pb-6">
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-secondary" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {plan.badge && (
-                    <Badge className="bg-secondary px-3 py-1 text-secondary-foreground">
-                      {plan.badge}
-                    </Badge>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
       </div>
+      <div className="mx-auto grid max-w-5xl gap-10 px-4 pb-20 lg:grid-cols-[2fr_3fr] lg:px-8">
+        <div className="space-y-6">
+          <div className="space-y-4">
+            {plans.map((plan) => {
+              const price = priceFormatter(plan.priceCents);
+              const isActive = selectedPlan?.tierKey === plan.tierKey;
 
-      <div>
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="pb-4 pt-6">
-            <h2 className="text-xl font-semibold text-gray-900">Detalhes do condomínio</h2>
-            <p className="text-sm text-gray-600">
-              {selectedPlan
-                ? `Plano selecionado: ${selectedPlan.name} (${planPrice}/mês)`
-                : "Selecione um plano para continuar"}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div>
-                <Label htmlFor="condoName">Nome do condomínio</Label>
-                <Input
-                  id="condoName"
-                  required
-                  placeholder="Condomínio Residencial Horizonte"
-                  value={form.condoName}
-                  onChange={handleChange("condoName")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="subdomain">Subdomínio desejado</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="subdomain"
-                    required
-                    placeholder="horizonte"
-                    value={form.subdomain}
-                    onChange={handleChange("subdomain")}
-                  />
-                  <span className="text-sm text-gray-500">.allecto.app</span>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              return (
+                <Card
+                  key={plan.tierKey}
+                  className={`border-2 transition-all ${
+                    isActive
+                      ? "border-primary shadow-lg"
+                      : "border-muted hover:border-primary/40"
+                  }`}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between gap-4 pt-6">
+                    <div>
+                      <h3 className="text-2xl font-semibold text-gray-900">
+                        {plan.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">{price} / mês</p>
+                    </div>
+                    <Button
+                      variant={isActive ? "default" : "outline"}
+                      onClick={() => handleSelectPlan(plan)}
+                    >
+                      {isActive ? "Selecionado" : "Selecionar plano"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pb-6">
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-secondary" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {plan.badge && (
+                      <Badge className="bg-secondary px-3 py-1 text-secondary-foreground">
+                        {plan.badge}
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <Card className="border-2 border-primary/20">
+            <CardHeader className="pb-4 pt-6">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Detalhes do condomínio
+              </h2>
+              <p className="text-sm text-gray-600">
+                {selectedPlan
+                  ? `Plano selecionado: ${selectedPlan.name} (${planPrice}/mês)`
+                  : "Selecione um plano para continuar"}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
-                  <Label htmlFor="adminName">Seu nome</Label>
+                  <Label htmlFor="condoName">Nome do condomínio</Label>
                   <Input
-                    id="adminName"
+                    id="condoName"
                     required
-                    placeholder="Maria Oliveira"
-                    value={form.adminName}
-                    onChange={handleChange("adminName")}
+                    placeholder="Condomínio Residencial Horizonte"
+                    value={form.condoName}
+                    onChange={handleChange("condoName")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="adminPhone">Telefone (opcional)</Label>
+                  <Label htmlFor="subdomain">Subdomínio desejado</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="subdomain"
+                      required
+                      placeholder="horizonte"
+                      value={form.subdomain}
+                      onChange={handleChange("subdomain")}
+                    />
+                    <span className="text-sm text-gray-500">.allecto.app</span>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor="adminName">Seu nome</Label>
+                    <Input
+                      id="adminName"
+                      required
+                      placeholder="Maria Oliveira"
+                      value={form.adminName}
+                      onChange={handleChange("adminName")}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="adminPhone">Telefone (opcional)</Label>
+                    <Input
+                      id="adminPhone"
+                      placeholder="(11) 99999-0000"
+                      value={form.adminPhone}
+                      onChange={handleChange("adminPhone")}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="adminEmail">Email do administrador</Label>
                   <Input
-                    id="adminPhone"
-                    placeholder="(11) 99999-0000"
-                    value={form.adminPhone}
-                    onChange={handleChange("adminPhone")}
+                    id="adminEmail"
+                    type="email"
+                    required
+                    placeholder="administrador@condominio.com.br"
+                    value={form.adminEmail}
+                    onChange={handleChange("adminEmail")}
                   />
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="adminEmail">Email do administrador</Label>
-                <Input
-                  id="adminEmail"
-                  type="email"
-                  required
-                  placeholder="administrador@condominio.com.br"
-                  value={form.adminEmail}
-                  onChange={handleChange("adminEmail")}
-                />
-              </div>
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+                {error && <p className="text-sm text-red-600">{error}</p>}
 
-              <Button type="submit" className="w-full" disabled={isSubmitting || !selectedPlan}>
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Processando...
-                  </span>
-                ) : (
-                  `Continuar para pagamento (${planPrice}/mês)`
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <Button
+                  type="submit"
+                  className="w-full hover:text-secondary"
+                  disabled={isSubmitting || !selectedPlan}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />{" "}
+                      Processando...
+                    </span>
+                  ) : (
+                    `Continuar para pagamento (${planPrice}/mês)`
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+          <Button
+            className="w-full mt-4 bg-transparent text-white border border-white hover:text-secondary"
+            variant={"outline"}
+          >
+            <Link href="/#precos" className="block w-full h-full">
+              Voltar ao site
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
