@@ -129,7 +129,8 @@ export const requestResidentOtp = mutation({
             .query("residents")
             .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
             .unique();
-        if (!resident || !["syndic", "manager"].includes(resident.role)) {
+        const allowedRoles = new Set(["syndic", "manager", "resident", "council"]);
+        if (!resident || !allowedRoles.has(resident.role) || resident.isActive === false) {
             return { ok: true };
         }
 
@@ -208,7 +209,8 @@ export const residentSignIn = mutation({
             .query("residents")
             .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
             .unique();
-        if (!resident || !["syndic", "manager"].includes(resident.role)) {
+        const allowedRoles = new Set(["syndic", "manager", "resident", "council"]);
+        if (!resident || !allowedRoles.has(resident.role) || resident.isActive === false) {
             throw new Error(GENERIC_AUTH_ERROR);
         }
 

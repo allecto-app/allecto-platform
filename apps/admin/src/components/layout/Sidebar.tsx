@@ -12,7 +12,7 @@ interface SidebarProps {
   onNavigate: (page: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
-  mode?: "platform" | "tenant";
+  mode?: "platform" | "tenant" | "resident";
   selectedCondo?: Doc<"condos"> | null;
 }
 
@@ -34,10 +34,17 @@ const tenantNavigation = [
   { name: "Configurações", icon: Settings, page: "settings" },
 ];
 
+const residentNavigation = [
+  { name: "Atas", icon: FileText, page: "resident:minutes" },
+  { name: "Minha Unidade", icon: Building2, page: "resident:unit" },
+  { name: "Meu Perfil", icon: Users, page: "resident:profile" },
+];
+
 const logoutNavigation = { name: "Sair", icon: LogOut, page: "__logout" } as const;
 
 export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, mode = "tenant", selectedCondo }: SidebarProps) {
   const isPlatformMode = mode === "platform";
+  const isResidentMode = mode === "resident";
   const hasCondoSelected = !!selectedCondo;
   const branding = selectedCondo?.branding;
   const condoName = branding?.displayName?.trim() || selectedCondo?.name || "Allecto Admin";
@@ -158,6 +165,8 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, 
               )}
               {tenantNavigation.map((item) => renderNavItem(item, !hasCondoSelected))}
             </>
+          ) : isResidentMode ? (
+            residentNavigation.map((item) => renderNavItem(item))
           ) : (
             tenantNavigation.map((item) => renderNavItem(item))
           )}

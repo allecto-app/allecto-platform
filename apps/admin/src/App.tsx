@@ -34,6 +34,7 @@ import type { UnitRecord } from "./types/unit";
 import { AdminAuthSession } from "./lib/authSession";
 import { useHostInfo } from "./lib/hostContext";
 import { cn } from "./components/ui/utils";
+import { ResidentShell } from "./resident/ResidentShell";
 
 type UserMode = "platform" | "tenant";
 
@@ -226,6 +227,10 @@ function AuthenticatedShell({
       auth.roles.includes("support") ||
       auth.roles.includes("ops"));
   const isResident = auth.type === "resident";
+
+  if (isResident) {
+    return <ResidentShell auth={auth} onLogout={onLogout} onUpdateAuth={onUpdateAuth} />;
+  }
 
   const defaultPage = canSeePlatform ? "tenants" : isResident || isCondoDomain ? "minutes" : "dashboard";
   const storedPage = typeof window !== "undefined" ? window.localStorage.getItem(PAGE_STORAGE_KEY) : null;

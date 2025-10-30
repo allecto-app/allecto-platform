@@ -122,12 +122,27 @@ export const demo = mutation({
             createdAt: now,
             updatedAt: now,
         });
+        const portalResident = await ctx.db.insert("residents", {
+            condoId,
+            name: "Portal Demo",
+            email: "portal@demo.com",
+            role: "resident",
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        });
 
         // 4) Membership (morador na primeira unidade)
         await ctx.db.insert("memberships", {
             residentId: r2,
             unitId: unitIds[0],
             role: "owner",
+            createdAt: now,
+        });
+        await ctx.db.insert("memberships", {
+            residentId: portalResident,
+            unitId: unitIds[1] ?? unitIds[0],
+            role: "tenant",
             createdAt: now,
         });
 
