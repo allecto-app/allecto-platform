@@ -303,4 +303,12 @@ export default defineSchema({
     blockedUntil: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("byKey", ["key"]),
+
+  usages: defineTable({
+    tenantId: v.id("condos"),
+    type: v.literal("assembly"),
+    bucketKey: v.string(),
+    count: v.number(),
+    updatedAt: v.number(),
+  }).index("byTenantTypeBucket", ["tenantId", "type", "bucketKey"]),
 });

@@ -2,6 +2,7 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { ensureCanCreateAssembly, incrementAssemblyUsage } from "./usage/helpers";
 
 const MinuteStatus = v.union(v.literal("open"), v.literal("closed"));
 
@@ -28,6 +29,8 @@ export const publish = mutation({
         if (document.orgId !== condoIdString) {
             throw new Error("DOCUMENT_ORG_MISMATCH");
         }
+
+        const usageGate = await ensureCanCreateAssembly(ctx, a.condoId);
 
         const minuteId = await ctx.db.insert("minutes", {
             condoId: a.condoId,
@@ -77,6 +80,8 @@ export const publish = mutation({
             createdAt: now,
             meta: { note: "TODO integrate provider" },
         });
+
+        await incrementAssemblyUsage(ctx, a.condoId, usageGate.bucketKey);
 
         return minuteId;
     },

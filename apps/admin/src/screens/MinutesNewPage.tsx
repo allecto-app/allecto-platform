@@ -14,6 +14,11 @@ import { PdfUploader } from "../components/documents/PdfUploader";
 import { ViewPdfButton } from "../components/documents/ViewPdfButton";
 import { useDocuments } from "../hooks/useDocuments";
 import { api, Doc, Id } from "../lib/convexGenerated";
+import {
+  assertCanCreateAssembly,
+  type AssemblyBlockReason,
+  useUsageSummary,
+} from "../hooks/useUsageSummary";
 
 interface MinutesNewPageProps {
   onNavigate: (page: string) => void;
@@ -47,6 +52,12 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
     orgId,
     sessionToken,
   });
+  const {
+    summary: usageSummary,
+    isLoading: usageLoading,
+    blockReason,
+    remainingLabel,
+  } = useUsageSummary(condoId);
 
   const author = useMemo(() => {
     if (!residents) return null;
@@ -83,7 +94,13 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
       return;
     }
 
+    if (usageLoading) {
+      toast.info("Verificando limites de uso...");
+      return;
+    }
+
     try {
+      assertCanCreateAssembly(usageSummary);
       setIsSubmitting(true);
       const closesAt = Date.now() + Number(closesIn) * 24 * 60 * 60 * 1000;
       await publishMinute({
@@ -103,8 +120,12 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
       setSelectedDocumentTitle(null);
       onNavigate("minutes");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao publicar ata";
-      toast.error(message);
+      if ((error as AssemblyBlockReason)?.message) {
+        toast.error((error as AssemblyBlockReason).message);
+      } else {
+        const message = error instanceof Error ? error.message : "Erro ao publicar ata";
+        toast.error(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -129,6 +150,7 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
       <PageHeader
         title="Nova Ata"
         breadcrumb={["Atas", "Nova"]}
+        description={blockReason?.message ?? remainingLabel ?? undefined}
       />
 
       <Card>

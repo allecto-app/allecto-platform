@@ -13,6 +13,11 @@ import { toast } from "sonner";
 import { api, Id, Doc } from "../lib/convexGenerated";
 import { useDocuments } from "../hooks/useDocuments";
 import { ViewPdfButton } from "../components/documents/ViewPdfButton";
+import {
+  assertCanCreateAssembly,
+  type AssemblyBlockReason,
+  useUsageSummary,
+} from "../hooks/useUsageSummary";
 
 interface MinutesListPageProps {
   onNavigate: (page: string) => void;
@@ -44,6 +49,12 @@ export function MinutesListPage({ onNavigate, condoId, sessionToken, onSelectMin
     orgId,
     sessionToken,
   });
+  const {
+    summary: usageSummary,
+    isLoading: usageLoading,
+    blockReason,
+    remainingLabel,
+  } = useUsageSummary(condoId);
 
   const filteredMinutes = useMemo(() => {
     if (!minutes) return [];
@@ -81,8 +92,28 @@ export function MinutesListPage({ onNavigate, condoId, sessionToken, onSelectMin
         title="Atas"
         primaryAction={{
           label: "Nova Ata",
-          onClick: () => onNavigate("minutes-new"),
+          onClick: () => {
+            if (!condoId) {
+              onNavigate("minutes-new");
+              return;
+            }
+            if (usageLoading) {
+              toast.info("Verificando limites de uso...");
+              return;
+            }
+            try {
+              assertCanCreateAssembly(usageSummary);
+            } catch (error) {
+              const reason = error as AssemblyBlockReason;
+              const message = reason?.message ?? "Limite de uso atingido.";
+              toast.error(message);
+              return;
+            }
+            onNavigate("minutes-new");
+          },
+          disabled: !!condoId && usageLoading,
         }}
+        description={condoId ? blockReason?.message ?? remainingLabel ?? undefined : undefined}
       />
 
       <div className="mb-6 flex items-end gap-4">

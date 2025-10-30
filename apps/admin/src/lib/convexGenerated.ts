@@ -64,6 +64,9 @@ type AugmentedApi = typeof baseApi & {
     getViewToken: MutationRef;
     listEvents: QueryRef;
   };
+  usage: {
+    getUsageSummary: QueryRef;
+  };
   units: {
     listByCondo: QueryRef;
     detail: QueryRef;
@@ -134,6 +137,7 @@ export type TableNames =
   | "securityEvents"
   | "invites"
   | "inviteRate"
+  | "usages"
   | (string & {});
 
 export type Id<TableName extends TableNames = TableNames> = GenericId<TableName>;
@@ -298,6 +302,13 @@ type DocByTable = {
     errorCount: number;
     createdAt: number;
     meta?: Record<string, unknown>;
+  };
+  usages: DefaultDoc<"usages"> & {
+    tenantId: Id<"condos">;
+    type: "assembly";
+    bucketKey: string;
+    count: number;
+    updatedAt: number;
   };
 };
 
