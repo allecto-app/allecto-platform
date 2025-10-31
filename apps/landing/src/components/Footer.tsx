@@ -1,5 +1,6 @@
 import { Mail, Instagram } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export function Footer() {
   return (
@@ -8,12 +9,14 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
-              <Image
-                src="/images/logo-allecto-white.png"
-                alt="Allecto App"
-                width={130}
-                height={46}
-              />
+              <Link href="/">
+                <Image
+                  src="/images/logo-allecto-white.png"
+                  alt="Allecto App"
+                  width={130}
+                  height={46}
+                />
+              </Link>
             </div>
             <p className="text-gray-400 max-w-md">
               Simplifique assembleias condominiais com votação digital segura,
@@ -60,6 +63,14 @@ export function Footer() {
                   className="hover:text-white transition-colors"
                 >
                   Demonstração
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/politica-de-privacidade"
+                  className="hover:text-white transition-colors"
+                >
+                  Política de Privacidade
                 </a>
               </li>
             </ul>
