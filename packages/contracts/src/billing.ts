@@ -21,7 +21,7 @@ export const BILLING_PLANS: BillingPlan[] = [
       "Até 99 unidades",
       "2 assembleias/mês",
       "5 GB documentos",
-      "Suporte e-mail (48h)",
+      "Suporte por e-mail em até 48h",
     ],
   },
   {
@@ -50,7 +50,7 @@ export const BILLING_PLANS: BillingPlan[] = [
       "Assembleias/Enquetes ilimitadas",
       "200 GB documentos",
       "Auditoria e exportações",
-      "Suporte prioritário (8h)",
+      "Suporte prioritário em até 8h",
     ],
   },
 ];
