@@ -41,6 +41,7 @@ type AugmentedApi = typeof baseApi & {
   residents: {
     list: QueryRef;
     findByEmail: QueryRef;
+    create: MutationRef;
     update: MutationRef;
   };
   minutes: {

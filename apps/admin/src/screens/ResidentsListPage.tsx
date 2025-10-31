@@ -24,6 +24,7 @@ import {
 } from "../components/ui/select";
 import { EmptyState } from "../components/admin/EmptyState";
 import { InviteSyndicModal } from "../components/modals/invite-syndic";
+import { CreateResidentModal } from "../components/modals/create-resident";
 import { api, Doc } from "../lib/convexGenerated";
 import { toast } from "sonner";
 
@@ -50,6 +51,7 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const residents = useQuery(
     api.residents.list,
@@ -80,6 +82,14 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
 
   const isLoading = !!condo && !residents;
 
+  const handleOpenCreateResident = () => {
+    if (!condo) {
+      toast.error("Selecione um condomínio");
+      return;
+    }
+    setCreateModalOpen(true);
+  };
+
   return (
     <div>
       <PageHeader
@@ -95,6 +105,19 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
                   }
                   setInviteModalOpen(true);
                 },
+                disabled: !condo,
+              }
+            : {
+                label: "Novo Morador",
+                onClick: handleOpenCreateResident,
+                disabled: !condo,
+              }
+        }
+        secondaryAction={
+          canInviteSyndic
+            ? {
+                label: "Novo Morador",
+                onClick: handleOpenCreateResident,
                 disabled: !condo,
               }
             : undefined
@@ -241,6 +264,12 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
       <InviteSyndicModal
         open={inviteModalOpen}
         onOpenChange={setInviteModalOpen}
+        condoId={condo?._id ?? null}
+        condoName={condo?.name}
+      />
+      <CreateResidentModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
         condoId={condo?._id ?? null}
         condoName={condo?.name}
       />

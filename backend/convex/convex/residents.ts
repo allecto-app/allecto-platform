@@ -2,6 +2,148 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeEmail } from "./_secu";
+import { internal } from "./_generated/api";
+
+type ResidentRole = "resident" | "syndic" | "manager" | "council";
+
+export const create = mutation({
+    args: {
+        condoId: v.id("condos"),
+        name: v.string(),
+        email: v.optional(v.string()),
+        phone: v.optional(v.string()),
+        role: v.optional(
+            v.union(
+                v.literal("resident"),
+                v.literal("syndic"),
+                v.literal("manager"),
+                v.literal("council"),
+            ),
+        ),
+        unitLink: v.optional(
+            v.object({
+                unitId: v.id("units"),
+                membershipRole: v.union(v.literal("owner"), v.literal("tenant")),
+            }),
+        ),
+    },
+    handler: async (ctx, { condoId, name, email, phone, role, unitLink }) => {
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            throw new Error("Name is required");
+        }
+
+        const trimmedEmail = email?.trim();
+        const normalizedEmail = trimmedEmail ? normalizeEmail(trimmedEmail) : undefined;
+        if (normalizedEmail) {
+            const existing = await ctx.db
+                .query("residents")
+                .withIndex("byCondoEmail", (q) => q.eq("condoId", condoId).eq("email", normalizedEmail))
+                .unique();
+            if (existing) {
+                throw new Error("Resident already exists for this email");
+            }
+        }
+
+        const trimmedPhone = phone?.trim();
+        const effectiveRole: ResidentRole = (role as ResidentRole | undefined) ?? "resident";
+        const now = Date.now();
+
+        const residentId = await ctx.db.insert("residents", {
+            condoId,
+            name: trimmedName,
+            email: normalizedEmail,
+            phone: trimmedPhone && trimmedPhone.length > 0 ? trimmedPhone : undefined,
+            role: effectiveRole,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        });
+
+        if (unitLink) {
+            const unit = await ctx.db.get(unitLink.unitId);
+            if (!unit || unit.condoId !== condoId) {
+                throw new Error("Unit not found for condo");
+            }
+
+            await ctx.db.insert("memberships", {
+                residentId,
+                unitId: unitLink.unitId,
+                role: unitLink.membershipRole,
+                createdAt: now,
+            });
+        }
+
+        const condo = await ctx.db.get(condoId);
+
+        if (normalizedEmail && condo) {
+            const displayName = trimmedName || "Morador";
+            const firstName = displayName.split(" ")[0] ?? displayName;
+            const condoDisplay = condo.name ?? "seu condomínio";
+            const condoUrl = condo.subdomain
+                ? `https://${condo.subdomain}.allecto.app`
+                : "https://portal.allecto.app";
+
+            const subject =
+                effectiveRole === "syndic"
+                    ? `Você foi cadastrado como síndico no Allecto`
+                    : `Bem-vindo ao Allecto - ${condoDisplay}`;
+
+            const roleMessage =
+                effectiveRole === "syndic"
+                    ? "Você poderá acessar o painel administrativo do condomínio para gerir reuniões, votações e comunicados."
+                    : "Você poderá acompanhar assembleias, votações e comunicados do seu condomínio.";
+
+            const html = `
+              <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+                <p>Olá ${firstName},</p>
+                <p>Você foi cadastrado no <strong>${condoDisplay}</strong> na plataforma Allecto.</p>
+                <p>${roleMessage}</p>
+                <p>Acesse pelo link abaixo usando o email <strong>${normalizedEmail}</strong> para receber seu código de acesso:</p>
+                <p><a href="${condoUrl}" style="color: #2563eb;">${condoUrl}</a></p>
+                <p>Qualquer dúvida, fale com o síndico ou nossa equipe de suporte.</p>
+                <p>Equipe Allecto</p>
+              </div>
+            `.trim();
+
+            const text = [
+                `Olá ${firstName},`,
+                ``,
+                `Você foi cadastrado no ${condoDisplay} na plataforma Allecto.`,
+                roleMessage,
+                ``,
+                `Acesse pelo link ${condoUrl} usando o email ${normalizedEmail} para receber seu código de acesso.`,
+                ``,
+                `Qualquer dúvida, fale com o síndico ou nossa equipe de suporte.`,
+                ``,
+                `Equipe Allecto`,
+            ].join("\n");
+
+            await ctx.scheduler.runAfter(0, internal.email.send, {
+                to: normalizedEmail,
+                subject,
+                html,
+                text,
+            });
+        }
+
+        return {
+            resident: {
+                id: residentId,
+                name: trimmedName,
+                email: normalizedEmail ?? null,
+                phone: trimmedPhone?.length ? trimmedPhone : null,
+                role: effectiveRole,
+                isActive: true,
+                condoId,
+                condoName: condo?.name ?? null,
+                condoSubdomain: condo?.subdomain ?? null,
+                createdAt: now,
+                updatedAt: now,
+            },
+        };
+    },
+});
 
 export const invite = mutation({
     args: {
