@@ -1,4 +1,4 @@
-'use node';
+"use node";
 
 import Stripe from "stripe";
 import { internalAction } from "../../_generated/server";
@@ -10,7 +10,7 @@ import type { Id } from "../../_generated/dataModel";
 const PLAN_LABELS: Record<string, string> = {
   essencial: "Essencial",
   plus: "Plus",
-  pro: "Pro",
+  pro: "Pró",
 };
 
 const PLAN_LIMITS: Record<string, string> = {
@@ -19,7 +19,8 @@ const PLAN_LIMITS: Record<string, string> = {
   pro: "Assembleias/Enquetes ilimitadas, 200 GB documentos",
 };
 
-const PORTAL_BASE_URL = process.env.ADMIN_PORTAL_URL ?? "https://portal.allecto.app";
+const PORTAL_BASE_URL =
+  process.env.ADMIN_PORTAL_URL ?? "https://portal.allecto.app";
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "suporte@allecto.app";
 const SUPPORT_PHONE = process.env.SUPPORT_PHONE ?? "(11) 4000-1234";
 
@@ -66,7 +67,10 @@ function resolveCustomerEmail(customer: unknown): string | null {
   return null;
 }
 
-async function fetchLatestResident(ctx: any, tenantId: Id<"condos">): Promise<ResidentRecord | null> {
+async function fetchLatestResident(
+  ctx: any,
+  tenantId: Id<"condos">
+): Promise<ResidentRecord | null> {
   const residents = await ctx.db
     .query("residents")
     .withIndex("byCondo", (q: any) => q.eq("condoId", tenantId))
@@ -81,7 +85,10 @@ function toMillis(value: number | null | undefined) {
   return typeof value === "number" ? value * 1000 : undefined;
 }
 
-async function extractPaymentDetails(stripe: Stripe, invoice: Stripe.Invoice | null | undefined) {
+async function extractPaymentDetails(
+  stripe: Stripe,
+  invoice: Stripe.Invoice | null | undefined
+) {
   if (!invoice) {
     return {
       invoiceNumber: "-",
@@ -98,7 +105,9 @@ async function extractPaymentDetails(stripe: Stripe, invoice: Stripe.Invoice | n
       : null;
   let charges: Stripe.Charge[] = [];
   if (paymentIntent?.latest_charge) {
-    const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
+    const charge = await stripe.charges.retrieve(
+      paymentIntent.latest_charge as string
+    );
     charges = [charge];
   } else if (Array.isArray((paymentIntent as any)?.charges?.data)) {
     charges = ((paymentIntent as any).charges.data ?? []) as Stripe.Charge[];
@@ -121,7 +130,11 @@ async function extractPaymentDetails(stripe: Stripe, invoice: Stripe.Invoice | n
   };
 }
 
-async function loadStripeData(stripe: Stripe, subscriptionId: string, invoiceId: string | null) {
+async function loadStripeData(
+  stripe: Stripe,
+  subscriptionId: string,
+  invoiceId: string | null
+) {
   const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
     expand: ["items.data.price.product"],
   });
@@ -159,7 +172,9 @@ export const sendOnboardingSuccessEmail = internalAction({
     }
 
     const resident = await fetchLatestResident(ctx, args.tenantId);
-    const residentEmail = resident?.email ? normalizeEmail(resident.email) : null;
+    const residentEmail = resident?.email
+      ? normalizeEmail(resident.email)
+      : null;
 
     const stripeSecret = process.env.STRIPE_SECRET_KEY;
     if (!stripeSecret) {
@@ -172,21 +187,27 @@ export const sendOnboardingSuccessEmail = internalAction({
     const { subscription, invoice } = await loadStripeData(
       stripe,
       args.subscriptionId,
-      args.invoiceId ?? null,
+      args.invoiceId ?? null
     );
 
     const price = subscription.items?.data?.[0]?.price ?? null;
-  const customerEmail = resolveCustomerEmail(subscription.customer) ?? residentEmail;
+    const customerEmail =
+      resolveCustomerEmail(subscription.customer) ?? residentEmail;
 
     if (!customerEmail) {
-      console.warn("[billing.email] No customer email found for tenant", args.tenantId);
+      console.warn(
+        "[billing.email] No customer email found for tenant",
+        args.tenantId
+      );
       return;
     }
 
     const { tier, amount, planName } = resolvePlanInfo(price);
     const planTier = tier ?? tenant.billingTier ?? "essencial";
     const priceFormatted = formatBRL(amount);
-    const nextBillingDate = formatDate(toMillis(subscription.current_period_end));
+    const nextBillingDate = formatDate(
+      toMillis(subscription.current_period_end)
+    );
     const payment = await extractPaymentDetails(stripe, invoice);
 
     const portalUrl = `${PORTAL_BASE_URL}/login`;

@@ -21,11 +21,16 @@ const PLANS: PlanConfig[] = [
     tierKey: "plus",
     name: "Allecto - Plus",
     unitAmount: 74900,
-    features: ["Assembleias ilimitadas", "20 GB documentos", "Relatórios avançados", "Suporte 24h"],
+    features: [
+      "Assembleias ilimitadas",
+      "20 GB documentos",
+      "Relatórios avançados",
+      "Suporte 24h",
+    ],
   },
   {
     tierKey: "pro",
-    name: "Allecto - Pro",
+    name: "Allecto - Pró",
     unitAmount: 109900,
     features: [
       "Assembleias/Enquetes ilimitadas",
@@ -56,7 +61,9 @@ async function findProductByTier(stripe: Stripe, tierKey: TierKey) {
       starting_after: startingAfter,
       active: undefined,
     });
-    const found = page.data.find((product) => product.metadata?.tierKey === tierKey);
+    const found = page.data.find(
+      (product) => product.metadata?.tierKey === tierKey
+    );
     if (found) {
       return found;
     }
@@ -103,7 +110,7 @@ async function ensureProduct(stripe: Stripe, plan: PlanConfig) {
 async function findActivePrice(
   stripe: Stripe,
   productId: string,
-  unitAmount: number,
+  unitAmount: number
 ) {
   let startingAfter: string | undefined;
   while (true) {
@@ -133,7 +140,7 @@ async function findActivePrice(
 async function ensurePrice(
   stripe: Stripe,
   productId: string,
-  plan: PlanConfig,
+  plan: PlanConfig
 ) {
   const existing = await findActivePrice(stripe, productId, plan.unitAmount);
   if (existing) {

@@ -49,7 +49,7 @@ const FALLBACK_PLANS: PlanOption[] = [
   },
   {
     tierKey: "pro",
-    name: "Pro",
+    name: "Pró",
     priceCents: 109900,
     features: [
       "Assembleias/Enquetes ilimitadas",

@@ -37,7 +37,10 @@ type ActiveSummary = BaseUsageSummary & {
 type UsageSummary = InactiveSummary | ActiveSummary;
 
 export type AssemblyBlockReason = {
-  code: "subscription_required" | "unit_cap_exceeded" | "assembly_quota_exceeded";
+  code:
+    | "subscription_required"
+    | "unit_cap_exceeded"
+    | "assembly_quota_exceeded";
   message: string;
   tierKey?: TierKey | null;
   meta?: Record<string, unknown>;
@@ -47,8 +50,9 @@ const SUBSCRIPTION_REQUIRED_MESSAGE =
   "Sua assinatura não está ativa. Ative um plano para continuar.";
 
 const UNIT_CAP_MESSAGES: Record<Exclude<TierKey, "pro">, string> = {
-  essencial: "Seu plano Essencial permite até 99 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Plus.",
-  plus: "Seu plano Plus permite 100–300 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Pro.",
+  essencial:
+    "Seu plano Essencial permite até 99 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Plus.",
+  plus: "Seu plano Plus permite 100–300 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Pró.",
 };
 
 const UNIT_CAP_BELOW_MIN_MESSAGES: Partial<Record<TierKey, string>> = {
@@ -56,19 +60,27 @@ const UNIT_CAP_BELOW_MIN_MESSAGES: Partial<Record<TierKey, string>> = {
 };
 
 const ASSEMBLY_QUOTA_MESSAGES: Partial<Record<TierKey, string>> = {
-  essencial: "Você atingiu o limite de 2 assembleias neste mês. Faça upgrade para o plano Plus.",
-  plus: "Você atingiu o limite de 5 assembleias neste mês. Faça upgrade para o plano Pro.",
+  essencial:
+    "Você atingiu o limite de 2 assembleias neste mês. Faça upgrade para o plano Plus.",
+  plus: "Você atingiu o limite de 5 assembleias neste mês. Faça upgrade para o plano Pró.",
 };
 
 export function useUsageSummary(tenantId: Id<"condos"> | null) {
-  const summary = useQuery(api.usage.getUsageSummary, tenantId ? { tenantId } : "skip") as
-    | UsageSummary
-    | undefined;
+  const summary = useQuery(
+    api.usage.getUsageSummary,
+    tenantId ? { tenantId } : "skip"
+  ) as UsageSummary | undefined;
 
   const isLoading = tenantId !== null && summary === undefined;
 
-  const blockReason = useMemo(() => resolveBlockReason(summary ?? null), [summary]);
-  const remainingLabel = useMemo(() => buildRemainingLabel(summary ?? null), [summary]);
+  const blockReason = useMemo(
+    () => resolveBlockReason(summary ?? null),
+    [summary]
+  );
+  const remainingLabel = useMemo(
+    () => buildRemainingLabel(summary ?? null),
+    [summary]
+  );
 
   return {
     summary: summary ?? null,
@@ -86,7 +98,9 @@ export function assertCanCreateAssembly(summary: UsageSummary | null) {
   }
 }
 
-function resolveBlockReason(summary: UsageSummary | null): AssemblyBlockReason | null {
+function resolveBlockReason(
+  summary: UsageSummary | null
+): AssemblyBlockReason | null {
   if (!summary) return null;
 
   if (!summary.active) {
@@ -117,7 +131,8 @@ function resolveBlockReason(summary: UsageSummary | null): AssemblyBlockReason |
 
   if (summary.remaining !== "unlimited" && summary.remaining <= 0) {
     const message =
-      ASSEMBLY_QUOTA_MESSAGES[summary.tierKey] ?? "Você atingiu o limite de assembleias neste mês.";
+      ASSEMBLY_QUOTA_MESSAGES[summary.tierKey] ??
+      "Você atingiu o limite de assembleias neste mês.";
     return {
       code: "assembly_quota_exceeded",
       message,

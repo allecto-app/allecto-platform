@@ -2,7 +2,11 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { api } from "../_generated/api";
 import { getMonthlyBucket } from "../../../../packages/shared/date/period";
-import { resolveLimits, validateUnitsAgainstTier, type TierKey } from "../billing/limits";
+import {
+  resolveLimits,
+  validateUnitsAgainstTier,
+  type TierKey,
+} from "../billing/limits";
 
 const billingApi = api.billing as any;
 export const DEFAULT_USAGE_TIMEZONE = "America/Sao_Paulo";
@@ -11,8 +15,9 @@ const SUBSCRIPTION_REQUIRED_MESSAGE =
   "Sua assinatura não está ativa. Ative um plano para continuar.";
 
 const UNIT_CAP_MESSAGES: Record<Exclude<TierKey, "pro">, string> = {
-  essencial: "Seu plano Essencial permite até 99 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Plus.",
-  plus: "Seu plano Plus permite 100–300 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Pro.",
+  essencial:
+    "Seu plano Essencial permite até 99 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Plus.",
+  plus: "Seu plano Plus permite 100–300 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Pró.",
 };
 
 const UNIT_CAP_BELOW_MIN_MESSAGES: Partial<Record<TierKey, string>> = {
@@ -20,8 +25,9 @@ const UNIT_CAP_BELOW_MIN_MESSAGES: Partial<Record<TierKey, string>> = {
 };
 
 const ASSEMBLY_QUOTA_MESSAGES: Partial<Record<TierKey, string>> = {
-  essencial: "Você atingiu o limite de 2 assembleias neste mês. Faça upgrade para o plano Plus.",
-  plus: "Você atingiu o limite de 5 assembleias neste mês. Faça upgrade para o plano Pro.",
+  essencial:
+    "Você atingiu o limite de 2 assembleias neste mês. Faça upgrade para o plano Plus.",
+  plus: "Você atingiu o limite de 5 assembleias neste mês. Faça upgrade para o plano Pró.",
 };
 
 type ReadCtx = QueryCtx | MutationCtx;
@@ -36,23 +42,37 @@ export interface UsageGateResult {
   unitsCount: number;
 }
 
-export async function getAssemblyUsage(ctx: ReadCtx, tenantId: Id<"condos">, bucketKey: string) {
+export async function getAssemblyUsage(
+  ctx: ReadCtx,
+  tenantId: Id<"condos">,
+  bucketKey: string
+) {
   const existing = await ctx.db
     .query("usages")
     .withIndex("byTenantTypeBucket", (q) =>
-      q.eq("tenantId", tenantId).eq("type", "assembly").eq("bucketKey", bucketKey),
+      q
+        .eq("tenantId", tenantId)
+        .eq("type", "assembly")
+        .eq("bucketKey", bucketKey)
     )
     .unique();
 
   return { count: existing?.count ?? 0 };
 }
 
-export async function incrementAssemblyUsage(ctx: MutationCtx, tenantId: Id<"condos">, bucketKey: string) {
+export async function incrementAssemblyUsage(
+  ctx: MutationCtx,
+  tenantId: Id<"condos">,
+  bucketKey: string
+) {
   const now = Date.now();
   const existing = await ctx.db
     .query("usages")
     .withIndex("byTenantTypeBucket", (q) =>
-      q.eq("tenantId", tenantId).eq("type", "assembly").eq("bucketKey", bucketKey),
+      q
+        .eq("tenantId", tenantId)
+        .eq("type", "assembly")
+        .eq("bucketKey", bucketKey)
     )
     .unique();
 
@@ -74,7 +94,10 @@ export async function incrementAssemblyUsage(ctx: MutationCtx, tenantId: Id<"con
   return 1;
 }
 
-export async function ensureCanCreateAssembly(ctx: MutationCtx, tenantId: Id<"condos">): Promise<UsageGateResult> {
+export async function ensureCanCreateAssembly(
+  ctx: MutationCtx,
+  tenantId: Id<"condos">
+): Promise<UsageGateResult> {
   const entitlements = await ctx.runQuery(billingApi.entitlements, {
     tenantId,
   });
@@ -100,7 +123,9 @@ export async function ensureCanCreateAssembly(ctx: MutationCtx, tenantId: Id<"co
     if (tierKey === "pro" && validation.reason === "below_min") {
       // Pro plan is effectively unlimited; ignore low unit counts.
     } else {
-      throw new Error(formatUnitCapMessage(tierKey, unitsCount, validation.reason));
+      throw new Error(
+        formatUnitCapMessage(tierKey, unitsCount, validation.reason)
+      );
     }
   }
 
@@ -131,7 +156,11 @@ export async function ensureCanCreateAssembly(ctx: MutationCtx, tenantId: Id<"co
   };
 }
 
-function formatUnitCapMessage(tierKey: TierKey, unitsCount: number, reason?: UnitsValidationReason) {
+function formatUnitCapMessage(
+  tierKey: TierKey,
+  unitsCount: number,
+  reason?: UnitsValidationReason
+) {
   const template =
     reason === "below_min"
       ? UNIT_CAP_BELOW_MIN_MESSAGES[tierKey]
@@ -145,5 +174,8 @@ function formatUnitCapMessage(tierKey: TierKey, unitsCount: number, reason?: Uni
 }
 
 function formatAssemblyQuotaMessage(tierKey: TierKey) {
-  return ASSEMBLY_QUOTA_MESSAGES[tierKey] ?? "Você atingiu o limite de assembleias neste mês.";
+  return (
+    ASSEMBLY_QUOTA_MESSAGES[tierKey] ??
+    "Você atingiu o limite de assembleias neste mês."
+  );
 }

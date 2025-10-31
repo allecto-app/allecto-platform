@@ -1,5 +1,4 @@
 import { Button } from "./ui/button";
-import Image from "next/image";
 
 export function Hero() {
   return (

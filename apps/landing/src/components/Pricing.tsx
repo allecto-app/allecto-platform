@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useMemo } from "react";
 import Link from "next/link";
@@ -29,7 +29,12 @@ const FALLBACK_PLANS: PlanOption[] = [
     tierKey: "essencial",
     name: "Essencial",
     priceCents: 28900,
-    features: ["Até 99 unidades", "2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
+    features: [
+      "Até 99 unidades",
+      "2 assembleias/mês",
+      "5 GB documentos",
+      "Suporte e-mail (48h)",
+    ],
   },
   {
     tierKey: "plus",
@@ -46,7 +51,7 @@ const FALLBACK_PLANS: PlanOption[] = [
   },
   {
     tierKey: "pro",
-    name: "Pro",
+    name: "Pró",
     priceCents: 109900,
     features: [
       "Para + de 300 unidades",
@@ -105,7 +110,9 @@ export function Pricing() {
               <Card
                 key={plan.tierKey}
                 className={`relative border-2 transition-all duration-300 ${
-                  plan.badge ? "border-primary shadow-2xl" : "border-gray-200 hover:border-primary/40"
+                  plan.badge
+                    ? "border-primary shadow-2xl"
+                    : "border-gray-200 hover:border-primary/40"
                 }`}
               >
                 {plan.badge && (
@@ -116,16 +123,23 @@ export function Pricing() {
                   </div>
                 )}
                 <CardHeader className="pt-10 text-center">
-                  <h3 className="text-2xl font-semibold text-gray-900">{plan.name}</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    {plan.name}
+                  </h3>
                   <div className="mt-4 space-y-1">
-                    <div className="text-4xl font-bold text-gray-900">{price}</div>
+                    <div className="text-4xl font-bold text-gray-900">
+                      {price}
+                    </div>
                     <div className="text-sm text-gray-500">por mês</div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pb-10">
                   <ul className="space-y-3 text-left">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-3 text-gray-700">
+                      <li
+                        key={feature}
+                        className="flex items-start gap-3 text-gray-700"
+                      >
                         <Check className="mt-1 h-5 w-5 flex-shrink-0 text-secondary" />
                         <span>{feature}</span>
                       </li>

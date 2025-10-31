@@ -7,17 +7,21 @@ import {
 
 const faqs = [
   {
-    question: "O Allecto App é legalmente válido para assembleias condominiais?",
-    answer: "Sim! O Allecto App segue todas as diretrizes da Lei 13.777/2018 e Lei 13.825/2019, que regulamentam assembleias digitais no Brasil. Nosso sistema garante identificação segura, sigilo de voto e registro completo de todas as ações."
+    question:
+      "O Allecto App é legalmente válido para assembleias condominiais?",
+    answer:
+      "Sim! O Allecto App segue todas as diretrizes da Lei 13.777/2018 e Lei 13.825/2019, que regulamentam assembleias digitais no Brasil. Nosso sistema garante identificação segura, sigilo de voto e registro completo de todas as ações.",
   },
   {
     question: "Como funciona a segurança e privacidade dos votos?",
-    answer: "Utilizamos criptografia de ponta a ponta e autenticação de múltiplos fatores. Cada voto é anônimo e vinculado à unidade do morador. O sistema gera trilhas de auditoria completas sem comprometer a privacidade individual."
+    answer:
+      "Utilizamos criptografia de ponta a ponta e autenticação de múltiplos fatores. Cada voto é anônimo e vinculado à unidade do morador. O sistema gera trilhas de auditoria completas sem comprometer a privacidade individual.",
   },
   {
     question: "Que tipo de suporte vocês oferecem?",
-    answer: "Oferecemos suporte por e-mail para todos os planos, com tempo de resposta de até 24 horas. Planos Médio e Grande incluem suporte prioritário e, no caso do plano Grande, um gerente de conta dedicado com treinamento personalizado."
-  }
+    answer:
+      "Oferecemos suporte por e-mail para todos os planos, com tempo de resposta de até 48 horas. Planos Plus e Pró incluem suporte prioritário e, no caso do plano Pró, um gerente de conta dedicado com treinamento personalizado.",
+  },
 ];
 
 export function FAQ() {
@@ -34,8 +38,8 @@ export function FAQ() {
         </div>
         <Accordion type="single" collapsible className="space-y-4">
           {faqs.map((faq, index) => (
-            <AccordionItem 
-              key={index} 
+            <AccordionItem
+              key={index}
               value={`item-${index}`}
               className="border border-gray-200 rounded-lg px-6 hover:border-primary/30 transition-colors"
             >

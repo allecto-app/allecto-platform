@@ -41,7 +41,7 @@ export const BILLING_PLANS: BillingPlan[] = [
   },
   {
     tierKey: "pro",
-    name: "Pro",
+    name: "Pró",
     priceCents: 109900,
     currency: "BRL",
     interval: "month",
