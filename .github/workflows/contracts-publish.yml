@@ -30,12 +30,12 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # or your PAT
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # or your PAT
 
       - name: Build workspace
         run: pnpm -F @allecto-app/contracts build
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Ensure your package.json has the correct name: "@allecto-app/contracts"
       # Option A: add publishConfig.registry in the package itself
@@ -43,4 +43,4 @@ jobs:
       - name: Publish
         run: npm publish --workspace packages/contracts
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # or PAT (write:packages)
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # or PAT (write:packages)
