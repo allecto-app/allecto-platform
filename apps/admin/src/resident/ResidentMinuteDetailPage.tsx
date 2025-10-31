@@ -81,6 +81,11 @@ const unitById = useMemo(() => {
   return map;
 }, [units]);
 
+const ownerUnits = useMemo(
+  () => units.filter((unit) => unit.role === "owner"),
+  [units],
+);
+
 type ResidentVoteSummary = {
   unitCode: string;
   choice: "agree" | "disagree";
@@ -109,8 +114,9 @@ const minuteStatus = minute?.status ?? null;
     [myVotes]
   );
   const availableUnits = useMemo(
-    () => units.filter((unit) => !unitVotes.has(String(unit.unitId))),
-    [units, unitVotes]
+    () =>
+      ownerUnits.filter((unit) => !unitVotes.has(String(unit.unitId))),
+    [ownerUnits, unitVotes]
   );
 
   useEffect(() => {
@@ -187,7 +193,7 @@ const minuteStatus = minute?.status ?? null;
     ? String(condo._id)
     : undefined;
 
-  const alreadyVotedUnits = units.filter((unit) =>
+  const alreadyVotedUnits = ownerUnits.filter((unit) =>
     unitVotes.has(String(unit.unitId))
   );
 
@@ -272,7 +278,9 @@ const minuteStatus = minute?.status ?? null;
           <CardContent className="space-y-4">
             {availableUnits.length === 0 ? (
               <div className="rounded-md border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-                Todas as suas unidades já registraram voto nesta assembleia.
+                {ownerUnits.length === 0
+                  ? "Somente proprietários vinculados a unidades podem votar em assembleias. Entre em contato com o síndico se você acredita ter direito ao voto."
+                  : "Todas as suas unidades proprietárias já registraram voto nesta assembleia."}
               </div>
             ) : (
               <>

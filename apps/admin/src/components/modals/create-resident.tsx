@@ -45,6 +45,8 @@ const membershipRoleOptions: Array<{ value: MembershipRole; label: string }> = [
   { value: "tenant", label: "Inquilino" },
 ];
 
+const NO_UNIT_VALUE = "__none";
+
 type FormState = {
   name: string;
   email: string;
@@ -59,7 +61,7 @@ const emptyForm: FormState = {
   email: "",
   phone: "",
   role: "resident",
-  unitId: "",
+  unitId: NO_UNIT_VALUE,
   membershipRole: "",
 };
 
@@ -117,7 +119,7 @@ export function CreateResidentModal({
       nextErrors.email = "E-mail inválido";
     }
 
-    if (form.unitId && !form.membershipRole) {
+    if (form.unitId !== NO_UNIT_VALUE && !form.membershipRole) {
       nextErrors.membershipRole = "Selecione o tipo de vínculo";
     }
 
@@ -135,13 +137,15 @@ export function CreateResidentModal({
 
     setIsSubmitting(true);
     try {
+      const hasUnitLink = form.unitId !== NO_UNIT_VALUE;
+
       await createResident({
         condoId,
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
         role: form.role,
-        unitLink: form.unitId
+        unitLink: hasUnitLink
           ? {
               unitId: form.unitId as Id<"units">,
               membershipRole: form.membershipRole as MembershipRole,
@@ -229,7 +233,7 @@ export function CreateResidentModal({
                 value={form.unitId}
                 onValueChange={(value) => {
                   updateField("unitId", value);
-                  if (!value) {
+                  if (value === NO_UNIT_VALUE) {
                     updateField("membershipRole", "");
                   }
                 }}
@@ -238,7 +242,7 @@ export function CreateResidentModal({
                   <SelectValue placeholder="Selecionar unidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem vínculo</SelectItem>
+                  <SelectItem value={NO_UNIT_VALUE}>Sem vínculo</SelectItem>
                   {availableUnits.length === 0 ? (
                     <SelectItem value="__none" disabled>
                       Nenhuma unidade disponível
@@ -260,7 +264,7 @@ export function CreateResidentModal({
                 onValueChange={(value: MembershipRole | "") =>
                   updateField("membershipRole", value)
                 }
-                disabled={!form.unitId}
+                disabled={form.unitId === NO_UNIT_VALUE}
               >
                 <SelectTrigger id="membership-role">
                   <SelectValue placeholder={form.unitId ? "Selecione o tipo" : "Selecione uma unidade"} />

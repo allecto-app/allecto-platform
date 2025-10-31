@@ -27,8 +27,13 @@ export const cast = mutation({
             .query("memberships")
             .withIndex("byResident", (q) => q.eq("residentId", a.residentId))
             .collect();
-        if (!memberships.find((m) => m.unitId === a.unitId)) {
+
+        const membership = memberships.find((m) => m.unitId === a.unitId);
+        if (!membership) {
             throw new Error("Resident is not associated to this unit");
+        }
+        if (membership.role !== "owner") {
+            throw new Error("Somente proprietários podem registrar votos");
         }
 
         const existing = await ctx.db

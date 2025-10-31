@@ -74,17 +74,19 @@ export function ResidentMinutesPage({
   }
 
   const hasUnits = units.length > 0;
+  const hasOwnerUnits = units.some((unit) => unit.role === "owner");
+  const headerDescription = !hasUnits
+    ? "Nenhuma unidade vinculada. Entre em contato com a administração do condomínio."
+    : hasOwnerUnits
+    ? "Vote nas assembleias abertas do seu condomínio."
+    : "Somente proprietários podem votar. Você ainda pode acompanhar as assembleias e atas disponíveis.";
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Atas"
         breadcrumb={["Minha Conta", "Atas"]}
-        description={
-          hasUnits
-            ? "Vote nas assembleias abertas do seu condomínio."
-            : "Nenhuma unidade vinculada. Entre em contato com a administração do condomínio."
-        }
+        description={headerDescription}
       />
 
       {!hasUnits && (
