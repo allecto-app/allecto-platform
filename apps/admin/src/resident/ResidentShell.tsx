@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { Sidebar } from "../components/layout/Sidebar";
 import { ResidentNavbar } from "./ResidentNavbar";
 import { applyBrandingTheme } from "../lib/brandingTheme";
-import { api, Id } from "../lib/convexGenerated";
+import { api, Id, type Doc } from "../lib/convexGenerated";
 import type { AdminAuthSession } from "../lib/authSession";
 import type { ResidentRecord } from "../types/resident";
 import { ResidentMinutesPage } from "./ResidentMinutesPage";

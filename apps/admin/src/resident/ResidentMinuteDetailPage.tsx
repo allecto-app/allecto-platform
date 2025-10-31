@@ -81,14 +81,19 @@ const unitById = useMemo(() => {
   return map;
 }, [units]);
 
-const myVotesSummary = useMemo(
+type ResidentVoteSummary = {
+  unitCode: string;
+  choice: "agree" | "disagree";
+  createdAt: number;
+};
+
+const myVotesSummary: ResidentVoteSummary[] = useMemo(
   () =>
     myVotes.map((vote) => ({
-      unitCode:
-        unitById.get(String(vote.unitId))?.code ??
-        "Unidade",
-      choice: vote.choice,
-      createdAt: vote.createdAt,
+      unitCode: unitById.get(String(vote.unitId))?.code ?? "Unidade",
+      choice: vote.choice === "agree" ? "agree" : "disagree",
+      createdAt:
+        typeof vote.createdAt === "number" ? vote.createdAt : Date.now(),
     })),
   [myVotes, unitById]
 );
