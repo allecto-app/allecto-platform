@@ -17,7 +17,12 @@ export const BILLING_PLANS: BillingPlan[] = [
     priceCents: 28900,
     currency: "BRL",
     interval: "month",
-    features: ["2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
+    features: [
+      "Até 99 unidades",
+      "2 assembleias/mês",
+      "5 GB documentos",
+      "Suporte e-mail (48h)",
+    ],
   },
   {
     tierKey: "plus",
@@ -27,7 +32,8 @@ export const BILLING_PLANS: BillingPlan[] = [
     interval: "month",
     badge: "Mais Popular",
     features: [
-      "Assembleias ilimitadas",
+      "Entre 100 e 299 unidades",
+      "5 assembleias/mês",
       "20 GB documentos",
       "Relatórios avançados",
       "Suporte 24h",
@@ -40,6 +46,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     currency: "BRL",
     interval: "month",
     features: [
+      "+ 300 unidades",
       "Assembleias/Enquetes ilimitadas",
       "200 GB documentos",
       "Auditoria e exportações",
@@ -49,7 +56,7 @@ export const BILLING_PLANS: BillingPlan[] = [
 ];
 
 export const BILLING_PLAN_BY_TIER = new Map<BillingTierKey, BillingPlan>(
-  BILLING_PLANS.map((plan) => [plan.tierKey, plan]),
+  BILLING_PLANS.map((plan) => [plan.tierKey, plan])
 );
 
 export function formatPriceBRL(cents: number) {

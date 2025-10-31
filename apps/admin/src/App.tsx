@@ -216,6 +216,11 @@ function AuthenticatedShell({
   const isPortalDomain = hostInfo.isPortal;
   const isCondoDomain = hostInfo.isCondoSubdomain;
 
+  const isResidentSession = auth.type === "resident";
+  const isResidentManager =
+    isResidentSession &&
+    (auth.roles.includes("manager") || auth.roles.includes("syndic"));
+
   const canSeePlatform =
     isPortalDomain &&
     auth.type === "platform" &&
@@ -226,9 +231,9 @@ function AuthenticatedShell({
     (auth.roles.includes("super_admin") ||
       auth.roles.includes("support") ||
       auth.roles.includes("ops"));
-  const isResident = auth.type === "resident";
+  const isResident = isResidentSession;
 
-  if (isResident) {
+  if (isResidentSession && !isResidentManager) {
     return <ResidentShell auth={auth} onLogout={onLogout} onUpdateAuth={onUpdateAuth} />;
   }
 

@@ -108,7 +108,7 @@ export const demo = mutation({
             condoId,
             name: "Síndico Demo",
             email: "sindico@demo.com",
-            role: "syndic",
+            role: "manager",
             isActive: true,
             createdAt: now,
             updatedAt: now,
