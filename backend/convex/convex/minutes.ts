@@ -68,17 +68,8 @@ export const publish = mutation({
             closeScheduled: true,
         });
 
-        // Log convocação (integração real de push/SMS depois)
-        await ctx.db.insert("notificationLogs", {
-            condoId: a.condoId,
+        await ctx.scheduler.runAfter(0, internal.notifications.sendMinutePublishedEmail, {
             minuteId,
-            channel: "push",
-            template: "convocation",
-            audienceCount: 0,
-            successCount: 0,
-            errorCount: 0,
-            createdAt: now,
-            meta: { note: "TODO integrate provider" },
         });
 
         await incrementAssemblyUsage(ctx, a.condoId, usageGate.bucketKey);
@@ -116,6 +107,9 @@ export const close = mutation({
         if (!m) throw new Error("Minute not found");
         if (m.status === "closed") return true;
         await ctx.db.patch(minuteId, { status: "closed", updatedAt: Date.now() });
+        await ctx.scheduler.runAfter(0, internal.notifications.sendMinuteClosedEmail, {
+            minuteId,
+        });
         return true;
     },
 });
@@ -126,16 +120,8 @@ export const internalClose = internalMutation({
         const m = await ctx.db.get(minuteId);
         if (!m || m.status === "closed") return;
         await ctx.db.patch(minuteId, { status: "closed", updatedAt: Date.now() });
-        await ctx.db.insert("notificationLogs", {
-            condoId: m.condoId,
+        await ctx.scheduler.runAfter(0, internal.notifications.sendMinuteClosedEmail, {
             minuteId,
-            channel: "push",
-            template: "closed",
-            audienceCount: 0,
-            successCount: 0,
-            errorCount: 0,
-            createdAt: Date.now(),
-            meta: { note: "TODO integrate provider" },
         });
     },
 });
