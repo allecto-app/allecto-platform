@@ -29,7 +29,10 @@ type BillingPageProps = {
 
 const STATUS_LABELS: Record<
   string,
-  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
+  {
+    label: string;
+    variant: "default" | "secondary" | "outline" | "destructive";
+  }
 > = {
   active: { label: "Ativo", variant: "default" },
   trialing: { label: "Em Período de Teste", variant: "secondary" },
@@ -73,12 +76,15 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
-  const [redirectingTier, setRedirectingTier] = useState<Billing.BillingTierKey | null>(null);
+  const [redirectingTier, setRedirectingTier] =
+    useState<Billing.BillingTierKey | null>(null);
 
   const statusBadge = useMemo(() => {
     if (!data?.subscription?.status) return null;
     const status = data.subscription.status;
-    return STATUS_LABELS[status] ?? { label: status, variant: "outline" as const };
+    return (
+      STATUS_LABELS[status] ?? { label: status, variant: "outline" as const }
+    );
   }, [data?.subscription?.status]);
 
   const nextRenewal = formatDate(data?.subscription?.currentPeriodEnd ?? null);
@@ -135,7 +141,10 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
   if (!tenantId) {
     return (
       <div>
-        <PageHeader title="Assinatura" description="Gerencie o plano do condomínio." />
+        <PageHeader
+          title="Assinatura"
+          description="Gerencie o plano do condomínio."
+        />
         <Card className="mt-6 border-dashed">
           <CardContent className="py-12 text-center text-muted-foreground">
             Selecione um condomínio para visualizar o status de assinatura.
@@ -171,12 +180,21 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Pagamento necessário</AlertTitle>
           <AlertDescription>
-            Identificamos uma falha recente no pagamento. Atualize seus dados para evitar a suspensão
-            do serviço.
+            Identificamos uma falha recente no pagamento. Atualize seus dados
+            para evitar a suspensão do serviço.
           </AlertDescription>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handlePortal} disabled={isPortalLoading}>
-              {isPortalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Atualizar pagamento"}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePortal}
+              disabled={isPortalLoading}
+            >
+              {isPortalLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Atualizar pagamento"
+              )}
             </Button>
           </div>
         </Alert>
@@ -186,10 +204,17 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
         <CardHeader className="border-b border-border pb-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Plano atual</p>
-              <h2 className="text-2xl font-semibold text-foreground">{currentPlan?.name ?? "—"}</h2>
+              <p className="text-sm font-medium text-muted-foreground">
+                Plano atual
+              </p>
+              <h2 className="text-2xl font-semibold text-foreground">
+                {currentPlan?.name ?? "—"}
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {currentPlan ? Billing.formatPriceBRL(currentPlan.priceCents) : "—"} / mês
+                {currentPlan
+                  ? Billing.formatPriceBRL(currentPlan.priceCents)
+                  : "—"}{" "}
+                / mês
               </p>
             </div>
             {statusBadge && (
@@ -201,11 +226,15 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-lg border border-border p-4">
               <p className="text-sm text-muted-foreground">Condomínio</p>
-              <p className="text-base font-medium text-foreground">{condo?.name}</p>
+              <p className="text-base font-medium text-foreground">
+                {condo?.name}
+              </p>
             </div>
             <div className="rounded-lg border border-border p-4">
               <p className="text-sm text-muted-foreground">Próxima renovação</p>
-              <p className="text-base font-medium text-foreground">{nextRenewal}</p>
+              <p className="text-base font-medium text-foreground">
+                {nextRenewal}
+              </p>
             </div>
             <div className="rounded-lg border border-border p-4">
               <p className="text-sm text-muted-foreground">Status</p>
@@ -216,21 +245,30 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-medium text-muted-foreground">Incluso no plano</p>
+            <p className="mb-3 text-sm font-medium text-muted-foreground">
+              Incluso no plano
+            </p>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
               {(currentPlan?.features ?? []).map((feature) => (
-                <div key={feature} className="flex items-center gap-2 rounded-md border border-border p-3">
+                <div
+                  key={feature}
+                  className="flex items-center gap-2 rounded-md border border-border p-3"
+                >
                   <CreditCard className="h-4 w-4 text-secondary" />
-                  <span className="text-sm text-muted-foreground">{feature}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {feature}
+                  </span>
                 </div>
               ))}
               {!currentPlan && (
-                <div className="text-sm text-muted-foreground">Nenhum benefício disponível.</div>
+                <div className="text-sm text-muted-foreground">
+                  Nenhum benefício disponível.
+                </div>
               )}
             </div>
           </div>
 
-  <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3">
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
                 <Button variant="default">Trocar de plano</Button>
@@ -239,7 +277,8 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
                 <DialogHeader>
                   <DialogTitle>Escolha um plano</DialogTitle>
                   <DialogDescription>
-                    Selecionar um novo plano irá redirecionar você para o checkout seguro da Stripe.
+                    Selecionar um novo plano irá redirecionar você para o
+                    checkout seguro da Stripe.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 md:grid-cols-3">
@@ -256,7 +295,11 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button variant="outline" onClick={handlePortal} disabled={isPortalLoading}>
+            <Button
+              variant="outline"
+              onClick={handlePortal}
+              disabled={isPortalLoading}
+            >
               {isPortalLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
