@@ -1,8 +1,12 @@
 import js from "@eslint/js";
 import globals from "globals";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import tseslint from "typescript-eslint";
 import pluginReact from "eslint-plugin-react";
 import { defineConfig } from "eslint/config";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig([
   {
@@ -26,6 +30,9 @@ export default defineConfig([
       globals: {
         ...globals.browser,
         ...globals.node,
+      },
+      parserOptions: {
+        tsconfigRootDir: __dirname,
       },
     },
     settings: {
