@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UserX, UserCheck, Edit, Loader2 } from "lucide-react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import {
@@ -26,10 +27,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Label } from "../components/ui/label";
 import { toast } from "sonner";
-import { Id, api } from "../lib/convexGenerated";
+import { Id, api, type Doc } from "../lib/convexGenerated";
 import type { ResidentRecord } from "../types/resident";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 
 const TEMPLATE_LABELS: Record<string, string> = {
   convocation: "Convocação",
@@ -83,6 +92,11 @@ export function ResidentDetailPage({
   onResidentLoaded,
 }: ResidentDetailPageProps) {
   const [linkUnitOpen, setLinkUnitOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<"owner" | "tenant" | "">("");
+  const [isLinkingUnit, setIsLinkingUnit] = useState(false);
+  const [pendingMembershipId, setPendingMembershipId] = useState<Id<"memberships"> | null>(null);
 
   const detail = useQuery(
     api.residentDetail.get,
@@ -93,10 +107,35 @@ export function ResidentDetailPage({
       : "skip",
   ) as ResidentDetailResponse | undefined;
   const resendResidentOtp = useAction(api.residentDetail.resendOtp);
+  const addMembership = useMutation(api.units.addMembership);
+  const removeMembership = useMutation(api.units.removeMembership);
 
   const residentFromQuery = detail?.resident ?? null;
   const resident = residentFromQuery ?? residentFallback ?? null;
   const units = detail?.units ?? [];
+  const effectiveCondoId = resident?.condoId ?? _condoId ?? null;
+  const allUnits = useQuery(
+    api.units.listByCondo,
+    effectiveCondoId ? { condoId: effectiveCondoId } : "skip",
+  ) as Doc<"units">[] | undefined;
+  const isLoadingUnits = effectiveCondoId !== null && allUnits === undefined;
+
+  const availableUnits = useMemo(() => {
+    if (!allUnits) return [] as Doc<"units">[];
+    const linkedIds = new Set(units.map((unit) => String(unit.unitId)));
+    return allUnits.filter((unit) => !linkedIds.has(String(unit._id)));
+  }, [allUnits, units]);
+
+  const filteredUnits = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return availableUnits;
+    return availableUnits.filter((unit) => {
+      const codeMatch = unit.code.toLowerCase().includes(query);
+      const blockMatch = (unit.block ?? "").toLowerCase().includes(query);
+      const floorMatch = (unit.floor ?? "").toLowerCase().includes(query);
+      return codeMatch || blockMatch || floorMatch;
+    });
+  }, [availableUnits, searchTerm]);
   const formatDateTime = (timestamp: number | null | undefined) =>
     typeof timestamp === "number"
       ? new Intl.DateTimeFormat("pt-BR", {
@@ -110,6 +149,28 @@ export function ResidentDetailPage({
     formattedDate: formatDateTime(activity.createdAt),
   }));
   const isLoading = residentId != null && detail === undefined;
+
+  useEffect(() => {
+    if (!linkUnitOpen) {
+      setSelectedUnitId("");
+      setSelectedRole("");
+      setSearchTerm("");
+      setIsLinkingUnit(false);
+    }
+  }, [linkUnitOpen]);
+
+  useEffect(() => {
+    if (filteredUnits.length === 0) {
+      setSelectedUnitId("");
+      return;
+    }
+    setSelectedUnitId((prev) => {
+      if (prev && filteredUnits.some((unit) => unit._id === prev)) {
+        return prev;
+      }
+      return filteredUnits[0]?._id ?? "";
+    });
+  }, [filteredUnits]);
 
   const formattedCreatedAt = formatDateTime(resident?.createdAt ?? null);
   const formattedUpdatedAt = formatDateTime(resident?.updatedAt ?? null);
@@ -129,9 +190,53 @@ export function ResidentDetailPage({
   };
   const handleDeactivate = () => toast.error("Desativação ainda não implementada");
   const handleReactivate = () => toast.success("Reativação ainda não implementada");
-  const handleUnlinkUnit = (unitCode: string) =>
-    toast.error(`Desvincular unidade ${unitCode} ainda não implementado`);
+  const handleUnlinkUnit = async (unit: ResidentUnitLink) => {
+    if (!unit.membershipId) {
+      toast.error("Vínculo não encontrado");
+      return;
+    }
+    setPendingMembershipId(unit.membershipId);
+    try {
+      await removeMembership({ membershipId: unit.membershipId });
+      toast.success(`Unidade ${unit.code} desvinculada com sucesso`);
+    } catch (error) {
+      console.error("Failed to unlink unit", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível desvincular a unidade",
+      );
+    } finally {
+      setPendingMembershipId(null);
+    }
+  };
   const handleEdit = () => onNavigate("resident-edit");
+  const handleLinkUnit = async () => {
+    if (!resident || !resident.id) return;
+    if (!selectedUnitId || !selectedRole) {
+      toast.error("Selecione a unidade e o tipo de vínculo");
+      return;
+    }
+    setIsLinkingUnit(true);
+    try {
+      await addMembership({
+        residentId: resident.id,
+        unitId: selectedUnitId as Id<"units">,
+        role: selectedRole,
+      });
+      toast.success("Unidade vinculada com sucesso");
+      setLinkUnitOpen(false);
+    } catch (error) {
+      console.error("Failed to link unit", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível vincular a unidade",
+      );
+    } finally {
+      setIsLinkingUnit(false);
+    }
+  };
 
   useEffect(() => {
     if (resident && onResidentLoaded) {
@@ -296,7 +401,11 @@ export function ResidentDetailPage({
                         <TableCell className="text-right">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={pendingMembershipId === unit.membershipId}
+                              >
                                 Desvincular
                               </Button>
                             </AlertDialogTrigger>
@@ -310,7 +419,10 @@ export function ResidentDetailPage({
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleUnlinkUnit(unit.code)}>
+                                <AlertDialogAction
+                                  onClick={() => handleUnlinkUnit(unit)}
+                                  disabled={pendingMembershipId === unit.membershipId}
+                                >
                                   Desvincular
                                 </AlertDialogAction>
                               </AlertDialogFooter>
@@ -418,10 +530,95 @@ export function ResidentDetailPage({
               Selecione uma unidade e o tipo de vínculo
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-6 space-y-4 text-sm text-muted-foreground">
-            Vincular unidades via painel ainda não está disponível nesta versão.
-            Entre em contato com o time de engenharia para priorizar esta funcionalidade.
-          </div>
+          {effectiveCondoId === null ? (
+            <div className="mt-6 rounded-md border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+              Não foi possível identificar o condomínio deste morador. Atualize o cadastro ou tente novamente mais tarde.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="search-unit">Buscar unidade</Label>
+                <Input
+                  id="search-unit"
+                  placeholder="Digite para buscar por código, bloco ou andar"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  disabled={isLoadingUnits || availableUnits.length === 0}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="select-unit">Unidade</Label>
+                <Select
+                  value={selectedUnitId}
+                  onValueChange={(value) => setSelectedUnitId(value)}
+                  disabled={isLoadingUnits || filteredUnits.length === 0}
+                >
+                  <SelectTrigger id="select-unit">
+                    <SelectValue placeholder={isLoadingUnits ? "Carregando unidades..." : "Selecione uma unidade"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingUnits ? (
+                      <SelectItem value="loading" disabled>
+                        Carregando unidades...
+                      </SelectItem>
+                    ) : filteredUnits.length === 0 ? (
+                      <SelectItem value="empty" disabled>
+                        {availableUnits.length === 0
+                          ? "Nenhuma unidade disponível"
+                          : "Sem resultados para a busca"}
+                      </SelectItem>
+                    ) : (
+                      filteredUnits.map((unit) => (
+                        <SelectItem key={unit._id} value={unit._id}>
+                          {unit.code}
+                          {unit.block ? ` • Bloco ${unit.block}` : ""}
+                          {unit.floor ? ` • ${unit.floor}º Andar` : ""}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="select-role">Tipo de vínculo</Label>
+                <Select
+                  value={selectedRole}
+                  onValueChange={(value: "owner" | "tenant") => setSelectedRole(value)}
+                  disabled={!selectedUnitId || selectedUnitId === "loading" || selectedUnitId === "empty"}
+                >
+                  <SelectTrigger id="select-role">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">Proprietário</SelectItem>
+                    <SelectItem value="tenant">Inquilino</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={handleLinkUnit}
+                disabled={
+                  isLinkingUnit ||
+                  !selectedUnitId ||
+                  selectedUnitId === "loading" ||
+                  selectedUnitId === "empty" ||
+                  !selectedRole
+                }
+              >
+                {isLinkingUnit ? "Vinculando..." : "Vincular"}
+              </Button>
+
+              {availableUnits.length === 0 && !isLoadingUnits && (
+                <div className="rounded-md border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+                  Todas as unidades deste condomínio já estão vinculadas a este morador.
+                </div>
+              )}
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </div>
