@@ -1,7 +1,14 @@
 import "../src/styles/globals.css";
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { GoogleTagManager } from "@next/third-parties/google";
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import type { ReactNode } from "react";
+import Script from "next/script";
+
+import {
+  COOKIE_CONSENT_COOKIE_NAME,
+  parseCookieConsent,
+} from "../src/lib/cookieConsent";
 
 export const metadata: Metadata = {
   title: "Allecto App",
@@ -10,10 +17,29 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const cookieStore = cookies();
+  const consent = parseCookieConsent(
+    cookieStore.get(COOKIE_CONSENT_COOKIE_NAME)?.value,
+  );
+  const allowAnalytics = consent?.analytics === true;
+
   return (
     <html lang="pt-BR">
-      <GoogleTagManager gtmId="GTM-PRXXLQHV" />
-      <body>{children}</body>
+      <head>
+        <Script id="consent-mode-defaults" strategy="beforeInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('consent', 'default', {
+              analytics_storage: 'denied'
+            });
+          `}
+        </Script>
+      </head>
+      <body>
+        {allowAnalytics ? <GoogleTagManager gtmId="GTM-PRXXLQHV" /> : null}
+        {children}
+      </body>
     </html>
   );
 }
