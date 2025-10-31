@@ -45,6 +45,7 @@ export default defineConfig([
       "react/react-in-jsx-scope": "off",
       "react/jsx-uses-react": "off",
       "react/prop-types": "off",
+      "react/no-unescaped-entities": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
