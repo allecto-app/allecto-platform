@@ -282,7 +282,7 @@ export const handleStripeWebhook = internalAction({
 
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(rawBody, signature, secret);
+      event = await stripe.webhooks.constructEventAsync(rawBody, signature, secret);
     } catch (error) {
       console.error("[stripeWebhook] Invalid signature", error);
       return json(400, { error: "Invalid signature" });
