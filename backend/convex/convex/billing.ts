@@ -24,6 +24,7 @@ export { createPortalSession } from "./actions/billing/createPortalSession";
 export { entitlements } from "./queries/billing/entitlements";
 export { handleStripeWebhook } from "./actions/billing/handleStripeWebhook";
 export { sendOnboardingSuccessEmail } from "./actions/billing/sendOnboardingSuccessEmail";
+export { refreshTenantUsage } from "./actions/billing/refreshTenantUsage";
 
 export const resolveBillingContext = query({
   args: {
