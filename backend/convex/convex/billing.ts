@@ -6,6 +6,7 @@ import {
   resolveBillingContext as resolveBillingContextHelper,
   markOnboardingSessionStatus,
   updateTenantBillingState,
+  normalizeTierKey,
 } from "./actions/billing/helpers";
 
 const subscriptionStatusValidator = v.union(
@@ -202,7 +203,7 @@ export const upsertStripeSubscriptionRecord = mutation({
       });
     }
 
-    const tierHint = payload.tierKey ?? existing?.tierKey ?? null;
+    const tierHint = normalizeTierKey(payload.tierKey ?? existing?.tierKey ?? null);
     await updateTenantBillingState(ctx, args.tenantId, status, payload.priceId, tierHint);
   },
 });

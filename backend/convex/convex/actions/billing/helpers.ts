@@ -159,6 +159,12 @@ export function tierFromPriceId(priceId: string | null | undefined): TierKey | n
   return PRICE_VALUE_TO_TIER.get(priceId) ?? null;
 }
 
+export function normalizeTierKey(value: string | null | undefined): TierKey | null {
+  if (!value) return null;
+  const normalized = value.toLowerCase().trim();
+  return (tierKeyValues as readonly string[]).includes(normalized) ? (normalized as TierKey) : null;
+}
+
 export async function markPendingOnboardingCompleted(ctx: any, tenantId: Id<"condos">) {
   const sessions = await ctx.db
     .query("onboardingSessions")
@@ -181,13 +187,10 @@ export async function updateTenantBillingState(
     billingStatus: status ?? "unknown",
     updatedAt: Date.now(),
   };
-  const hint =
-    tierHint && typeof tierHint === "string" && (tierKeyValues as readonly string[]).includes(tierHint)
-      ? (tierHint as TierKey)
-      : null;
+  const hint = normalizeTierKey(tierHint ?? undefined);
   const tier = tierFromPriceId(priceId) ?? hint;
   const defaultTier: TierKey | null =
-    (status === "active" || status === "trialing") ? "essencial" : null;
+    status === "active" || status === "trialing" ? "essencial" : null;
   if (tier ?? defaultTier) {
     updates.billingTier = (tier ?? defaultTier) as TierKey;
   }

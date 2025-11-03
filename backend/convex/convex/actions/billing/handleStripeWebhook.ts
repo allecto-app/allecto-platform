@@ -7,6 +7,7 @@ import type { Id } from "../../_generated/dataModel";
 import { api, internal } from "../../_generated/api";
 import { getStripeClient } from "../../stripe/client";
 import { normalizeEmail } from "../../_secu";
+import { normalizeTierKey } from "./helpers";
 
 const RELEVANT_EVENTS = new Set([
   "checkout.session.completed",
@@ -46,11 +47,14 @@ function extractPriceInfo(subscription: Stripe.Subscription) {
   const price = item?.price;
   const priceId = typeof price === "string" ? price : price?.id;
   let productId: string | undefined;
-  let tierKey: string | undefined;
+  let tierKey: "essencial" | "plus" | "pro" | undefined;
   if (price && typeof price !== "string") {
     productId = typeof price.product === "string" ? price.product : price.product?.id;
     if (price.metadata && typeof price.metadata.tierKey === "string") {
-      tierKey = price.metadata.tierKey;
+      const normalized = normalizeTierKey(price.metadata.tierKey);
+      if (normalized) {
+        tierKey = normalized;
+      }
     }
   }
   return { priceId, productId, tierKey };

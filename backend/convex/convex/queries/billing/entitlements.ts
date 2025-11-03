@@ -1,5 +1,6 @@
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
+import { normalizeTierKey } from "../../actions/billing/helpers";
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 const DUNNING_STATUSES = new Set(["past_due", "unpaid", "incomplete", "incomplete_expired"]);
@@ -46,15 +47,9 @@ export const entitlements = query({
     const now = Date.now();
     const isActive = ACTIVE_STATUSES.has(current.status) && (current.currentPeriodEnd ?? 0) >= now;
     const resolvedTier = resolveTierKey(current.priceId);
-    const recordTier =
-      typeof current.tierKey === "string" && ALLOWED_TIERS.has(current.tierKey)
-        ? (current.tierKey as string)
-        : null;
-    const fallbackTier =
-      typeof tenant?.billingTier === "string" && ALLOWED_TIERS.has(tenant.billingTier)
-        ? (tenant.billingTier as string)
-        : null;
-    const tierKey = (resolvedTier ?? recordTier ?? fallbackTier ?? (isActive ? "essencial" : null)) as
+    const recordTier = normalizeTierKey(current.tierKey);
+    const tenantTier = normalizeTierKey(tenant?.billingTier);
+    const tierKey = (resolvedTier ?? recordTier ?? tenantTier ?? (isActive ? "essencial" : null)) as
       | "essencial"
       | "plus"
       | "pro"

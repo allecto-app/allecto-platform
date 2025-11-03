@@ -7,6 +7,7 @@ import { sendEmail, DEFAULT_FROM } from "../../lib/email";
 import { normalizeEmail } from "../../_secu";
 import type { Id } from "../../_generated/dataModel";
 import { getStripeClient } from "../../stripe/client";
+import { normalizeTierKey } from "./helpers";
 
 const PLAN_LABELS: Record<string, string> = {
   essencial: "Essencial",
@@ -155,7 +156,7 @@ function resolvePlanInfo(price: Stripe.Price | string | null | undefined) {
     return { tier: null, amount: null, planName: "Plano" };
   }
   const amount = price.unit_amount ?? null;
-  const tier = price.metadata?.tierKey ?? null;
+  const tier = normalizeTierKey(price.metadata?.tierKey ?? null);
   const planName = (tier && PLAN_LABELS[tier]) || price.nickname || "Plano";
   return { tier, amount, planName };
 }
@@ -200,14 +201,8 @@ export const sendOnboardingSuccessEmail = internalAction({
 
     const planInfo = resolvePlanInfo(price);
     const { amount } = planInfo;
-    const resolvedTier =
-      planInfo.tier && VALID_TIER_KEYS.has(planInfo.tier)
-        ? (planInfo.tier as string)
-        : undefined;
-    const fallbackTier =
-      tenant.billingTier && VALID_TIER_KEYS.has(tenant.billingTier)
-        ? tenant.billingTier
-        : undefined;
+    const resolvedTier = normalizeTierKey(planInfo.tier);
+    const fallbackTier = normalizeTierKey(tenant.billingTier ?? null);
     const planTier = resolvedTier ?? fallbackTier ?? "essencial";
     const planName = PLAN_LABELS[planTier] ?? planInfo.planName;
     const priceFormatted = formatBRL(amount);
