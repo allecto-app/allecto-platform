@@ -8,13 +8,13 @@ import { normalizeEmail } from "../../_secu";
 import type { Id } from "../../_generated/dataModel";
 import { getStripeClient } from "../../stripe/client";
 import { normalizeTierKey } from "./helpers";
+import { api } from "../../_generated/api";
 
 const PLAN_LABELS: Record<string, string> = {
   essencial: "Essencial",
   plus: "Plus",
   pro: "Pró",
 };
-const VALID_TIER_KEYS = new Set(Object.keys(PLAN_LABELS));
 
 const PLAN_LIMITS: Record<string, string> = {
   essencial: "2 assembleias/mês, 5 GB documentos",
@@ -51,6 +51,7 @@ type TenantRecord = {
   branding?: {
     displayName?: string;
   };
+  subdomain?: string;
 };
 
 type ResidentRecord = {
@@ -74,14 +75,14 @@ async function fetchLatestResident(
   ctx: any,
   tenantId: Id<"condos">
 ): Promise<ResidentRecord | null> {
-  const residents = await ctx.db
-    .query("residents")
-    .withIndex("byCondo", (q: any) => q.eq("condoId", tenantId))
-    .order("asc")
-    .take(10);
-
+  const residents = (await ctx.runQuery(api.residents.list, {
+    condoId: tenantId,
+  })) as any[];
   if (!residents || residents.length === 0) return null;
-  return residents[0];
+  const sorted = residents
+    .filter((resident) => resident?.isActive !== false)
+    .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  return sorted[0] ?? null;
 }
 
 function toMillis(value: number | null | undefined) {
@@ -165,10 +166,12 @@ export const sendOnboardingSuccessEmail = internalAction({
   args: {
     tenantId: v.id("condos"),
     subscriptionId: v.string(),
-    invoiceId: v.optional(v.string()),
+    invoiceId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx: any, args) => {
-    const tenant = (await ctx.db.get(args.tenantId)) as TenantRecord | null;
+    const tenant = (await ctx.runQuery(api.billing.getTenantIfExists, {
+      tenantId: args.tenantId,
+    })) as TenantRecord | null;
     if (!tenant) {
       console.warn("[billing.email] Tenant not found", args.tenantId);
       return;
@@ -209,9 +212,11 @@ export const sendOnboardingSuccessEmail = internalAction({
     const nextBillingDate = formatDate(
       toMillis(subscription.current_period_end)
     );
-    const payment = await extractPaymentDetails(stripe, invoice);
 
-    const portalUrl = `${PORTAL_BASE_URL}/login`;
+    const loginHost = tenant.subdomain
+      ? `https://${tenant.subdomain}.allecto.app`
+      : PORTAL_BASE_URL;
+    const portalUrl = `${loginHost}`;
     const tenantDisplayName = tenant.branding?.displayName ?? tenant.name;
     const adminName = resident?.name ?? "Administrador";
     const adminEmail = residentEmail ?? customerEmail;
@@ -230,8 +235,6 @@ export const sendOnboardingSuccessEmail = internalAction({
       <p><strong>Resumo do pagamento:</strong><br/>
         • Plano: ${planName}<br/>
         • Valor: ${priceFormatted}<br/>
-        • Nº da fatura: ${payment.invoiceNumber}<br/>
-        • Forma de pagamento: ${payment.paymentMethodBrand} (final ${payment.paymentLast4})<br/>
         • Próxima cobrança: ${nextBillingDate}
       </p>
       <p><strong>Dados da sua conta:</strong><br/>
@@ -240,8 +243,8 @@ export const sendOnboardingSuccessEmail = internalAction({
         • Licenças/limites do plano: ${planLimits}
       </p>
       <p><strong>Dicas rápidas:</strong><br/>
-        • Para convidar outros usuários, entre em Configurações → Usuários.<br/>
-        • Precisa atualizar o cartão ou cancelar? Acesse “Faturamento” no portal.
+        • Para convidar outros moradores, entre em Painel → Moradores.<br/>
+        • Precisa atualizar o cartão ou cancelar? Acesse “Assinatura” no portal.
       </p>
       <p>Se não reconhece esta cobrança, fale com nosso suporte.</p>
       <p>Abraços,<br/>Equipe Allecto<br/>Suporte: ${SUPPORT_EMAIL} | ${SUPPORT_PHONE}</p>
@@ -258,8 +261,6 @@ ${portalUrl}
 Resumo do pagamento:
 • Plano: ${planName}
 • Valor: ${priceFormatted}
-• Nº da fatura: ${payment.invoiceNumber}
-• Forma de pagamento: ${payment.paymentMethodBrand} (final ${payment.paymentLast4})
 • Próxima cobrança: ${nextBillingDate}
 
 Dados da sua conta:
@@ -268,8 +269,8 @@ Dados da sua conta:
 • Licenças/limites do plano: ${planLimits}
 
 Dicas rápidas:
-• Para convidar outros usuários, entre em Configurações → Usuários.
-• Precisa atualizar o cartão ou cancelar? Acesse “Faturamento” no portal.
+• Para convidar outros moradores, entre em Configurações → Moradores.
+• Precisa atualizar o cartão ou cancelar? Acesse “Assinatura” no portal.
 
 Se não reconhece esta cobrança, fale com nosso suporte.
 

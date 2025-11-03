@@ -257,7 +257,10 @@ async function handleInvoiceEvent(
     statusOverride,
   });
 
-  if (eventType === "invoice.payment_succeeded") {
+  if (
+    eventType === "invoice.payment_succeeded" &&
+    (subscription.status === "active" || subscription.status === "trialing")
+  ) {
     await ctx.scheduler.runAfter(0, internal.billing.sendOnboardingSuccessEmail, {
       tenantId,
       subscriptionId: subscription.id,
