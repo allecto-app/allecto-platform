@@ -14,6 +14,8 @@ export const DEFAULT_USAGE_TIMEZONE = "America/Sao_Paulo";
 const SUBSCRIPTION_REQUIRED_MESSAGE =
   "Sua assinatura não está ativa. Ative um plano para continuar.";
 
+const ACTIVE_STATUSES = new Set(["active", "trialing"]);
+
 const UNIT_CAP_MESSAGES: Record<Exclude<TierKey, "pro">, string> = {
   essencial:
     "Seu plano Essencial permite até 99 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Plus.",
@@ -102,7 +104,13 @@ export async function ensureCanCreateAssembly(
     tenantId,
   });
 
-  if (!entitlements?.active || !entitlements.tierKey) {
+  const subscriptionStatus =
+    entitlements?.subscription?.status?.toLowerCase() ?? "";
+  const isSubscriptionActive =
+    entitlements?.active ||
+    ACTIVE_STATUSES.has(subscriptionStatus);
+
+  if (!isSubscriptionActive || !entitlements?.tierKey) {
     throw new Error(SUBSCRIPTION_REQUIRED_MESSAGE);
   }
 

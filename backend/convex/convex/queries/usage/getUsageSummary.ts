@@ -19,7 +19,13 @@ export const getUsageSummary = query({
       tenantId,
     });
 
-    if (!entitlements?.active || !entitlements.tierKey) {
+    const status = entitlements?.subscription?.status?.toLowerCase() ?? "";
+    const isActive =
+      entitlements?.active ||
+      status === "active" ||
+      status === "trialing";
+
+    if (!isActive || !entitlements?.tierKey) {
       return {
         active: false,
         tierKey: null,
