@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   const cookieStore = cookies();
   const consent = parseCookieConsent(
-    cookieStore.get(COOKIE_CONSENT_COOKIE_NAME)?.value,
+    cookieStore.get(COOKIE_CONSENT_COOKIE_NAME)?.value
   );
   const allowAnalytics = consent?.analytics === true;
 
@@ -39,6 +39,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         {allowAnalytics ? <GoogleTagManager gtmId="GTM-PRXXLQHV" /> : null}
         {children}
+        <script
+          type="text/javascript"
+          id="hs-script-loader"
+          async
+          defer
+          src="//js-na1.hs-scripts.com/50664691.js"
+        ></script>
       </body>
     </html>
   );
