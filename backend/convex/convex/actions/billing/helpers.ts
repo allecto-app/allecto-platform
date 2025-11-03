@@ -175,14 +175,21 @@ export async function updateTenantBillingState(
   tenantId: Id<"condos">,
   status: string | undefined,
   priceId: string | null,
+  tierHint?: string | null,
 ) {
   const updates: Record<string, unknown> = {
     billingStatus: status ?? "unknown",
     updatedAt: Date.now(),
   };
-  const tier = tierFromPriceId(priceId);
-  if (tier) {
-    updates.billingTier = tier;
+  const hint =
+    tierHint && typeof tierHint === "string" && (tierKeyValues as readonly string[]).includes(tierHint)
+      ? (tierHint as TierKey)
+      : null;
+  const tier = tierFromPriceId(priceId) ?? hint;
+  const defaultTier: TierKey | null =
+    (status === "active" || status === "trialing") ? "essencial" : null;
+  if (tier ?? defaultTier) {
+    updates.billingTier = (tier ?? defaultTier) as TierKey;
   }
   await ctx.db.patch(tenantId, updates);
   if (status === "active" || status === "trialing") {

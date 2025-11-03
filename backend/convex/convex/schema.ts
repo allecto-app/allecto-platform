@@ -188,6 +188,9 @@ export default defineSchema({
       v.literal("incomplete"),
       v.literal("incomplete_expired")
     ),
+    tierKey: v.optional(
+      v.union(v.literal("essencial"), v.literal("plus"), v.literal("pro"))
+    ),
     currentPeriodStart: v.number(),
     currentPeriodEnd: v.number(),
     cancelAt: v.optional(v.number()),

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 const DUNNING_STATUSES = new Set(["past_due", "unpaid", "incomplete", "incomplete_expired"]);
+const ALLOWED_TIERS = new Set(["essencial", "plus", "pro"]);
 
 const PRICE_TO_TIER = new Map(
   (
@@ -25,6 +26,7 @@ function resolveTierKey(priceId: string | null | undefined) {
 export const entitlements = query({
   args: { tenantId: v.id("condos") },
   handler: async (ctx, { tenantId }) => {
+    const tenant = await ctx.db.get(tenantId);
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("byTenant", (q: any) => q.eq("tenantId", tenantId))
@@ -43,7 +45,20 @@ export const entitlements = query({
     const current = subscriptions[0] as any;
     const now = Date.now();
     const isActive = ACTIVE_STATUSES.has(current.status) && (current.currentPeriodEnd ?? 0) >= now;
-    const tierKey = resolveTierKey(current.priceId);
+    const resolvedTier = resolveTierKey(current.priceId);
+    const recordTier =
+      typeof current.tierKey === "string" && ALLOWED_TIERS.has(current.tierKey)
+        ? (current.tierKey as string)
+        : null;
+    const fallbackTier =
+      typeof tenant?.billingTier === "string" && ALLOWED_TIERS.has(tenant.billingTier)
+        ? (tenant.billingTier as string)
+        : null;
+    const tierKey = (resolvedTier ?? recordTier ?? fallbackTier ?? (isActive ? "essencial" : null)) as
+      | "essencial"
+      | "plus"
+      | "pro"
+      | null;
     const inDunning = DUNNING_STATUSES.has(current.status);
 
     return {

@@ -46,10 +46,14 @@ function extractPriceInfo(subscription: Stripe.Subscription) {
   const price = item?.price;
   const priceId = typeof price === "string" ? price : price?.id;
   let productId: string | undefined;
+  let tierKey: string | undefined;
   if (price && typeof price !== "string") {
     productId = typeof price.product === "string" ? price.product : price.product?.id;
+    if (price.metadata && typeof price.metadata.tierKey === "string") {
+      tierKey = price.metadata.tierKey;
+    }
   }
-  return { priceId, productId };
+  return { priceId, productId, tierKey };
 }
 
 async function resolveTenantId(
@@ -92,7 +96,7 @@ async function saveCustomerRecord(
 }
 
 function buildSubscriptionPayload(subscription: Stripe.Subscription) {
-  const { priceId, productId } = extractPriceInfo(subscription);
+  const { priceId, productId, tierKey } = extractPriceInfo(subscription);
   const now = Date.now();
   const latestInvoiceId =
     typeof subscription.latest_invoice === "string"
@@ -115,6 +119,7 @@ function buildSubscriptionPayload(subscription: Stripe.Subscription) {
     trialEnd: toMillis(subscription.trial_end),
     latestInvoiceId: latestInvoiceId ?? undefined,
     latestInvoiceStatus,
+    tierKey: tierKey ?? undefined,
   };
 }
 

@@ -6,12 +6,14 @@ import { v } from "convex/values";
 import { sendEmail, DEFAULT_FROM } from "../../lib/email";
 import { normalizeEmail } from "../../_secu";
 import type { Id } from "../../_generated/dataModel";
+import { getStripeClient } from "../../stripe/client";
 
 const PLAN_LABELS: Record<string, string> = {
   essencial: "Essencial",
   plus: "Plus",
   pro: "Pró",
 };
+const VALID_TIER_KEYS = new Set(Object.keys(PLAN_LABELS));
 
 const PLAN_LIMITS: Record<string, string> = {
   essencial: "2 assembleias/mês, 5 GB documentos",
@@ -176,13 +178,7 @@ export const sendOnboardingSuccessEmail = internalAction({
       ? normalizeEmail(resident.email)
       : null;
 
-    const stripeSecret = process.env.STRIPE_SECRET_KEY;
-    if (!stripeSecret) {
-      console.error("[billing.email] Missing STRIPE_SECRET_KEY");
-      return;
-    }
-
-    const stripe = new Stripe(stripeSecret);
+    const stripe = getStripeClient();
 
     const { subscription, invoice } = await loadStripeData(
       stripe,
@@ -202,8 +198,18 @@ export const sendOnboardingSuccessEmail = internalAction({
       return;
     }
 
-    const { tier, amount, planName } = resolvePlanInfo(price);
-    const planTier = tier ?? tenant.billingTier ?? "essencial";
+    const planInfo = resolvePlanInfo(price);
+    const { amount } = planInfo;
+    const resolvedTier =
+      planInfo.tier && VALID_TIER_KEYS.has(planInfo.tier)
+        ? (planInfo.tier as string)
+        : undefined;
+    const fallbackTier =
+      tenant.billingTier && VALID_TIER_KEYS.has(tenant.billingTier)
+        ? tenant.billingTier
+        : undefined;
+    const planTier = resolvedTier ?? fallbackTier ?? "essencial";
+    const planName = PLAN_LABELS[planTier] ?? planInfo.planName;
     const priceFormatted = formatBRL(amount);
     const nextBillingDate = formatDate(
       toMillis(subscription.current_period_end)

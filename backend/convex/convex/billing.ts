@@ -162,6 +162,7 @@ export const upsertStripeSubscriptionRecord = mutation({
       trialEnd: v.optional(v.number()),
       latestInvoiceId: v.optional(v.string()),
       latestInvoiceStatus: v.optional(v.string()),
+      tierKey: v.optional(v.union(v.literal("essencial"), v.literal("plus"), v.literal("pro"))),
     }),
     statusOverride: v.optional(subscriptionStatusValidator),
   },
@@ -188,6 +189,7 @@ export const upsertStripeSubscriptionRecord = mutation({
       trialEnd: payload.trialEnd,
       latestInvoiceId: payload.latestInvoiceId,
       latestInvoiceStatus: payload.latestInvoiceStatus,
+      tierKey: payload.tierKey ?? existing?.tierKey,
       updatedAt: now,
     };
 
@@ -200,6 +202,7 @@ export const upsertStripeSubscriptionRecord = mutation({
       });
     }
 
-    await updateTenantBillingState(ctx, args.tenantId, status, payload.priceId);
+    const tierHint = payload.tierKey ?? existing?.tierKey ?? null;
+    await updateTenantBillingState(ctx, args.tenantId, status, payload.priceId, tierHint);
   },
 });
