@@ -64,7 +64,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [residentEmail, setResidentEmail] = useState("");
   const [residentCode, setResidentCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [residentDevCode, setResidentDevCode] = useState<string | null>(null);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [residentError, setResidentError] = useState<string | null>(null);
@@ -101,7 +100,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setOtpSent(false);
     setResidentCode("");
     setResidentEmail("");
-    setResidentDevCode(null);
     setPassword("");
     setEmail("");
     setForgotOpen(false);
@@ -259,7 +257,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
   const handleSendResidentOtp = async () => {
     setResidentError(null);
-    setResidentDevCode(null);
     const subdomainValue = (
       residentModeForced ? hostSubdomain : residentSubdomain
     )
@@ -276,7 +273,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
         subdomain: subdomainValue,
         email: emailValue,
       });
-      setResidentDevCode(result?.devCode ?? null);
+      if (process.env.NODE_ENV !== "production" && result?.devCode) {
+        console.info("[residentAuth] OTP dev code:", result.devCode);
+      }
       setResidentCode("");
       setOtpSent(true);
     } catch (error) {
@@ -602,7 +601,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                       onChange={(e) => {
                         setResidentSubdomain(e.target.value);
                         setResidentError(null);
-                        setResidentDevCode(null);
                       }}
                     />
                   )}
@@ -623,7 +621,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                     onChange={(e) => {
                       setResidentEmail(e.target.value);
                       setResidentError(null);
-                      setResidentDevCode(null);
                     }}
                   />
                 </div>
@@ -661,11 +658,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                           ))}
                         </InputOTPGroup>
                       </InputOTP>
-                      {residentDevCode && (
-                        <p className="text-muted-foreground text-xs">
-                          Código para testes: {residentDevCode}
-                        </p>
-                      )}
                     </div>
                     <Button
                       onClick={handleResidentSignIn}
