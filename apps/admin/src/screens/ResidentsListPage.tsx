@@ -27,6 +27,7 @@ import { InviteSyndicModal } from "../components/modals/invite-syndic";
 import { CreateResidentModal } from "../components/modals/create-resident";
 import { api, Doc } from "../lib/convexGenerated";
 import { toast } from "sonner";
+import { roleFormatter } from "src/utils/textFormatter";
 
 type InviteDoc = Doc<"invites">;
 
@@ -39,7 +40,10 @@ interface ResidentsListPageProps {
 
 const INVITE_STATUS_LABEL: Record<
   string,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+  {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  }
 > = {
   pending: { label: "Pendente", variant: "secondary" },
   used: { label: "Usado", variant: "outline" },
@@ -47,7 +51,12 @@ const INVITE_STATUS_LABEL: Record<
   revoked: { label: "Revogado", variant: "destructive" },
 };
 
-export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelectResident }: ResidentsListPageProps) {
+export function ResidentsListPage({
+  onNavigate,
+  condo,
+  canInviteSyndic,
+  onSelectResident,
+}: ResidentsListPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -55,11 +64,11 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
 
   const residents = useQuery(
     api.residents.list,
-    condo ? { condoId: condo._id } : "skip",
+    condo ? { condoId: condo._id } : "skip"
   ) as Doc<"residents">[] | undefined;
   const invites = useQuery(
     api.invites.listByCondo,
-    condo ? { condoId: condo._id } : "skip",
+    condo ? { condoId: condo._id } : "skip"
   ) as InviteDoc[] | undefined;
 
   const invitesByEmail = useMemo(() => {
@@ -75,7 +84,8 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
         resident.name.toLowerCase().includes(query) ||
         (resident.email ?? "").toLowerCase().includes(query);
       const matchesStatus =
-        statusFilter === "all" || (resident.isActive ? "active" : "inactive") === statusFilter;
+        statusFilter === "all" ||
+        (resident.isActive ? "active" : "inactive") === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [residents, searchTerm, statusFilter]);
@@ -192,7 +202,9 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
                   const invite = normalizedEmail
                     ? invitesByEmail.get(normalizedEmail)
                     : undefined;
-                  const inviteStatus = invite ? INVITE_STATUS_LABEL[invite.status] : undefined;
+                  const inviteStatus = invite
+                    ? INVITE_STATUS_LABEL[invite.status]
+                    : undefined;
 
                   return (
                     <TableRow key={resident._id}>
@@ -204,8 +216,12 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
                         {resident.phone ?? "-"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={resident.role === "syndic" ? "default" : "secondary"}>
-                          {resident.role}
+                        <Badge
+                          variant={
+                            resident.role === "syndic" ? "default" : "secondary"
+                          }
+                        >
+                          {roleFormatter(resident.role)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -216,7 +232,9 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
                             <Badge variant="destructive">Inativo</Badge>
                           )}
                           {inviteStatus && (
-                            <Badge variant={inviteStatus.variant}>{inviteStatus.label}</Badge>
+                            <Badge variant={inviteStatus.variant}>
+                              {inviteStatus.label}
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
@@ -237,14 +255,18 @@ export function ResidentsListPage({ onNavigate, condo, canInviteSyndic, onSelect
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => toast.info("Função disponível em breve")}
+                                onClick={() =>
+                                  toast.info("Função disponível em breve")
+                                }
                               >
                                 Reenviar
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => toast.info("Função disponível em breve")}
+                                onClick={() =>
+                                  toast.info("Função disponível em breve")
+                                }
                               >
                                 Revogar
                               </Button>

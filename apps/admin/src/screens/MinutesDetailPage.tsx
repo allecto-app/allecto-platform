@@ -3,13 +3,26 @@ import { useMutation, useQuery } from "convex/react";
 import { Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "../components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { Progress } from "../components/ui/progress";
 import { EmptyState } from "../components/admin/EmptyState";
 import { ViewPdfButton } from "../components/documents/ViewPdfButton";
 import { api, Doc, Id } from "../lib/convexGenerated";
+import { notificationFormatter } from "src/utils/textFormatter";
 
 interface MinutesDetailPageProps {
   onNavigate: (page: string) => void;
@@ -36,7 +49,8 @@ const formatFileSize = (size: number) => {
   return `${size} B`;
 };
 
-const translateChoice = (choice: string) => (choice === "agree" ? "Concorda" : "Discorda");
+const translateChoice = (choice: string) =>
+  choice === "agree" ? "Concorda" : "Discorda";
 
 type VoteWithDetails = {
   _id: Id<"votes">;
@@ -118,8 +132,13 @@ export function MinutesDetailPage({
     );
   }
 
-  const orgId = condo ? String(condo._id) : condoId ? String(condoId) : undefined;
-  const documentId = (minuteData.documentId as Id<"documents"> | undefined) ?? undefined;
+  const orgId = condo
+    ? String(condo._id)
+    : condoId
+    ? String(condoId)
+    : undefined;
+  const documentId =
+    (minuteData.documentId as Id<"documents"> | undefined) ?? undefined;
 
   const document = useQuery(
     api.documents.get,
@@ -129,7 +148,7 @@ export function MinutesDetailPage({
           sessionToken,
           orgId,
         }
-      : "skip",
+      : "skip"
   );
 
   const documentEvents = useQuery(
@@ -141,30 +160,38 @@ export function MinutesDetailPage({
           orgId,
           limit: 50,
         }
-      : "skip",
+      : "skip"
   );
 
   const voteSummary = useQuery(api.votes.summary, { minuteId });
-  const votes = useQuery(api.votes.listForMinute, { minuteId }) as VoteWithDetails[] | undefined;
+  const votes = useQuery(api.votes.listForMinute, { minuteId }) as
+    | VoteWithDetails[]
+    | undefined;
 
   const notificationLogs = useQuery(
     api.notifications.listLogs,
-    minuteData ? { condoId: minuteData.condoId, limit: 200 } : "skip",
+    minuteData ? { condoId: minuteData.condoId, limit: 200 } : "skip"
   );
 
   const closeMinute = useMutation(api.minutes.close);
 
   const filteredLogs = useMemo(
     () =>
-      (notificationLogs as NotificationLogRecord[] | undefined)?.filter((log) => log.minuteId === minuteId) ?? [],
-    [notificationLogs, minuteId],
+      (notificationLogs as NotificationLogRecord[] | undefined)?.filter(
+        (log) => log.minuteId === minuteId
+      ) ?? [],
+    [notificationLogs, minuteId]
   );
 
   const agreeCount = voteSummary?.agree ?? 0;
   const disagreeCount = voteSummary?.disagree ?? 0;
   const totalVotes = voteSummary?.total ?? 0;
-  const agreePercentage = totalVotes ? Math.round((agreeCount / totalVotes) * 100) : 0;
-  const disagreePercentage = totalVotes ? Math.round((disagreeCount / totalVotes) * 100) : 0;
+  const agreePercentage = totalVotes
+    ? Math.round((agreeCount / totalVotes) * 100)
+    : 0;
+  const disagreePercentage = totalVotes
+    ? Math.round((disagreeCount / totalVotes) * 100)
+    : 0;
 
   const handleCloseMinute = async () => {
     if (!minuteId) return;
@@ -173,7 +200,10 @@ export function MinutesDetailPage({
       await closeMinute({ minuteId });
       toast.success("Ata fechada com sucesso!");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Não foi possível fechar a ata";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível fechar a ata";
       toast.error(message);
     } finally {
       setIsClosing(false);
@@ -185,14 +215,17 @@ export function MinutesDetailPage({
   const documentMetadataAvailable = !!documentId;
   const documentLoading = documentId && document === undefined;
   const documentRecord = documentId ? document ?? null : null;
-  const documentEventsList = (documentEvents as DocumentEventRecord[] | undefined) ?? [];
+  const documentEventsList =
+    (documentEvents as DocumentEventRecord[] | undefined) ?? [];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={minuteData.title}
         breadcrumb={breadcrumb}
-        contextPill={condo ? { name: condo.name, subdomain: condo.subdomain } : undefined}
+        contextPill={
+          condo ? { name: condo.name, subdomain: condo.subdomain } : undefined
+        }
         primaryAction={
           minuteData.status === "open"
             ? {
@@ -218,12 +251,18 @@ export function MinutesDetailPage({
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <div className="text-sm text-muted-foreground">Status</div>
-                <Badge variant={minuteData.status === "open" ? "default" : "secondary"}>
+                <Badge
+                  variant={
+                    minuteData.status === "open" ? "default" : "secondary"
+                  }
+                >
                   {minuteData.status === "open" ? "Aberta" : "Fechada"}
                 </Badge>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Publicado em</div>
+                <div className="text-sm text-muted-foreground">
+                  Publicado em
+                </div>
                 <div>{formatDateTime(minuteData.publishedAt)}</div>
               </div>
               <div>
@@ -245,10 +284,15 @@ export function MinutesDetailPage({
             <CardTitle>Documento</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!documentMetadataAvailable && <p className="text-sm text-muted-foreground">Nenhum documento vinculado.</p>}
+            {!documentMetadataAvailable && (
+              <p className="text-sm text-muted-foreground">
+                Nenhum documento vinculado.
+              </p>
+            )}
             {documentLoading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Carregando documento...
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando
+                documento...
               </div>
             )}
             {documentRecord && (
@@ -259,7 +303,9 @@ export function MinutesDetailPage({
                     {documentRecord.viewCount} visualizações
                   </span>
                 </div>
-                <div className="text-sm text-foreground">{documentRecord.title}</div>
+                <div className="text-sm text-foreground">
+                  {documentRecord.title}
+                </div>
                 <dl className="grid gap-2 text-sm text-muted-foreground">
                   <div className="flex items-center justify-between">
                     <dt>Tipo</dt>
@@ -309,7 +355,9 @@ export function MinutesDetailPage({
               <span>{agreePercentage}%</span>
             </div>
             <Progress value={agreePercentage} className="h-2" />
-            <div className="text-sm text-muted-foreground">{agreeCount} votos</div>
+            <div className="text-sm text-muted-foreground">
+              {agreeCount} votos
+            </div>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -317,7 +365,9 @@ export function MinutesDetailPage({
               <span>{disagreePercentage}%</span>
             </div>
             <Progress value={disagreePercentage} className="h-2" />
-            <div className="text-sm text-muted-foreground">{disagreeCount} votos</div>
+            <div className="text-sm text-muted-foreground">
+              {disagreeCount} votos
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -332,7 +382,9 @@ export function MinutesDetailPage({
               <Loader2 className="h-4 w-4 animate-spin" /> Carregando votos...
             </div>
           ) : votes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum voto registrado até o momento.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum voto registrado até o momento.
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -347,15 +399,23 @@ export function MinutesDetailPage({
               <TableBody>
                 {votes.map((vote) => (
                   <TableRow key={vote._id as string}>
-                    <TableCell className="text-muted-foreground">{formatDateTime(vote.createdAt)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(vote.createdAt)}
+                    </TableCell>
                     <TableCell>{vote.unitCode ?? "-"}</TableCell>
                     <TableCell>{vote.residentName}</TableCell>
                     <TableCell>
-                      <Badge variant={vote.choice === "agree" ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          vote.choice === "agree" ? "default" : "secondary"
+                        }
+                      >
                         {translateChoice(vote.choice)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{vote.comment ?? "-"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {vote.comment ?? "-"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -376,10 +436,13 @@ export function MinutesDetailPage({
               </p>
             ) : documentEvents === undefined ? (
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Carregando histórico...
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando
+                histórico...
               </div>
             ) : documentEventsList.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum acesso registrado para este documento.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhum acesso registrado para este documento.
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -392,11 +455,17 @@ export function MinutesDetailPage({
                   {documentEventsList.map((event) => (
                     <TableRow key={event._id as string}>
                       <TableCell>
-                        <Badge variant={event.event === "view" ? "secondary" : "outline"}>
+                        <Badge
+                          variant={
+                            event.event === "view" ? "secondary" : "outline"
+                          }
+                        >
                           {event.event === "view" ? "Visualização" : "Upload"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{formatDateTime(event.createdAt)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDateTime(event.createdAt)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -412,10 +481,13 @@ export function MinutesDetailPage({
           <CardContent>
             {notificationLogs === undefined ? (
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Carregando notificações...
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando
+                notificações...
               </div>
             ) : filteredLogs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma notificação registrada para esta ata.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhuma notificação registrada para esta ata.
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -429,10 +501,18 @@ export function MinutesDetailPage({
                 <TableBody>
                   {filteredLogs.map((log) => (
                     <TableRow key={log._id as string}>
-                      <TableCell className="capitalize">{log.template}</TableCell>
-                      <TableCell className="capitalize text-muted-foreground">{log.channel}</TableCell>
-                      <TableCell className="text-right">{log.successCount}</TableCell>
-                      <TableCell className="text-right">{log.errorCount}</TableCell>
+                      <TableCell className="capitalize">
+                        {notificationFormatter(log.template)}
+                      </TableCell>
+                      <TableCell className="capitalize text-muted-foreground">
+                        {log.channel}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {log.successCount}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {log.errorCount}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
