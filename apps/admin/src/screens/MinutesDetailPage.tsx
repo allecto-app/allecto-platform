@@ -253,7 +253,7 @@ export function MinutesDetailPage({
                 <div className="text-sm text-muted-foreground">Status</div>
                 <Badge
                   variant={
-                    minuteData.status === "open" ? "default" : "secondary"
+                    minuteData.status === "open" ? "openminute" : "closedminute"
                   }
                 >
                   {minuteData.status === "open" ? "Aberta" : "Fechada"}
@@ -457,7 +457,7 @@ export function MinutesDetailPage({
                       <TableCell>
                         <Badge
                           variant={
-                            event.event === "view" ? "secondary" : "outline"
+                            event.event === "view" ? "outline" : "outline"
                           }
                         >
                           {event.event === "view" ? "Visualização" : "Upload"}

@@ -62,48 +62,48 @@ export function ResidentMinuteDetailPage({
   const minuteArgs = (minuteId ? { minuteId } : "skip") as
     | { minuteId: Id<"minutes"> }
     | "skip";
-const minute = useQuery(api.minutes.get, minuteArgs) as
-  | Doc<"minutes">
-  | null
-  | undefined;
+  const minute = useQuery(api.minutes.get, minuteArgs) as
+    | Doc<"minutes">
+    | null
+    | undefined;
 
-const myVotesRaw = useQuery(
-  api.votes.getMine,
-  minuteId ? { residentId, minuteId } : "skip"
-) as Doc<"votes">[] | undefined;
-const myVotes = myVotesRaw ?? [];
+  const myVotesRaw = useQuery(
+    api.votes.getMine,
+    minuteId ? { residentId, minuteId } : "skip"
+  ) as Doc<"votes">[] | undefined;
+  const myVotes = myVotesRaw ?? [];
 
-const unitById = useMemo(() => {
-  const map = new Map<string, ResidentUnitLink>();
-  units.forEach((unit) => {
-    map.set(String(unit.unitId), unit);
-  });
-  return map;
-}, [units]);
+  const unitById = useMemo(() => {
+    const map = new Map<string, ResidentUnitLink>();
+    units.forEach((unit) => {
+      map.set(String(unit.unitId), unit);
+    });
+    return map;
+  }, [units]);
 
-const ownerUnits = useMemo(
-  () => units.filter((unit) => unit.role === "owner"),
-  [units],
-);
+  const ownerUnits = useMemo(
+    () => units.filter((unit) => unit.role === "owner"),
+    [units]
+  );
 
-type ResidentVoteSummary = {
-  unitCode: string;
-  choice: "agree" | "disagree";
-  createdAt: number;
-};
+  type ResidentVoteSummary = {
+    unitCode: string;
+    choice: "agree" | "disagree";
+    createdAt: number;
+  };
 
-const myVotesSummary: ResidentVoteSummary[] = useMemo(
-  () =>
-    myVotes.map((vote) => ({
-      unitCode: unitById.get(String(vote.unitId))?.code ?? "Unidade",
-      choice: vote.choice === "agree" ? "agree" : "disagree",
-      createdAt:
-        typeof vote.createdAt === "number" ? vote.createdAt : Date.now(),
-    })),
-  [myVotes, unitById]
-);
+  const myVotesSummary: ResidentVoteSummary[] = useMemo(
+    () =>
+      myVotes.map((vote) => ({
+        unitCode: unitById.get(String(vote.unitId))?.code ?? "Unidade",
+        choice: vote.choice === "agree" ? "agree" : "disagree",
+        createdAt:
+          typeof vote.createdAt === "number" ? vote.createdAt : Date.now(),
+      })),
+    [myVotes, unitById]
+  );
 
-const minuteStatus = minute?.status ?? null;
+  const minuteStatus = minute?.status ?? null;
   const voteSummary = useQuery(
     api.votes.summary,
     minuteId && minuteStatus === "closed" ? { minuteId } : "skip"
@@ -114,8 +114,7 @@ const minuteStatus = minute?.status ?? null;
     [myVotes]
   );
   const availableUnits = useMemo(
-    () =>
-      ownerUnits.filter((unit) => !unitVotes.has(String(unit.unitId))),
+    () => ownerUnits.filter((unit) => !unitVotes.has(String(unit.unitId))),
     [ownerUnits, unitVotes]
   );
 
@@ -223,7 +222,9 @@ const minuteStatus = minute?.status ?? null;
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
             <div className="text-sm text-muted-foreground">Status</div>
-            <Badge variant={minute.status === "open" ? "default" : "secondary"}>
+            <Badge
+              variant={minute.status === "open" ? "openminute" : "closedminute"}
+            >
               {minute.status === "open" ? "Aberta" : "Encerrada"}
             </Badge>
           </div>
@@ -348,9 +349,7 @@ const minuteStatus = minute?.status ?? null;
 
             {myVotesSummary.length > 0 && (
               <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-sm">
-                <div className="font-medium text-foreground">
-                  Seus votos
-                </div>
+                <div className="font-medium text-foreground">Seus votos</div>
                 <ul className="mt-2 space-y-2">
                   {myVotesSummary.map((vote, index) => (
                     <li
@@ -359,13 +358,10 @@ const minuteStatus = minute?.status ?? null;
                     >
                       <span className="text-foreground">
                         {vote.unitCode} —{" "}
-                        {vote.choice === "agree"
-                          ? "Concordo"
-                          : "Discordo"}
+                        {vote.choice === "agree" ? "Concordo" : "Discordo"}
                       </span>
                       <span className="text-muted-foreground text-xs">
-                        Registrado em{" "}
-                        {formatDateTime(vote.createdAt)}
+                        Registrado em {formatDateTime(vote.createdAt)}
                       </span>
                     </li>
                   ))}
@@ -407,9 +403,7 @@ const minuteStatus = minute?.status ?? null;
 
             {myVotesSummary.length > 0 && (
               <div className="mt-6 rounded-lg border border-border/60 bg-muted/20 p-4 text-sm">
-                <div className="font-medium text-foreground">
-                  Seus votos
-                </div>
+                <div className="font-medium text-foreground">Seus votos</div>
                 <ul className="mt-2 space-y-2">
                   {myVotesSummary.map((vote, index) => (
                     <li
@@ -418,9 +412,7 @@ const minuteStatus = minute?.status ?? null;
                     >
                       <span className="text-foreground">
                         {vote.unitCode} —{" "}
-                        {vote.choice === "agree"
-                          ? "Concordo"
-                          : "Discordo"}
+                        {vote.choice === "agree" ? "Concordo" : "Discordo"}
                       </span>
                       <span className="text-muted-foreground text-xs">
                         Registrado em {formatDateTime(vote.createdAt)}

@@ -49,13 +49,17 @@ export function PageHeader({
             <h1>{title}</h1>
             {contextPill && (
               <Badge variant="outline" className="gap-1">
-                <span>Condo:</span>
+                <span>Condomínio:</span>
                 <span>{contextPill.name}</span>
-                <span className="text-muted-foreground">({contextPill.subdomain})</span>
+                <span className="text-muted-foreground">
+                  ({contextPill.subdomain})
+                </span>
               </Badge>
             )}
           </div>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          {description && (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          )}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
           {secondaryAction && (

@@ -1,7 +1,12 @@
 import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { FileText, Loader2, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/admin/EmptyState";
@@ -34,23 +39,29 @@ export function ResidentMinutesPage({
   onSelectMinute,
   units,
 }: ResidentMinutesPageProps) {
-  const minutes = useQuery(
-    api.minutes.list,
-    condoId ? { condoId } : "skip",
-  ) as Doc<"minutes">[] | undefined;
+  const minutes = useQuery(api.minutes.list, condoId ? { condoId } : "skip") as
+    | Doc<"minutes">[]
+    | undefined;
   const myVotes = useQuery(api.votes.getMine, { residentId }) ?? [];
 
   const minutesByStatus = useMemo(() => {
     if (!minutes) return { open: undefined, closed: undefined };
-    const open = minutes.filter((minute) => minute.status === "open").sort((a, b) => b.publishedAt - a.publishedAt);
-    const closed = minutes.filter((minute) => minute.status === "closed").sort((a, b) => b.publishedAt - a.publishedAt);
+    const open = minutes
+      .filter((minute) => minute.status === "open")
+      .sort((a, b) => b.publishedAt - a.publishedAt);
+    const closed = minutes
+      .filter((minute) => minute.status === "closed")
+      .sort((a, b) => b.publishedAt - a.publishedAt);
     return { open, closed };
   }, [minutes]);
 
   const votesByMinute = useMemo(() => {
     const map = new Map<string, { unitId: Id<"units">; createdAt: number }>();
     for (const vote of myVotes) {
-      map.set(String(vote.minuteId), { unitId: vote.unitId, createdAt: vote.createdAt });
+      map.set(String(vote.minuteId), {
+        unitId: vote.unitId,
+        createdAt: vote.createdAt,
+      });
     }
     return map;
   }, [myVotes]);
@@ -153,13 +164,22 @@ function Section({
           const vote = votesByMinute.get(String(minute._id));
           const hasVoted = Boolean(vote);
           return (
-            <Card key={minute._id as string} className="border border-border/60">
+            <Card
+              key={minute._id as string}
+              className="border border-border/60"
+            >
               <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div className="space-y-1">
                   <CardTitle className="text-base">{minute.title}</CardTitle>
-                  <p className="text-muted-foreground text-sm">{minute.summary ?? "Sem descrição fornecida."}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {minute.summary ?? "Sem descrição fornecida."}
+                  </p>
                 </div>
-                <Badge variant={minute.status === "open" ? "default" : "secondary"}>
+                <Badge
+                  variant={
+                    minute.status === "open" ? "openminute" : "closedminute"
+                  }
+                >
                   {minute.status === "open" ? "Aberta" : "Encerrada"}
                 </Badge>
               </CardHeader>
@@ -167,11 +187,15 @@ function Section({
                 <div className="grid gap-2 text-sm text-muted-foreground">
                   <div>
                     Publicada em{" "}
-                    <span className="text-foreground">{formatDateTime(minute.publishedAt)}</span>
+                    <span className="text-foreground">
+                      {formatDateTime(minute.publishedAt)}
+                    </span>
                   </div>
                   <div>
                     Fecha em{" "}
-                    <span className="text-foreground">{formatDateTime(minute.closesAt)}</span>
+                    <span className="text-foreground">
+                      {formatDateTime(minute.closesAt)}
+                    </span>
                   </div>
                   <div>
                     Status do voto:{" "}
