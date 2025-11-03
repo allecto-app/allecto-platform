@@ -176,6 +176,9 @@ async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout
       subscriptionId: subscription.id,
       invoiceId: null,
     });
+    await ctx.scheduler.runAfter(0, internal.billing.refreshTenantUsage, {
+      tenantId,
+    });
   }
 }
 
@@ -200,6 +203,12 @@ async function handleSubscriptionEvent(ctx: any, payload: Stripe.Subscription) {
     tenantId,
     data: payloadData,
   });
+
+  if (payload.status === "active" || payload.status === "trialing") {
+    await ctx.scheduler.runAfter(0, internal.billing.refreshTenantUsage, {
+      tenantId,
+    });
+  }
 }
 
 async function handleInvoiceEvent(

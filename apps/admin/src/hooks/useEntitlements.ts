@@ -32,7 +32,8 @@ export function useEntitlements(tenantId: Id<"condos"> | null | undefined) {
 
   const currentPlan = useMemo(() => {
     if (!result?.tierKey) return null;
-    return Billing.BILLING_PLAN_BY_TIER.get(result.tierKey) ?? null;
+    const normalized = result.tierKey.toLowerCase().trim() as Billing.BillingTierKey;
+    return Billing.BILLING_PLAN_BY_TIER.get(normalized) ?? null;
   }, [result?.tierKey]);
 
   return {
