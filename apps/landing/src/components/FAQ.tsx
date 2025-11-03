@@ -10,7 +10,7 @@ const faqs = [
     question:
       "O Allecto App é legalmente válido para assembleias condominiais?",
     answer:
-      "Sim! O Allecto App segue todas as diretrizes da Lei 13.777/2018 e Lei 13.825/2019, que regulamentam assembleias digitais no Brasil. Nosso sistema garante identificação segura, sigilo de voto e registro completo de todas as ações.",
+      "Sim! O Allecto App segue todas as diretrizes da Lei nº 14.309/2022, que regulamenta assembleias digitais no Brasil. Nosso sistema garante identificação segura, sigilo de voto e registro completo de todas as ações.",
   },
   {
     question: "Como funciona a segurança e privacidade dos votos?",
