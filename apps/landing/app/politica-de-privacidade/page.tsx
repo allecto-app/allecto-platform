@@ -1,5 +1,37 @@
+import { Metadata } from "next";
 import { Footer } from "../../src/components/Footer";
 import { Header } from "../../src/components/Header";
+
+export const metadata: Metadata = {
+  title: "Política de Privacidade — Allecto App",
+  description:
+    "Entenda como o Allecto App coleta, usa e protege seus dados. Transparência, segurança e conformidade com a LGPD.",
+  alternates: { canonical: "/politica-de-privacidade" },
+  openGraph: {
+    title: "Política de Privacidade — Allecto App",
+    description:
+      "Transparência sobre coleta, uso e proteção de dados. Conformidade com a LGPD.",
+    url: "https://www.allecto.app/politica-de-privacidade",
+    siteName: "Allecto App",
+    images: [
+      {
+        url: "/images/og/landing-1200x630.png",
+        width: 1200,
+        height: 630,
+        alt: "Política de Privacidade — Allecto App",
+      },
+    ],
+    locale: "pt_BR",
+    type: "article",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Política de Privacidade — Allecto App",
+    description:
+      "Como coletamos, usamos e protegemos seus dados no Allecto App (LGPD).",
+    images: ["/images/og/landing-1200x630.png"],
+  },
+};
 
 const PoliticaDePrivacidade = () => {
   return (

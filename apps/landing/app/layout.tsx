@@ -11,9 +11,34 @@ import {
 } from "../src/lib/cookieConsent";
 
 export const metadata: Metadata = {
-  title: "Allecto App",
+  title: "Allecto App — Assembleias e votação online seguras",
   description:
-    "Simplifique as assembleias do seu condomínio com convocações, votações e atas digitais.",
+    "Simplifique assembleias do seu condomínio: convites, PDFs com acesso restrito e votação segura em tempo real. Agende uma demonstração do Allecto App.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Allecto App — Assembleias e votação online seguras",
+    description:
+      "Crie assembleias, envie convites e vote com segurança. Resultados em tempo real. Agende uma demo.",
+    url: "https://www.allecto.app/",
+    siteName: "Allecto App",
+    images: [
+      {
+        url: "/images/og/landing-1200x630.png",
+        width: 1200,
+        height: 630,
+        alt: "Allecto App — assembleias e votação online",
+      },
+    ],
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Allecto App — Assembleias e votação online seguras",
+    description:
+      "Convites, PDFs com acesso restrito e votação segura em tempo real. Agende uma demonstração.",
+    images: ["/images/og/landing-1200x630.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
