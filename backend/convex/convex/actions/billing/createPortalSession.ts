@@ -16,14 +16,32 @@ export const createPortalSession = action({
   handler: async (ctx, args) => {
     const billingApi = api.billing as any;
 
-    const context = await ctx.runQuery(billingApi.resolveBillingContext, {
-      tenantId: args.tenantId,
-      sessionToken: args.sessionToken ?? undefined,
-    });
+    let context: { email: string | null } | null = null;
+    try {
+      context = await ctx.runQuery(billingApi.resolveBillingContext, {
+        tenantId: args.tenantId,
+        sessionToken: args.sessionToken ?? undefined,
+      });
+    } catch (error) {
+      console.warn("[billing.portal] Failed to resolve billing context", error);
+    }
 
-    const email = context.email;
+    let email = context?.email ?? null;
+
     if (!email) {
-      throw new Error("Billing email is required");
+      const residents = (await ctx.runQuery(api.residents.list, {
+        condoId: args.tenantId,
+      })) as Array<{ email?: string | null; role?: string }>;
+
+      const eligible = residents.find(
+        (resident) => resident?.role === "syndic" || resident?.role === "manager",
+      );
+      const fallback = eligible ?? residents[0] ?? null;
+      email = fallback?.email ?? null;
+    }
+
+    if (!email) {
+      throw new Error("Não encontramos um e-mail para abrir o portal de pagamento deste condomínio.");
     }
 
     const normalizedEmail = normalizeEmail(email);
