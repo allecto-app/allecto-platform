@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { Footer } from "../../src/components/Footer";
 import { Header } from "../../src/components/Header";
+import { CookieConsentBanner } from "../../src/components/CookieConsentBanner";
 
 export const metadata: Metadata = {
   title: "Política de Privacidade — Allecto App",
@@ -281,6 +282,7 @@ const PoliticaDePrivacidade = () => {
         </div>
       </div>
       <Footer />
+      <CookieConsentBanner />
     </>
   );
 };

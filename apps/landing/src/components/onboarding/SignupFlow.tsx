@@ -11,6 +11,8 @@ import { Label } from "../ui/label";
 import { Check, Loader2 } from "lucide-react";
 import { Header } from "../Header";
 import Link from "next/link";
+import { Footer } from "../Footer";
+import { CookieConsentBanner } from "../CookieConsentBanner";
 
 type TierKey = "essencial" | "plus" | "pro";
 
@@ -381,6 +383,8 @@ export function SignupFlow() {
           </Button>
         </div>
       </div>
+      <Footer />
+      <CookieConsentBanner />
     </div>
   );
 }
