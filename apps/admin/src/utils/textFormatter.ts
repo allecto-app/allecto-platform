@@ -8,6 +8,10 @@ export const roleFormatter = (role: string) => {
       return "Gestor";
     case "council":
       return "Conselheiro";
+    case "owner":
+      return "Propietário";
+    case "tenant":
+      return "Inquilino";
   }
 };
 

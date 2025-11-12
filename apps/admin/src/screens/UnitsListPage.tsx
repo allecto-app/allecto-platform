@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { EmptyState } from "../components/admin/EmptyState";
 import { api, Doc } from "../lib/convexGenerated";
 import { Loader2 } from "lucide-react";
+import { BulkUploadButton } from "../components/bulk-upload/BulkUploadButton";
 
 interface UnitsListPageProps {
   onNavigate: (page: string) => void;
@@ -69,6 +70,10 @@ export function UnitsListPage({ onNavigate, condo, onSelectUnit }: UnitsListPage
           disabled: !condo,
         }}
       />
+
+      <div className="mb-4 flex justify-end">
+        <BulkUploadButton condo={condo} />
+      </div>
 
       <div className="mb-6 flex flex-col gap-4 md:flex-row">
         <div className="flex-1 space-y-2">

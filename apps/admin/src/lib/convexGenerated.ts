@@ -85,6 +85,9 @@ type AugmentedApi = typeof baseApi & {
     get: QueryRef;
     resendOtp: ActionRef;
   };
+  imports: {
+    bulkUpload: MutationRef;
+  };
   billing: {
     createCheckoutSession: ActionRef;
     createPortalSession: ActionRef;

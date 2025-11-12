@@ -28,6 +28,7 @@ import { CreateResidentModal } from "../components/modals/create-resident";
 import { api, Doc } from "../lib/convexGenerated";
 import { toast } from "sonner";
 import { roleFormatter } from "src/utils/textFormatter";
+import { BulkUploadButton } from "../components/bulk-upload/BulkUploadButton";
 
 type InviteDoc = Doc<"invites">;
 
@@ -133,6 +134,10 @@ export function ResidentsListPage({
             : undefined
         }
       />
+
+      <div className="mb-4 flex justify-end">
+        <BulkUploadButton condo={condo} />
+      </div>
 
       <div className="mb-6 flex flex-col gap-4 md:flex-row">
         <div className="flex-1 space-y-2">

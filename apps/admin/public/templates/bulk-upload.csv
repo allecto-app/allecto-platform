@@ -1,0 +1,4 @@
+unit_code,unit_block,unit_floor,resident_name,resident_email,resident_phone,resident_role,membership_role
+101,A,1,Joao Silva,joao@example.com,+55 11 90000-0000,resident,owner
+202,B,2,,,,,
+303,,3,Maria Souza,maria@example.com,,tenant,tenant
