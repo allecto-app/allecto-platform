@@ -108,11 +108,13 @@ const extractResident = (row: RawCsvRow): BulkCsvResident | null => {
 };
 
 export async function parseBulkCsv(file: File | Blob): Promise<ParsedBulkCsv> {
+  const csvFile = file instanceof File ? file : new File([file], "bulk-upload.csv", { type: file.type || "text/csv" });
+
   const { data, errors: parseErrors } = await new Promise<{
     data: RawCsvRow[];
     errors: Papa.ParseError[];
   }>((resolve, reject) => {
-    Papa.parse<RawCsvRow>(file, {
+    Papa.parse<RawCsvRow>(csvFile, {
       header: true,
       skipEmptyLines: "greedy",
       complete: (result) => resolve({ data: result.data, errors: result.errors }),
