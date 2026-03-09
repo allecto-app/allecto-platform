@@ -35,16 +35,18 @@ describe("CondoSwitcher", () => {
 
   it("allows selecting and toggling condos", async () => {
     const onSelect = vi.fn();
-    const { getByRole, getByText } = renderWithProviders(
+    const { getByRole, getByText, rerender } = renderWithProviders(
       <CondoSwitcher condos={condos} selectedCondoId={condos[0]._id} onSelectCondo={onSelect} />,
     );
     const user = userEvent.setup();
-    const trigger = getByRole("combobox");
-    await user.click(trigger);
-    await user.click(getByText(/Residencial Beta/));
+    await user.click(getByRole("combobox"));
+    await user.click(getByRole("option", { name: /Residencial Beta/ }));
     expect(onSelect).toHaveBeenCalledWith(condos[1]._id);
-    await user.click(trigger);
-    await user.click(getByText(/Residencial Beta/));
+    rerender(
+      <CondoSwitcher condos={condos} selectedCondoId={condos[1]._id} onSelectCondo={onSelect} />,
+    );
+    await user.click(getByRole("combobox"));
+    await user.click(getByRole("option", { name: /Residencial Beta/ }));
     expect(onSelect).toHaveBeenLastCalledWith(null);
   });
 });

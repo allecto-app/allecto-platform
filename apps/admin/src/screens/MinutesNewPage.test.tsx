@@ -73,17 +73,18 @@ describe("MinutesNewPage", () => {
     const publishMinute = vi.fn().mockResolvedValue({ ok: true });
     mockConvexMutation(api.minutes.publish, publishMinute);
 
-    const { getByLabelText, getByText, getByRole } = renderWithProviders(
+    const { getByLabelText, getAllByRole, getByRole } = renderWithProviders(
       <MinutesNewPage condo={condo} sessionToken="token" onNavigate={vi.fn()} />,
     );
 
     const user = userEvent.setup();
     await user.type(getByLabelText("Título"), "Ata extraordinária");
     await user.type(getByLabelText("Resumo"), "Discussão sobre orçamento");
-    await user.click(getByText("Selecione o prazo"));
-    await user.click(getByText("3 dias"));
-    await user.click(getByText("Selecione um documento recém-enviado"));
-    await user.click(getByText("Ata teste"));
+    const [documentSelect, closingSelect] = getAllByRole("combobox");
+    await user.click(closingSelect);
+    await user.click(getByRole("option", { name: "3 dias" }));
+    await user.click(documentSelect);
+    await user.click(getByRole("option", { name: "Ata teste" }));
     await user.click(getByRole("button", { name: "Publicar" }));
 
     expect(publishMinute).toHaveBeenCalledWith(

@@ -59,6 +59,18 @@ export function installBrowserMocks() {
     Element.prototype.scrollIntoView = noop;
   }
 
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+
+  if (!Element.prototype.setPointerCapture) {
+    Element.prototype.setPointerCapture = noop;
+  }
+
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = noop;
+  }
+
   if (typeof HTMLFormElement !== "undefined") {
     HTMLFormElement.prototype.reportValidity = () => true;
     HTMLFormElement.prototype.checkValidity = () => true;
