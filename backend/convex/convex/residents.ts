@@ -5,6 +5,9 @@ import { normalizeEmail } from "./_secu";
 import { internal } from "./_generated/api";
 
 type ResidentRole = "resident" | "syndic" | "manager" | "council";
+const RESIDENT_WELCOME_TEMPLATE_ID = process.env.RESEND_TEMPLATE_RESIDENT_WELCOME ?? "";
+const RESIDENT_WELCOME_SYNDIC_TEMPLATE_ID =
+    process.env.RESEND_TEMPLATE_RESIDENT_WELCOME_SYNDIC ?? "";
 
 export const create = mutation({
     args: {
@@ -88,6 +91,11 @@ export const create = mutation({
                 effectiveRole === "syndic"
                     ? `Você foi cadastrado como síndico no Allecto`
                     : `Bem-vindo ao Allecto - ${condoDisplay}`;
+            const roleLabel = effectiveRole === "syndic" ? "síndico" : "morador";
+            const templateId =
+                effectiveRole === "syndic"
+                    ? RESIDENT_WELCOME_SYNDIC_TEMPLATE_ID || RESIDENT_WELCOME_TEMPLATE_ID
+                    : RESIDENT_WELCOME_TEMPLATE_ID;
 
             const roleMessage =
                 effectiveRole === "syndic"
@@ -119,12 +127,33 @@ export const create = mutation({
                 `Equipe Allecto`,
             ].join("\n");
 
-            await ctx.scheduler.runAfter(0, internal.email.send, {
-                to: normalizedEmail,
-                subject,
-                html,
-                text,
-            });
+            await ctx.scheduler.runAfter(
+                0,
+                internal.email.send,
+                templateId
+                    ? {
+                        to: normalizedEmail,
+                        subject,
+                        template: {
+                            id: templateId,
+                            variables: {
+                                USER_NAME: firstName,
+                                FULL_NAME: displayName,
+                                CONDO_NAME: condoDisplay,
+                                CONDO_URL: condoUrl,
+                                USER_EMAIL: normalizedEmail,
+                                ROLE_LABEL: roleLabel,
+                                ROLE_MESSAGE: roleMessage,
+                            },
+                        },
+                    }
+                    : {
+                        to: normalizedEmail,
+                        subject,
+                        html,
+                        text,
+                    },
+            );
         }
 
         return {

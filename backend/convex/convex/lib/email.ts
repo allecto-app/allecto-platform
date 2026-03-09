@@ -23,12 +23,17 @@ export async function sendEmail({
   subject,
   html,
   text,
+  template,
   from = DEFAULT_FROM,
 }: {
   to: string | string[];
   subject: string;
   html?: string;
   text?: string;
+  template?: {
+    id: string;
+    variables?: Record<string, string | number | boolean>;
+  };
   from?: string;
 }) {
   if (!RESEND_API_KEY) {
@@ -40,13 +45,10 @@ export async function sendEmail({
   }
 
   try {
-    await postResend({
-      to,
-      subject,
-      html,
-      text,
-      from,
-    });
+    const payload = template
+      ? { to, subject, template, from }
+      : { to, subject, html, text, from };
+    await postResend(payload);
     if (NODE_ENV !== "production") {
       console.log("[email] sent", { to, subject });
     }

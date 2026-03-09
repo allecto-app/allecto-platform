@@ -5,6 +5,8 @@ import { v } from "convex/values";
 import { sendEmail, DEFAULT_FROM } from "./lib/email";
 import { normalizeEmail } from "./_secu";
 
+const SEND_OTP_TEMPLATE_ID = process.env.RESEND_TEMPLATE_SEND_OTP ?? "";
+
 export const resendOtp = action({
   args: { residentId: v.id("residents") },
   handler: async (ctx: any, { residentId }) => {
@@ -51,13 +53,29 @@ Se você não solicitou este acesso, ignore este email.
 Equipe Allecto`;
 
     try {
-      await sendEmail({
-        to: resident.email,
-        subject,
-        html,
-        text,
-        from: DEFAULT_FROM,
-      });
+      await sendEmail(
+        SEND_OTP_TEMPLATE_ID
+          ? {
+              to: resident.email,
+              subject,
+              template: {
+                id: SEND_OTP_TEMPLATE_ID,
+                variables: {
+                  OTP_CODE: code,
+                  CONDO_NAME: condo.name ?? "Allecto",
+                  USER_NAME: resident.name ?? "Síndico(a)",
+                },
+              },
+              from: DEFAULT_FROM,
+            }
+          : {
+              to: resident.email,
+              subject,
+              html,
+              text,
+              from: DEFAULT_FROM,
+            },
+      );
     } catch (error) {
       console.error("[residentDetail.resendOtp] Failed to send OTP email", error);
     }

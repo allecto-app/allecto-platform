@@ -10,6 +10,12 @@ export const send = internalAction({
     subject: v.string(),
     html: v.optional(v.string()),
     text: v.optional(v.string()),
+    template: v.optional(
+      v.object({
+        id: v.string(),
+        variables: v.optional(v.any()),
+      }),
+    ),
     from: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {

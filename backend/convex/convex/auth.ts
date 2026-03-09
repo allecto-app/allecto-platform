@@ -15,6 +15,51 @@ const SESSION_TOKEN_BYTES = 48;
 const BCRYPT_COST = 12;
 const FALLBACK_PASSWORD_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8p6hX6YsJhBKt3vnDnN/SfXlBx/6C6";
 const RESIDENT_ALLOWED_ROLES = new Set(["syndic", "manager", "resident", "council"]);
+const SEND_OTP_TEMPLATE_ID = process.env.RESEND_TEMPLATE_SEND_OTP ?? "";
+
+async function sendOtpEmail(
+    ctx: any,
+    {
+        to,
+        subject,
+        code,
+        condoName,
+        userName,
+        fallbackHtml,
+        fallbackText,
+    }: {
+        to: string;
+        subject: string;
+        code: string;
+        condoName: string;
+        userName: string;
+        fallbackHtml: string;
+        fallbackText: string;
+    },
+) {
+    if (SEND_OTP_TEMPLATE_ID) {
+        await ctx.scheduler.runAfter(0, internal.email.send, {
+            to,
+            subject,
+            template: {
+                id: SEND_OTP_TEMPLATE_ID,
+                variables: {
+                    OTP_CODE: code,
+                    CONDO_NAME: condoName,
+                    USER_NAME: userName,
+                },
+            },
+        });
+        return;
+    }
+
+    await ctx.scheduler.runAfter(0, internal.email.send, {
+        to,
+        subject,
+        html: fallbackHtml,
+        text: fallbackText,
+    });
+}
 
 async function listResidentCondosForEmail(ctx: any, email: string, onlyRole?: string) {
     const cleanedEmail = email.trim().toLowerCase();
@@ -118,11 +163,14 @@ Seu código de acesso é: ${code}
 Ele expira em 15 minutos.
 Se você não solicitou este acesso, ignore este email.`;
             try {
-                await ctx.scheduler.runAfter(0, internal.email.send, {
+                await sendOtpEmail(ctx, {
                     to: a.email,
                     subject,
-                    html,
-                    text,
+                    code,
+                    condoName: "Allecto",
+                    userName: "Olá",
+                    fallbackHtml: html,
+                    fallbackText: text,
                 });
             } catch (error) {
                 console.error("Failed to send OTP email", error);
@@ -245,11 +293,14 @@ Se você não solicitou este acesso, ignore este email.
 Equipe Allecto`;
 
         try {
-            await ctx.scheduler.runAfter(0, internal.email.send, {
+            await sendOtpEmail(ctx, {
                 to: cleanedEmail,
                 subject,
-                html,
-                text,
+                code,
+                condoName: condo.name,
+                userName: resident.name ?? "Síndico(a)",
+                fallbackHtml: html,
+                fallbackText: text,
             });
         } catch (error) {
             console.error("Failed to send resident OTP email", error);
