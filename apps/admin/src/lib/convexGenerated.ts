@@ -319,3 +319,36 @@ type DocByTable = {
 export type Doc<TableName extends TableNames = TableNames> = TableName extends keyof DocByTable
   ? DocByTable[TableName]
   : DefaultDoc<TableName> & Record<string, unknown>;
+
+type MockableFunctionRef = FunctionReference<any, any> & { __mockKey?: string };
+
+const setMockKey = (reference: MockableFunctionRef | undefined, key: string) => {
+  if (!reference) return;
+  Object.defineProperty(reference, "__mockKey", {
+    value: key,
+    configurable: true,
+    writable: false,
+  });
+};
+
+const registerConvexMockKeys = () => {
+  setMockKey(api.auth.adminSignIn as MockableFunctionRef, "auth.adminSignIn");
+  setMockKey(api.minutes.publish as MockableFunctionRef, "minutes.publish");
+  setMockKey(api.residents.update as MockableFunctionRef, "residents.update");
+  setMockKey(api.units.update as MockableFunctionRef, "units.update");
+  setMockKey(api.platform.listCondos as MockableFunctionRef, "platform.listCondos");
+  setMockKey(api.condos.getBySubdomain as MockableFunctionRef, "condos.getBySubdomain");
+  setMockKey(api.residents.list as MockableFunctionRef, "residents.list");
+  setMockKey(api.invites.listByCondo as MockableFunctionRef, "invites.listByCondo");
+  setMockKey(api.units.listByCondo as MockableFunctionRef, "units.listByCondo");
+  setMockKey(api.units.detail as MockableFunctionRef, "units.detail");
+  setMockKey(api.residentDetail.get as MockableFunctionRef, "residentDetail.get");
+  setMockKey(api.minutes.list as MockableFunctionRef, "minutes.list");
+  setMockKey(api.minutes.get as MockableFunctionRef, "minutes.get");
+  setMockKey(api.documents.list as MockableFunctionRef, "documents.list");
+  setMockKey(api.notifications.listLogs as MockableFunctionRef, "notifications.listLogs");
+  setMockKey(api.votes.statsByCondo as MockableFunctionRef, "votes.statsByCondo");
+  setMockKey(api.usage.getUsageSummary as MockableFunctionRef, "usage.getUsageSummary");
+};
+
+registerConvexMockKeys();

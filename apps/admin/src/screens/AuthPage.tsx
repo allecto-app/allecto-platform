@@ -44,6 +44,30 @@ interface AuthPageProps {
 
 type Mode = "platform" | "resident";
 
+const MOCK_ADMINS = [
+  {
+    email: "admin@allecto.app",
+    password: "Password123",
+    name: "Mock Admin",
+  },
+  {
+    email: "igormiguelbs@gmail.com",
+    password: "2c@575xiKh#7!",
+    name: "Igor Miguel (Mock)",
+  },
+] as const;
+
+const MOCK_TOKEN = "mock-token-1234567890abcdef1234567890abcd";
+
+const buildMockSession = (name: string): AdminAuthSession => ({
+  type: "platform",
+  token: MOCK_TOKEN,
+  userId: "platform_user",
+  roles: ["super_admin"],
+  name,
+  expiresAt: Date.now() + 60 * 60 * 1000,
+});
+
 export function AuthPage({ onLogin }: AuthPageProps) {
   const hostInfo = useHostInfo();
   const hostSubdomain = hostInfo.isCondoSubdomain
@@ -230,10 +254,24 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (process.env.NEXT_PUBLIC_USE_MOCK_CONVEX === "true") {
+      const mockAdmin = MOCK_ADMINS.find(
+        (admin) => admin.email === normalizedEmail && admin.password === password,
+      );
+      if (mockAdmin) {
+        onLogin(buildMockSession(mockAdmin.name));
+      } else {
+        setError("Email ou senha inválidos");
+      }
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const result = await adminSignIn({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
       });
       if (!result?.success) {

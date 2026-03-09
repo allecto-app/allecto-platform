@@ -126,7 +126,10 @@ export function ResidentEditPage({
   }, [form, initialForm]);
 
   const handleSave = async () => {
-    if (!resident || !resident.id) return;
+    const residentIdValue =
+      (resident && "id" in resident && (resident as ResidentRecord).id) ||
+      (resident && "_id" in resident ? (resident as { _id?: Id<"residents"> })._id : null);
+    if (!resident || !residentIdValue) return;
     if (!validate()) {
       toast.error("Corrija os erros antes de salvar");
       return;
@@ -143,7 +146,7 @@ export function ResidentEditPage({
     setIsSaving(true);
     try {
       const result = await updateResident({
-        residentId: resident.id,
+        residentId: residentIdValue,
         name: payload.name,
         email: payload.email,
         phone: payload.phone,
@@ -154,6 +157,7 @@ export function ResidentEditPage({
       const updatedFromServer = result?.resident as ResidentRecord | null | undefined;
       const updatedRecord: ResidentRecord = updatedFromServer ?? {
         ...resident,
+        id: residentIdValue,
         name: payload.name,
         email: payload.email.length > 0 ? payload.email : null,
         phone: payload.phone.length > 0 ? payload.phone : null,
