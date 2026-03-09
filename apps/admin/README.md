@@ -26,6 +26,16 @@ pnpm --filter admin test:e2e
 - Web server command automatically starts `pnpm --filter admin dev` in mock mode.
 - UI runner: `pnpm --filter admin test:e2e:ui`.
 
+### CI
+
+- GitHub Actions workflow: `.github/workflows/admin-tests.yml`.
+- Pull requests and pushes to `main` run:
+  - `pnpm --filter admin test:coverage`
+  - `pnpm --filter admin test:e2e`
+- The workflow publishes a final check named `Deploy Gate (admin)` only after both suites succeed.
+- Playwright artifacts are uploaded on failure (`.playwright-output-ci` and `apps/admin/test-results`).
+- The Playwright job depends on the Vitest job, so E2E only starts after unit/component checks pass.
+
 ### Mocking strategy
 
 - Convex hooks are replaced with `src/test/mocks/runtime/convexReactMock.tsx` when testing or when `NEXT_PUBLIC_USE_MOCK_CONVEX=true`.

@@ -1,7 +1,13 @@
 import { test, expect, Page } from "@playwright/test";
 
-const ADMIN_EMAIL = "igormiguelbs@gmail.com";
-const ADMIN_PASSWORD = "2c@575xiKh#7!";
+const ADMIN_EMAIL =
+  process.env.PLAYWRIGHT_ADMIN_EMAIL ??
+  process.env.NEXT_PUBLIC_MOCK_ADMIN_EMAIL ??
+  "admin@allecto.app";
+const ADMIN_PASSWORD =
+  process.env.PLAYWRIGHT_ADMIN_PASSWORD ??
+  process.env.NEXT_PUBLIC_MOCK_ADMIN_PASSWORD ??
+  "Password123";
 
 async function selectCondo(page: Page, condoName = "Residencial Alpha") {
   await page.waitForFunction(() => {

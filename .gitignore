@@ -6,6 +6,7 @@ dist
 .next-local
 .next-e2e
 .next-playwright
+.next-playwright-*
 .next-playwright-local
 .next-playwright-tmp
 .next-playwright-run-*

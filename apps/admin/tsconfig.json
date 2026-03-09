@@ -104,7 +104,10 @@
     ".next-playwright-run-mmilb2t6/types/**/*.ts",
     ".next-playwright-run-mmilbyu2/types/**/*.ts",
     ".next-playwright-run-mmj5l2ho/types/**/*.ts",
-    ".next-playwright-run-mmj5sapk/types/**/*.ts"
+    ".next-playwright-run-mmj5sapk/types/**/*.ts",
+    ".next-playwright-credcheck/types/**/*.ts",
+    ".next-playwright-credcheck2/types/**/*.ts",
+    ".next-playwright-run-mmj6mexh/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -1,0 +1,121 @@
+name: Admin Tests
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/admin-tests.yml"
+      - "apps/admin/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/admin-tests.yml"
+      - "apps/admin/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vitest:
+    name: Vitest (admin)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Vitest
+        run: pnpm --filter admin test:coverage
+        env:
+          NEXT_PUBLIC_USE_MOCK_CONVEX: "true"
+          NEXT_PUBLIC_CONVEX_URL: "http://localhost:9999/mock"
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-vitest-coverage
+          path: apps/admin/coverage
+          if-no-files-found: ignore
+          retention-days: 7
+
+  playwright:
+    name: Playwright (admin)
+    runs-on: ubuntu-latest
+    needs: vitest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        run: pnpm --filter admin exec playwright install --with-deps chromium
+
+      - name: Run Playwright
+        run: pnpm --filter admin test:e2e
+        env:
+          PLAYWRIGHT_RUN_TAG: "ci"
+          NEXT_PUBLIC_USE_MOCK_CONVEX: "true"
+          NEXT_PUBLIC_CONVEX_URL: "http://localhost:9999/mock"
+          CI: "true"
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-playwright-artifacts
+          path: |
+            apps/admin/.playwright-output-ci
+            apps/admin/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  deploy-gate:
+    name: Deploy Gate (admin)
+    runs-on: ubuntu-latest
+    needs:
+      - vitest
+      - playwright
+    steps:
+      - name: Confirm all admin tests passed
+        run: echo "Admin test suite passed. Deployment gate is open."

@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 import { resolve } from "node:path";
+import { loadEnvConfig } from "@next/env";
 
 const rootDir = resolve(__dirname, "..", "..");
+loadEnvConfig(__dirname);
+
 const runTag = process.env.PLAYWRIGHT_RUN_TAG ?? `run-${Date.now().toString(36)}`;
 const outputDir = `.playwright-output-${runTag}`;
 const nextDistDir = `.next-playwright-${runTag}`;
@@ -29,6 +32,12 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_USE_MOCK_CONVEX: "true",
       NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL ?? "http://localhost:9999/mock",
+      NEXT_PUBLIC_MOCK_ADMIN_EMAIL:
+        process.env.NEXT_PUBLIC_MOCK_ADMIN_EMAIL ?? "admin@allecto.app",
+      NEXT_PUBLIC_MOCK_ADMIN_PASSWORD:
+        process.env.NEXT_PUBLIC_MOCK_ADMIN_PASSWORD ?? "Password123",
+      NEXT_PUBLIC_MOCK_ADMIN_NAME:
+        process.env.NEXT_PUBLIC_MOCK_ADMIN_NAME ?? "Mock Admin",
       NEXT_DIST_DIR: nextDistDir,
       NODE_ENV: "test",
       PLAYWRIGHT_TEST: "true",

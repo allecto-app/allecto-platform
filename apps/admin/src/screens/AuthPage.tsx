@@ -46,14 +46,9 @@ type Mode = "platform" | "resident";
 
 const MOCK_ADMINS = [
   {
-    email: "admin@allecto.app",
-    password: "Password123",
-    name: "Mock Admin",
-  },
-  {
-    email: "igormiguelbs@gmail.com",
-    password: "2c@575xiKh#7!",
-    name: "Igor Miguel (Mock)",
+    email: process.env.NEXT_PUBLIC_MOCK_ADMIN_EMAIL ?? "admin@allecto.app",
+    password: process.env.NEXT_PUBLIC_MOCK_ADMIN_PASSWORD ?? "Password123",
+    name: process.env.NEXT_PUBLIC_MOCK_ADMIN_NAME ?? "Mock Admin",
   },
 ] as const;
 

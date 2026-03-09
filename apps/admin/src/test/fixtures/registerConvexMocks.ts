@@ -3,6 +3,13 @@ import { api, type Doc } from "../../lib/convexGenerated";
 
 let initialized = false;
 
+const MOCK_ADMIN_EMAIL =
+  process.env.NEXT_PUBLIC_MOCK_ADMIN_EMAIL ?? "admin@allecto.app";
+const MOCK_ADMIN_PASSWORD =
+  process.env.NEXT_PUBLIC_MOCK_ADMIN_PASSWORD ?? "Password123";
+const MOCK_ADMIN_NAME =
+  process.env.NEXT_PUBLIC_MOCK_ADMIN_NAME ?? "Mock Admin";
+
 const shouldUseMockConvex = () => {
   if (typeof process !== "undefined" && typeof process.env === "object") {
     const flag = process.env["NEXT_PUBLIC_USE_MOCK_CONVEX"];
@@ -243,14 +250,9 @@ export function ensureConvexMockData() {
 
   const mockAdmins = [
     {
-      email: "admin@allecto.app",
-      password: "Password123",
-      name: "Mock Admin",
-    },
-    {
-      email: "igormiguelbs@gmail.com",
-      password: "2c@575xiKh#7!",
-      name: "Igor Miguel (Mock)",
+      email: MOCK_ADMIN_EMAIL,
+      password: MOCK_ADMIN_PASSWORD,
+      name: MOCK_ADMIN_NAME,
     },
   ] as const;
 
