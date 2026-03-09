@@ -32,6 +32,7 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
         <Button
           variant="outline"
           role="combobox"
+          aria-label="Condo switcher"
           aria-expanded={open}
           className="w-full max-w-[230px] justify-between"
         >

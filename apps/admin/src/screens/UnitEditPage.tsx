@@ -89,6 +89,9 @@ export function UnitEditPage({
   const unitFromQuery = detail && detail !== null ? detail.unit : null;
   const unit = detail === null ? null : unitFromQuery ?? unitFallback ?? null;
   const memberships = detail && detail !== null ? detail.memberships : [];
+  const unitIdentifier =
+    (unit && "id" in unit && (unit as UnitRecord).id) ||
+    (unit && "_id" in unit ? (unit as { _id?: Id<"units"> })._id : null);
 
   useEffect(() => {
     if (unitFromQuery && onUnitLoaded) {
@@ -106,7 +109,7 @@ export function UnitEditPage({
     setForm(next);
     setInitialForm(next);
     setErrors({});
-  }, [unit?.id]);
+  }, [unitIdentifier]);
 
   const addUnit = useMutation(api.units.upsert);
   const updateUnit = useMutation(api.units.update);
@@ -215,15 +218,19 @@ export function UnitEditPage({
     setIsSaving(true);
     try {
       if (isEditing && unit) {
+        if (!unitIdentifier) {
+          toast.error("Unidade inválida, tente novamente.");
+          return;
+        }
         const updated = (await updateUnit({
-          unitId: unit.id,
+          unitId: unitIdentifier,
           code: payload.code,
           block: payload.block,
           floor: payload.floor,
         })) as UnitRecord | undefined;
 
         const updatedRecord: UnitRecord = updated ?? {
-          id: unit.id,
+          id: unitIdentifier,
           condoId: unit.condoId,
           code: payload.code,
           block: payload.block ?? null,
@@ -268,10 +275,10 @@ export function UnitEditPage({
   };
 
   const handleDelete = async () => {
-    if (!unit) return;
+    if (!unit || !unitIdentifier) return;
     setIsDeleting(true);
     try {
-      await removeUnit({ unitId: unit.id });
+      await removeUnit({ unitId: unitIdentifier });
       toast.success(`Unidade ${unit.code} excluída com sucesso`);
       onUnitDeleted?.();
       onNavigate("units");

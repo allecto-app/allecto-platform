@@ -155,7 +155,7 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
 
       <Card>
         <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form data-testid="minutes-new-form" onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="title">Título</Label>
               <Input

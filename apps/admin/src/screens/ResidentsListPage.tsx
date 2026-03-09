@@ -248,6 +248,7 @@ export function ResidentsListPage({
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-label="Ver detalhes do morador"
                             onClick={() => {
                               onSelectResident?.(resident);
                               onNavigate("resident-detail");

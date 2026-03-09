@@ -4,3 +4,12 @@ dist
 .env*
 .DS_Store
 .next-local
+.next-e2e
+.next-playwright
+.next-playwright-*
+.next-playwright-local
+.next-playwright-tmp
+.next-playwright-run-*
+.playwright-output
+.playwright-output-*
+.playwright-results

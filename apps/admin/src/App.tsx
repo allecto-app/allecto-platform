@@ -38,6 +38,20 @@ import { ResidentShell } from "./resident/ResidentShell";
 
 type UserMode = "platform" | "tenant";
 
+type AdminTestFixtures = {
+  condos?: CondoDoc[];
+};
+
+type AdminTestApi = {
+  selectCondo: (condo: CondoDoc | null) => void;
+};
+
+type AdminTestWindow = Window &
+  Partial<{
+    __CONVEX_MOCK_FIXTURES__: AdminTestFixtures;
+    __ADMIN_TEST_API__: AdminTestApi;
+  }>;
+
 type CondoDoc = Doc<"condos">;
 
 
@@ -215,6 +229,10 @@ function AuthenticatedShell({
   const hostInfo = useHostInfo();
   const isPortalDomain = hostInfo.isPortal;
   const isCondoDomain = hostInfo.isCondoSubdomain;
+  const isMockConvexEnv = process.env.NEXT_PUBLIC_USE_MOCK_CONVEX === "true";
+  const adminTestWindow: AdminTestWindow | null =
+    typeof window !== "undefined" ? (window as AdminTestWindow) : null;
+  const mockCondos = adminTestWindow?.__CONVEX_MOCK_FIXTURES__?.condos;
 
   const isResidentSession = auth.type === "resident";
   const isResidentManager =
@@ -270,13 +288,19 @@ function AuthenticatedShell({
 
   const condos: Doc<"condos">[] | undefined = useMemo(() => {
     if (canSeePlatform) {
-      return platformCondos ?? undefined;
+      if (platformCondos !== undefined) {
+        return platformCondos;
+      }
+      if (isMockConvexEnv && mockCondos) {
+        return mockCondos;
+      }
+      return undefined;
     }
     if (isResident) {
       return residentCondo ? [residentCondo] : residentCondo === null ? [] : undefined;
     }
     return undefined;
-  }, [canSeePlatform, isResident, platformCondos, residentCondo]);
+  }, [canSeePlatform, isResident, isMockConvexEnv, mockCondos, platformCondos, residentCondo]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -313,6 +337,31 @@ function AuthenticatedShell({
       setSelectedCondoId(auth.condoId);
     }
   }, [isResident, auth, selectedCondoId]);
+
+  useEffect(() => {
+    if (!isMockConvexEnv || !adminTestWindow) {
+      return;
+    }
+    const api: AdminTestApi = {
+      selectCondo: (condo) => {
+        setSelectedCondoOverride(condo);
+        setSelectedCondoId(condo?._id ?? null);
+        setUserMode(condo ? "tenant" : "platform");
+      },
+    };
+    adminTestWindow.__ADMIN_TEST_API__ = api;
+    return () => {
+      if (adminTestWindow.__ADMIN_TEST_API__ === api) {
+        delete adminTestWindow.__ADMIN_TEST_API__;
+      }
+    };
+  }, [
+    adminTestWindow,
+    isMockConvexEnv,
+    setSelectedCondoId,
+    setSelectedCondoOverride,
+    setUserMode,
+  ]);
 
   const baseSelectedCondo: CondoDoc | null = useMemo(() => {
     if (!selectedCondoId || !condos) return null;
