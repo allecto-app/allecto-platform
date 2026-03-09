@@ -4,3 +4,4 @@ dist
 .env*
 .DS_Store
 .next-local
+.turbo

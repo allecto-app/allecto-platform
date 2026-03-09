@@ -110,7 +110,7 @@ export function Navbar({
           </Button>
         )}
 
-        {isPlatformMode && onSelectCondo && (
+        {onSelectCondo && (
           <CondoSwitcher
             condos={condos ?? []}
             selectedCondoId={selectedCondo?._id ?? null}

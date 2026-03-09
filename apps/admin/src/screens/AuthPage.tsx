@@ -24,6 +24,13 @@ import {
   InputOTPSlot,
 } from "../components/ui/input-otp";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -32,7 +39,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../components/ui/dialog";
-import { api } from "../lib/convexGenerated";
+import { api, Id } from "../lib/convexGenerated";
 import { AdminAuthSession } from "../lib/authSession";
 import { useHostInfo } from "../lib/hostContext";
 import { toast } from "sonner";
@@ -43,27 +50,37 @@ interface AuthPageProps {
 }
 
 type Mode = "platform" | "resident";
+type ResidentCondoOption = {
+  condoId: Id<"condos">;
+  condoName: string;
+  condoSubdomain: string;
+};
 
 export function AuthPage({ onLogin }: AuthPageProps) {
   const hostInfo = useHostInfo();
   const hostSubdomain = hostInfo.isCondoSubdomain
-    ? hostInfo.subdomain ?? ""
+    ? (hostInfo.subdomain ?? "")
     : "";
   const residentModeForced = hostInfo.isCondoSubdomain;
   const platformLoginEnabled = hostInfo.isPortal && !hostInfo.isCondoSubdomain;
 
-  const [mode, setMode] = useState<Mode>(
-    residentModeForced ? "resident" : "platform"
-  );
+  const [mode, setMode] = useState<Mode>("resident");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [residentSubdomain, setResidentSubdomain] = useState(hostSubdomain);
   const [residentEmail, setResidentEmail] = useState("");
+  const [residentCondoOptions, setResidentCondoOptions] = useState<
+    ResidentCondoOption[]
+  >([]);
+  const [selectedResidentCondoId, setSelectedResidentCondoId] = useState<
+    Id<"condos"> | ""
+  >("");
   const [residentCode, setResidentCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [isResolvingResidentCondos, setIsResolvingResidentCondos] =
+    useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [residentError, setResidentError] = useState<string | null>(null);
@@ -79,6 +96,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const adminSignIn = useMutation(api.auth.adminSignIn);
+  const listResidentCondosByEmail = useMutation(
+    api.auth.listResidentCondosByEmail,
+  );
   const requestResidentOtp = useMutation(api.auth.requestResidentOtp);
   const residentSignIn = useMutation(api.auth.residentSignIn);
   const requestPasswordReset = useMutation(api.auth.requestPasswordReset);
@@ -87,7 +107,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   useEffect(() => {
     if (residentModeForced) {
       setMode("resident");
-      setResidentSubdomain(hostSubdomain);
     }
   }, [residentModeForced, hostSubdomain]);
 
@@ -100,14 +119,13 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setOtpSent(false);
     setResidentCode("");
     setResidentEmail("");
+    setResidentCondoOptions([]);
+    setSelectedResidentCondoId("");
     setPassword("");
     setEmail("");
     setForgotOpen(false);
     resetForgotState();
     setForgotEmail("");
-    if (!residentModeForced) {
-      setResidentSubdomain("");
-    }
   };
 
   function resetForgotState() {
@@ -144,9 +162,6 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     const nextMode = value as Mode;
     setMode(nextMode);
     resetForms();
-    if (residentModeForced) {
-      setResidentSubdomain(hostSubdomain);
-    }
   };
 
   const handleRequestPasswordReset = async () => {
@@ -202,7 +217,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
         newPassword: forgotNewPassword,
       });
       toast.success(
-        "Senha redefinida com sucesso! Faça login com a nova senha."
+        "Senha redefinida com sucesso! Faça login com a nova senha.",
       );
       setEmail(emailValue);
       setPassword("");
@@ -210,7 +225,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     } catch (error) {
       console.error("Failed to reset password", error);
       setForgotError(
-        "Não foi possível redefinir a senha. Verifique o código e tente novamente."
+        "Não foi possível redefinir a senha. Verifique o código e tente novamente.",
       );
     } finally {
       setIsResettingPassword(false);
@@ -220,12 +235,10 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const tabsColumnsClass = platformLoginEnabled
     ? "grid w-full grid-cols-2"
     : "grid w-full grid-cols-1";
-  const currentResidentSubdomain = residentModeForced
-    ? hostSubdomain
-    : residentSubdomain;
-  const canSendOtp = Boolean(
-    currentResidentSubdomain.trim() && residentEmail.trim()
-  );
+  const canResolveResident = Boolean(residentEmail.trim());
+  const canSendOtp = residentModeForced
+    ? Boolean(residentEmail.trim())
+    : Boolean(residentEmail.trim() && selectedResidentCondoId);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,24 +268,30 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     }
   };
 
-  const handleSendResidentOtp = async () => {
+  const findSelectedResidentCondo = () =>
+    residentCondoOptions.find(
+      (condo) => condo.condoId === selectedResidentCondoId,
+    ) ?? null;
+
+  const handleSendResidentOtp = async (overrideCondoId?: Id<"condos">) => {
     setResidentError(null);
-    const subdomainValue = (
-      residentModeForced ? hostSubdomain : residentSubdomain
-    )
-      .trim()
-      .toLowerCase();
     const emailValue = residentEmail.trim().toLowerCase();
-    if (!subdomainValue || !emailValue) {
-      setResidentError("Informe subdomínio e email");
+    if (!emailValue) {
+      setResidentError("Informe um email válido");
       return;
     }
+
     setIsSendingOtp(true);
     try {
-      const result = await requestResidentOtp({
-        subdomain: subdomainValue,
-        email: emailValue,
-      });
+      const result = residentModeForced
+        ? await requestResidentOtp({
+            subdomain: hostSubdomain,
+            email: emailValue,
+          })
+        : await requestResidentOtp({
+            condoId: overrideCondoId ?? (selectedResidentCondoId || undefined),
+            email: emailValue,
+          });
       if (process.env.NODE_ENV !== "production" && result?.devCode) {
         console.info("[residentAuth] OTP dev code:", result.devCode);
       }
@@ -286,28 +305,82 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     }
   };
 
+  const handleResolveResidentEmail = async () => {
+    setResidentError(null);
+    const emailValue = residentEmail.trim().toLowerCase();
+    if (!emailValue) {
+      setResidentError("Informe um email válido");
+      return;
+    }
+
+    if (residentModeForced) {
+      await handleSendResidentOtp();
+      return;
+    }
+
+    if (residentCondoOptions.length > 1 && !selectedResidentCondoId) {
+      setResidentError("Selecione um condomínio para receber o código");
+      return;
+    }
+
+    if (residentCondoOptions.length > 1 && selectedResidentCondoId) {
+      await handleSendResidentOtp(selectedResidentCondoId);
+      return;
+    }
+
+    setIsResolvingResidentCondos(true);
+    try {
+      const results = (await listResidentCondosByEmail({
+        email: emailValue,
+      })) as ResidentCondoOption[];
+
+      setResidentCondoOptions(results);
+      setSelectedResidentCondoId("");
+
+      if (results.length === 0) {
+        setResidentError("Nenhum condomínio ativo encontrado para este email.");
+        return;
+      }
+
+      if (results.length === 1) {
+        const condoId = results[0].condoId;
+        setSelectedResidentCondoId(condoId);
+        await handleSendResidentOtp(condoId);
+        return;
+      }
+
+      setResidentError("Selecione o condomínio para receber o código.");
+    } catch (error) {
+      console.error(error);
+      setResidentError("Não foi possível localizar o condomínio pelo email");
+    } finally {
+      setIsResolvingResidentCondos(false);
+    }
+  };
+
   const handleResidentSignIn = async () => {
     setResidentError(null);
     if (residentCode.length !== 6) {
       setResidentError("Informe o código recebido");
       return;
     }
-    const subdomainValue = (
-      residentModeForced ? hostSubdomain : residentSubdomain
-    )
-      .trim()
-      .toLowerCase();
     const emailValue = residentEmail.trim().toLowerCase();
-    if (!subdomainValue || !emailValue) {
-      setResidentError("Informe subdomínio e email");
+    if (!emailValue) {
+      setResidentError("Informe email");
+      return;
+    }
+    if (!residentModeForced && !selectedResidentCondoId) {
+      setResidentError("Selecione o condomínio");
       return;
     }
     setIsVerifyingOtp(true);
     try {
       const result = await residentSignIn({
-        subdomain: subdomainValue,
         email: emailValue,
         code: residentCode,
+        ...(residentModeForced
+          ? { subdomain: hostSubdomain }
+          : { condoId: selectedResidentCondoId }),
       });
       if (!result?.success) {
         throw new Error("Invalid code");
@@ -344,8 +417,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
             />
           </div>
           <CardDescription>
-            Acesse com credenciais da plataforma ou com o código enviado ao
-            síndico/gestor
+            Acesse nossa plataforma informando
+            <br />o seu e-mail de cadastro.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -355,10 +428,10 @@ export function AuthPage({ onLogin }: AuthPageProps) {
             className="space-y-4"
           >
             <TabsList className={tabsColumnsClass}>
+              <TabsTrigger value="resident">Síndico / Morador</TabsTrigger>
               {platformLoginEnabled && (
                 <TabsTrigger value="platform">Plataforma</TabsTrigger>
               )}
-              <TabsTrigger value="resident">Síndico / Morador</TabsTrigger>
             </TabsList>
 
             {platformLoginEnabled && (
@@ -465,7 +538,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                                             key={index}
                                             index={index}
                                           />
-                                        )
+                                        ),
                                       )}
                                     </InputOTPGroup>
                                   </InputOTP>
@@ -506,7 +579,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                                     value={forgotConfirmPassword}
                                     onChange={(event) =>
                                       setForgotConfirmPassword(
-                                        event.target.value
+                                        event.target.value,
                                       )
                                     }
                                   />
@@ -582,35 +655,12 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
             <TabsContent value="resident">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="resident-subdomain">
-                    Subdomínio do condomínio
-                  </Label>
-                  {residentModeForced ? (
-                    <Input
-                      id="resident-subdomain"
-                      value={hostSubdomain}
-                      readOnly
-                      disabled
-                    />
-                  ) : (
-                    <Input
-                      id="resident-subdomain"
-                      placeholder="ex: jardim-flores"
-                      value={residentSubdomain}
-                      onChange={(e) => {
-                        setResidentSubdomain(e.target.value);
-                        setResidentError(null);
-                      }}
-                    />
-                  )}
-                  {residentModeForced && hostSubdomain && (
-                    <p className="text-muted-foreground text-xs">
-                      Você está acessando o portal do condomínio{" "}
-                      <strong>{hostSubdomain}</strong>.
-                    </p>
-                  )}
-                </div>
+                {residentModeForced && hostSubdomain && (
+                  <p className="text-muted-foreground text-xs">
+                    Você está acessando o portal do condomínio{" "}
+                    <strong>{hostSubdomain}</strong>.
+                  </p>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="resident-email">Email</Label>
                   <Input
@@ -620,24 +670,79 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                     value={residentEmail}
                     onChange={(e) => {
                       setResidentEmail(e.target.value);
+                      setOtpSent(false);
+                      setResidentCode("");
+                      setResidentCondoOptions([]);
+                      setSelectedResidentCondoId("");
                       setResidentError(null);
                     }}
                   />
+                  <p className="text-muted-foreground text-xs">
+                    Um código será enviado ao e-mail cadastrado para o login
+                  </p>
                 </div>
+                {!residentModeForced &&
+                  !otpSent &&
+                  residentCondoOptions.length > 1 && (
+                    <div className="space-y-2">
+                      <Label htmlFor="resident-condo">Condomínio</Label>
+                      <Select
+                        value={selectedResidentCondoId || ""}
+                        onValueChange={(value) => {
+                          setSelectedResidentCondoId(value as Id<"condos">);
+                          setResidentError(null);
+                        }}
+                      >
+                        <SelectTrigger id="resident-condo">
+                          <SelectValue placeholder="Selecione o condomínio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {residentCondoOptions.map((condo) => (
+                            <SelectItem
+                              key={condo.condoId}
+                              value={condo.condoId}
+                            >
+                              {condo.condoName} ({condo.condoSubdomain})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                 {!otpSent ? (
                   <Button
-                    onClick={handleSendResidentOtp}
+                    onClick={handleResolveResidentEmail}
                     className="w-full"
-                    disabled={isSendingOtp || !canSendOtp}
+                    disabled={
+                      isSendingOtp ||
+                      isResolvingResidentCondos ||
+                      (!residentModeForced && residentCondoOptions.length > 1
+                        ? !canSendOtp
+                        : !canResolveResident)
+                    }
                   >
-                    {isSendingOtp ? "Enviando..." : "Enviar código"}
+                    {isResolvingResidentCondos
+                      ? "Buscando..."
+                      : isSendingOtp
+                        ? "Enviando..."
+                        : residentModeForced || residentCondoOptions.length > 1
+                          ? "Enviar código"
+                          : "Continuar"}
                   </Button>
                 ) : (
                   <div className="space-y-4">
                     <p className="text-muted-foreground text-sm">
                       Digite o código enviado ao seu email.
                     </p>
+                    {!residentModeForced && (
+                      <p className="text-muted-foreground text-xs">
+                        Condomínio:{" "}
+                        <strong>
+                          {findSelectedResidentCondo()?.condoName ?? "-"}
+                        </strong>
+                      </p>
+                    )}
                     <div className="space-y-2">
                       <Label>Código recebido</Label>
                       <InputOTP

@@ -21,6 +21,7 @@ interface CondoSwitcherProps {
 
 export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoSwitcherProps) {
   const [open, setOpen] = useState(false);
+  const getCondoInitial = (name?: string) => name?.trim().charAt(0).toUpperCase() || "?";
   const selectedCondo = useMemo(
     () => condos.find((condo) => condo._id === selectedCondoId) ?? null,
     [condos, selectedCondoId],
@@ -39,7 +40,7 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
             <div className="flex items-center gap-2 overflow-hidden">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary">
                 <span className="text-primary-foreground text-[10px]">
-                  {selectedCondo.name.charAt(0)}
+                  {getCondoInitial(selectedCondo.name)}
                 </span>
               </div>
               <div className="flex flex-col items-start overflow-hidden">
@@ -84,7 +85,7 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
                   <div className="flex items-center gap-2 overflow-hidden">
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary">
                       <span className="text-primary-foreground text-[10px]">
-                        {condo.name.charAt(0)}
+                        {getCondoInitial(condo.name)}
                       </span>
                     </div>
                     <div className="flex flex-col items-start overflow-hidden">

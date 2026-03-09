@@ -217,6 +217,7 @@ function AuthenticatedShell({
   const isCondoDomain = hostInfo.isCondoSubdomain;
 
   const isResidentSession = auth.type === "resident";
+  const isResidentSyndic = isResidentSession && auth.roles.includes("syndic");
   const isResidentManager =
     isResidentSession &&
     (auth.roles.includes("manager") || auth.roles.includes("syndic"));
@@ -232,6 +233,7 @@ function AuthenticatedShell({
       auth.roles.includes("support") ||
       auth.roles.includes("ops"));
   const isResident = isResidentSession;
+  const canSwitchResidentCondo = isResidentSyndic && !isCondoDomain;
 
   if (isResidentSession && !isResidentManager) {
     return <ResidentShell auth={auth} onLogout={onLogout} onUpdateAuth={onUpdateAuth} />;
@@ -267,16 +269,32 @@ function AuthenticatedShell({
     api.condos.getBySubdomain,
     isResident && residentSubdomain ? { subdomain: residentSubdomain } : "skip",
   );
+  const residentSwitchCondos = useQuery(
+    api.auth.listResidentCondosForSession,
+    canSwitchResidentCondo ? { sessionToken: auth.token } : "skip",
+  ) as Doc<"condos">[] | undefined;
 
   const condos: Doc<"condos">[] | undefined = useMemo(() => {
     if (canSeePlatform) {
       return platformCondos ?? undefined;
     }
     if (isResident) {
+      if (canSwitchResidentCondo) {
+        if (residentSwitchCondos !== undefined) {
+          return residentSwitchCondos;
+        }
+      }
       return residentCondo ? [residentCondo] : residentCondo === null ? [] : undefined;
     }
     return undefined;
-  }, [canSeePlatform, isResident, platformCondos, residentCondo]);
+  }, [
+    canSeePlatform,
+    isResident,
+    canSwitchResidentCondo,
+    platformCondos,
+    residentCondo,
+    residentSwitchCondos,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -309,10 +327,10 @@ function AuthenticatedShell({
   }, [condos, selectedCondoId]);
 
   useEffect(() => {
-    if (isResident && auth.condoId && selectedCondoId !== auth.condoId) {
+    if (isResident && !canSwitchResidentCondo && auth.condoId && selectedCondoId !== auth.condoId) {
       setSelectedCondoId(auth.condoId);
     }
-  }, [isResident, auth, selectedCondoId]);
+  }, [isResident, canSwitchResidentCondo, auth, selectedCondoId]);
 
   const baseSelectedCondo: CondoDoc | null = useMemo(() => {
     if (!selectedCondoId || !condos) return null;
@@ -440,11 +458,20 @@ function AuthenticatedShell({
   }, [isMobileSidebarOpen]);
 
   const handleSelectCondo = (condoId: Id<"condos"> | null) => {
-    if (!canSeePlatform || isCondoDomain) {
+    const canSelectPlatformCondo = canSeePlatform && !isCondoDomain;
+    const canSelectResidentCondo = canSwitchResidentCondo;
+    if (!canSelectPlatformCondo && !canSelectResidentCondo) {
+      return;
+    }
+    if (canSelectResidentCondo && condoId === null) {
       return;
     }
     setSelectedCondoId(condoId);
-    setUserMode(condoId ? "tenant" : "platform");
+    if (canSelectPlatformCondo) {
+      setUserMode(condoId ? "tenant" : "platform");
+    } else {
+      setUserMode("tenant");
+    }
     setSelectedMinuteId(null);
     setSelectedMinute(null);
   };
@@ -542,7 +569,11 @@ function AuthenticatedShell({
             mode={showPlatformSections ? userMode : "tenant"}
             condos={condos}
             selectedCondo={selectedCondo}
-            onSelectCondo={showPlatformSections ? handleSelectCondo : undefined}
+            onSelectCondo={
+              showPlatformSections || canSwitchResidentCondo
+                ? handleSelectCondo
+                : undefined
+            }
             onLogout={handleLogout}
             userName={auth.name}
             sessionToken={auth.token}

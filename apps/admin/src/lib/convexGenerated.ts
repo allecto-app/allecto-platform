@@ -21,6 +21,8 @@ type AugmentedApi = typeof baseApi & {
     adminSignIn: MutationRef;
     requestResidentOtp: ActionRef;
     residentSignIn: MutationRef;
+    listResidentCondosByEmail: MutationRef;
+    listResidentCondosForSession: QueryRef;
     requestPasswordReset: MutationRef;
     resetPassword: MutationRef;
   };

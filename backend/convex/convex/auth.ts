@@ -1,8 +1,9 @@
 // convex/auth.ts
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import bcrypt from "bcryptjs";
 import { internal } from "./_generated/api";
+import { loadSession } from "./guards";
 
 const GENERIC_AUTH_ERROR = "Invalid email or password";
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -13,6 +14,55 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const SESSION_TOKEN_BYTES = 48;
 const BCRYPT_COST = 12;
 const FALLBACK_PASSWORD_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8p6hX6YsJhBKt3vnDnN/SfXlBx/6C6";
+const RESIDENT_ALLOWED_ROLES = new Set(["syndic", "manager", "resident", "council"]);
+
+async function listResidentCondosForEmail(ctx: any, email: string, onlyRole?: string) {
+    const cleanedEmail = email.trim().toLowerCase();
+    if (!cleanedEmail) {
+        return [];
+    }
+
+    const residents = await ctx.db
+        .query("residents")
+        .withIndex("byEmail", (q: any) => q.eq("email", cleanedEmail))
+        .collect();
+
+    const eligibleResidents = residents.filter((resident: any) => {
+        if (resident.isActive === false) return false;
+        if (onlyRole) {
+            return resident.role === onlyRole;
+        }
+        return RESIDENT_ALLOWED_ROLES.has(resident.role);
+    });
+    if (eligibleResidents.length === 0) {
+        return [];
+    }
+
+    const condoIds = Array.from(new Set(eligibleResidents.map((resident: any) => resident.condoId)));
+    const condos = await Promise.all(condoIds.map((condoId) => ctx.db.get(condoId)));
+
+    return condos
+        .filter((condo): condo is NonNullable<typeof condo> => Boolean(condo))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+        .map((condo) => ({
+            _id: condo._id,
+            _creationTime: condo._creationTime,
+            name: condo.name,
+            subdomain: condo.subdomain,
+            condoId: condo._id,
+            condoName: condo.name,
+            condoSubdomain: condo.subdomain,
+            branding: condo.branding,
+            timezone: condo.timezone,
+            isActive: condo.isActive,
+            disabledAt: condo.disabledAt,
+            billingTier: condo.billingTier,
+            billingStatus: condo.billingStatus,
+            onboardingTokenVersion: condo.onboardingTokenVersion,
+            createdAt: condo.createdAt,
+            updatedAt: condo.updatedAt,
+        }));
+}
 
 const bytesToHex = (bytes: Uint8Array) =>
     Array.from(bytes)
@@ -112,25 +162,54 @@ export const verifyOtp = mutation({
     },
 });
 
-export const requestResidentOtp = mutation({
-    args: { subdomain: v.string(), email: v.string() },
-    handler: async (ctx, { subdomain, email }) => {
-        const cleanedSubdomain = subdomain.trim().toLowerCase();
-        const cleanedEmail = email.trim().toLowerCase();
-        if (!cleanedSubdomain || !cleanedEmail) return { ok: true };
+export const listResidentCondosByEmail = mutation({
+    args: { email: v.string() },
+    handler: async (ctx, { email }) => {
+        return await listResidentCondosForEmail(ctx, email);
+    },
+});
 
-        const condo = await ctx.db
-            .query("condos")
-            .withIndex("bySubdomain", (q) => q.eq("subdomain", cleanedSubdomain))
-            .unique();
+export const listResidentCondosForSession = query({
+    args: { sessionToken: v.string() },
+    handler: async (ctx, { sessionToken }) => {
+        const session = await loadSession(ctx, sessionToken);
+        if (session.type !== "resident" || !session.residentId) {
+            throw new Error("Unauthorized");
+        }
+
+        const resident = await ctx.db.get(session.residentId);
+        if (!resident || resident.isActive === false || resident.role !== "syndic" || !resident.email) {
+            throw new Error("Forbidden");
+        }
+
+        return await listResidentCondosForEmail(ctx, resident.email, "syndic");
+    },
+});
+
+export const requestResidentOtp = mutation({
+    args: {
+        email: v.string(),
+        condoId: v.optional(v.id("condos")),
+        subdomain: v.optional(v.string()),
+    },
+    handler: async (ctx, { condoId, subdomain, email }) => {
+        const cleanedEmail = email.trim().toLowerCase();
+        const cleanedSubdomain = subdomain?.trim().toLowerCase() ?? "";
+        if (!cleanedEmail || (!condoId && !cleanedSubdomain)) return { ok: true };
+
+        const condo = condoId
+            ? await ctx.db.get(condoId)
+            : await ctx.db
+                .query("condos")
+                .withIndex("bySubdomain", (q) => q.eq("subdomain", cleanedSubdomain))
+                .unique();
         if (!condo) return { ok: true };
 
         const resident = await ctx.db
             .query("residents")
             .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
             .unique();
-        const allowedRoles = new Set(["syndic", "manager", "resident", "council"]);
-        if (!resident || !allowedRoles.has(resident.role) || resident.isActive === false) {
+        if (!resident || !RESIDENT_ALLOWED_ROLES.has(resident.role) || resident.isActive === false) {
             return { ok: true };
         }
 
@@ -182,25 +261,28 @@ Equipe Allecto`;
 
 export const residentSignIn = mutation({
     args: {
-        subdomain: v.string(),
         email: v.string(),
         code: v.string(),
         ip: v.optional(v.string()),
+        condoId: v.optional(v.id("condos")),
+        subdomain: v.optional(v.string()),
     },
-    handler: async (ctx, { subdomain, email, code, ip }) => {
+    handler: async (ctx, { condoId, subdomain, email, code, ip }) => {
         const now = Date.now();
-        const cleanedSubdomain = subdomain.trim().toLowerCase();
+        const cleanedSubdomain = subdomain?.trim().toLowerCase() ?? "";
         const cleanedEmail = email.trim().toLowerCase();
         const trimmedCode = code.trim();
 
-        if (!cleanedSubdomain || !cleanedEmail || trimmedCode.length === 0) {
+        if ((!condoId && !cleanedSubdomain) || !cleanedEmail || trimmedCode.length === 0) {
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
-        const condo = await ctx.db
-            .query("condos")
-            .withIndex("bySubdomain", (q) => q.eq("subdomain", cleanedSubdomain))
-            .unique();
+        const condo = condoId
+            ? await ctx.db.get(condoId)
+            : await ctx.db
+                .query("condos")
+                .withIndex("bySubdomain", (q) => q.eq("subdomain", cleanedSubdomain))
+                .unique();
         if (!condo) {
             throw new Error(GENERIC_AUTH_ERROR);
         }
@@ -209,8 +291,7 @@ export const residentSignIn = mutation({
             .query("residents")
             .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
             .unique();
-        const allowedRoles = new Set(["syndic", "manager", "resident", "council"]);
-        if (!resident || !allowedRoles.has(resident.role) || resident.isActive === false) {
+        if (!resident || !RESIDENT_ALLOWED_ROLES.has(resident.role) || resident.isActive === false) {
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
