@@ -296,7 +296,7 @@ export function UnitEditPage({
       <div>
         <PageHeader
           title="Unidade não encontrada"
-          breadcrumb={["Unidades", "Editar"]}
+          breadcrumb={[{ label: "Unidades", onClick: () => onNavigate("units") }, "Editar"]}
           primaryAction={{
             label: "Voltar",
             onClick: () => onNavigate("units"),
@@ -316,8 +316,15 @@ export function UnitEditPage({
     isSaving || !isDirty || (isEditing && !unit) || (!isEditing && !condoId);
 
   const breadcrumb = isEditing
-    ? ["Unidades", unit?.block ? `${unit.block}-${unit.code}` : unit?.code ?? "-", "Editar"]
-    : ["Unidades", "Nova unidade"];
+    ? [
+        { label: "Unidades", onClick: () => onNavigate("units") },
+        {
+          label: unit?.block ? `${unit.block}-${unit.code}` : unit?.code ?? "-",
+          onClick: () => onNavigate("unit-detail"),
+        },
+        "Editar",
+      ]
+    : [{ label: "Unidades", onClick: () => onNavigate("units") }, "Nova unidade"];
 
   return (
     <div>

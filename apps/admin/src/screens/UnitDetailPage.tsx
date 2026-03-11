@@ -250,7 +250,7 @@ export function UnitDetailPage({
       <div>
         <PageHeader
           title="Unidade"
-          breadcrumb={["Unidades", "Detalhe"]}
+          breadcrumb={[{ label: "Unidades", onClick: () => onNavigate("units") }, "Detalhe"]}
           primaryAction={{
             label: "Voltar",
             onClick: () => onNavigate("units"),
@@ -278,7 +278,7 @@ export function UnitDetailPage({
       <div>
         <PageHeader
           title="Unidade não encontrada"
-          breadcrumb={["Unidades", "Detalhe"]}
+          breadcrumb={[{ label: "Unidades", onClick: () => onNavigate("units") }, "Detalhe"]}
           primaryAction={{
             label: "Voltar",
             onClick: () => onNavigate("units"),
@@ -297,7 +297,10 @@ export function UnitDetailPage({
   const formattedUpdatedAt = formatDateTime(unit.updatedAt);
   const floorLabel = unit.floor ? `${unit.floor}º Andar` : "-";
   const blockLabel = unit.block ? `Bloco ${unit.block}` : "Unidade";
-  const breadcrumb = ["Unidades", unit.block ? `${unit.block}-${unit.code}` : unit.code];
+  const breadcrumb = [
+    { label: "Unidades", onClick: () => onNavigate("units") },
+    unit.block ? `${unit.block}-${unit.code}` : unit.code,
+  ];
   const canSelectResident = !isLoadingResidents && filteredResidents.length > 0;
 
   return (

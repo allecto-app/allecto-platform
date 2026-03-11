@@ -214,7 +214,11 @@ export function ResidentEditPage({
     <div>
       <PageHeader
         title={`Editar ${resident.name}`}
-        breadcrumb={["Moradores", resident.name, "Editar"]}
+        breadcrumb={[
+          { label: "Moradores", onClick: () => onNavigate("residents") },
+          { label: resident.name, onClick: () => onNavigate("resident-detail") },
+          "Editar",
+        ]}
         primaryAction={{
           label: "Salvar",
           onClick: handleSave,

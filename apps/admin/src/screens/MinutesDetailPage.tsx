@@ -210,7 +210,7 @@ export function MinutesDetailPage({
     }
   };
 
-  const breadcrumb = ["Atas", minuteData.title];
+  const breadcrumb = [{ label: "Atas", onClick: () => onNavigate("minutes") }, minuteData.title];
 
   const documentMetadataAvailable = !!documentId;
   const documentLoading = documentId && document === undefined;

@@ -257,7 +257,7 @@ export function ResidentDetailPage({
       <div>
         <PageHeader
           title="Morador não encontrado"
-          breadcrumb={["Moradores", "Detalhe"]}
+          breadcrumb={[{ label: "Moradores", onClick: () => onNavigate("residents") }, "Detalhe"]}
           primaryAction={{ label: "Voltar", onClick: () => onNavigate("residents") }}
         />
         <Card>
@@ -273,7 +273,10 @@ export function ResidentDetailPage({
     <div>
       <PageHeader
         title={resident?.name ?? "Morador"}
-        breadcrumb={["Moradores", resident?.name ?? "Detalhe"]}
+        breadcrumb={[
+          { label: "Moradores", onClick: () => onNavigate("residents") },
+          resident?.name ?? "Detalhe",
+        ]}
         primaryAction={{
           label: "Editar",
           onClick: handleEdit,
