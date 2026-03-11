@@ -60,6 +60,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     role: v.string(), // "resident" | "syndic" | "manager" | "council"
     isActive: v.boolean(),
+    deletedAt: v.optional(v.number()),
+    anonymizedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -281,7 +283,9 @@ export default defineSchema({
     revokedAt: v.optional(v.number()),
     ip: v.optional(v.string()),
     userAgent: v.optional(v.string()),
-  }).index("byDigest", ["tokenDigest"]),
+  })
+    .index("byDigest", ["tokenDigest"])
+    .index("byResident", ["residentId"]),
 
   securityEvents: defineTable({
     type: v.string(),

@@ -45,6 +45,7 @@ type AugmentedApi = typeof baseApi & {
     findByEmail: QueryRef;
     create: MutationRef;
     update: MutationRef;
+    remove: MutationRef;
   };
   minutes: {
     list: QueryRef;
@@ -203,6 +204,8 @@ type DocByTable = {
     phone?: string;
     role: string;
     isActive: boolean;
+    deletedAt?: number;
+    anonymizedAt?: number;
     createdAt: number;
     updatedAt: number;
   };

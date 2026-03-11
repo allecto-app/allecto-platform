@@ -250,6 +250,7 @@ function AuthenticatedShell({
   const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
   const [selectedResidentId, setSelectedResidentId] = useState<Id<"residents"> | null>(null);
   const [selectedResident, setSelectedResident] = useState<ResidentRecord | null>(null);
+  const [residentsListVersion, setResidentsListVersion] = useState(0);
   const [selectedCondoOverride, setSelectedCondoOverride] = useState<CondoDoc | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState<Id<"units"> | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<UnitRecord | null>(null);
@@ -632,6 +633,7 @@ function AuthenticatedShell({
               )}
               {currentPage === "residents" && (
                 <ResidentsListPage
+                  key={`residents-${selectedCondo?._id ?? "all"}-${residentsListVersion}`}
                   onNavigate={handleNavigate}
                   condo={selectedCondo}
                   canInviteSyndic={canInviteSyndic}
@@ -663,6 +665,11 @@ function AuthenticatedShell({
                   onResidentLoaded={(resident) => {
                     setSelectedResidentId(resident.id);
                     setSelectedResident(resident);
+                  }}
+                  onResidentDeleted={() => {
+                    setSelectedResidentId(null);
+                    setSelectedResident(null);
+                    setResidentsListVersion((prev) => prev + 1);
                   }}
                 />
               )}

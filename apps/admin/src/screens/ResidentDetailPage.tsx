@@ -82,6 +82,7 @@ interface ResidentDetailPageProps {
   residentId?: Id<"residents"> | null;
   residentFallback?: ResidentRecord | null;
   onResidentLoaded?: (resident: ResidentRecord) => void;
+  onResidentDeleted?: () => void;
 }
 
 export function ResidentDetailPage({
@@ -90,6 +91,7 @@ export function ResidentDetailPage({
   residentId,
   residentFallback,
   onResidentLoaded,
+  onResidentDeleted,
 }: ResidentDetailPageProps) {
   const [linkUnitOpen, setLinkUnitOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -107,8 +109,12 @@ export function ResidentDetailPage({
       : "skip",
   ) as ResidentDetailResponse | undefined;
   const resendResidentOtp = useAction(api.residentDetail.resendOtp);
+  const updateResident = useMutation(api.residents.update);
+  const removeResident = useMutation(api.residents.remove);
   const addMembership = useMutation(api.units.addMembership);
   const removeMembership = useMutation(api.units.removeMembership);
+  const [isUpdatingResidentStatus, setIsUpdatingResidentStatus] = useState(false);
+  const [isDeletingResident, setIsDeletingResident] = useState(false);
 
   const residentFromQuery = detail?.resident ?? null;
   const resident = residentFromQuery ?? residentFallback ?? null;
@@ -188,8 +194,64 @@ export function ResidentDetailPage({
       toast.error("Não foi possível reenviar o convite");
     }
   };
-  const handleDeactivate = () => toast.error("Desativação ainda não implementada");
-  const handleReactivate = () => toast.success("Reativação ainda não implementada");
+  const handleUpdateResidentStatus = async (isActive: boolean) => {
+    if (!resident || !resident.id || isUpdatingResidentStatus) return;
+
+    setIsUpdatingResidentStatus(true);
+    try {
+      const result = await updateResident({
+        residentId: resident.id,
+        name: resident.name,
+        email: resident.email ?? undefined,
+        phone: resident.phone ?? undefined,
+        role: resident.role,
+        isActive,
+      });
+
+      const updatedResident = result?.resident as ResidentRecord | null | undefined;
+      if (updatedResident) {
+        onResidentLoaded?.(updatedResident);
+      }
+
+      toast.success(
+        isActive
+          ? "Morador reativado com sucesso"
+          : "Morador desativado com sucesso",
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        isActive
+          ? "Não foi possível reativar o morador"
+          : "Não foi possível desativar o morador",
+      );
+    } finally {
+      setIsUpdatingResidentStatus(false);
+    }
+  };
+
+  const handleDeactivate = () => handleUpdateResidentStatus(false);
+  const handleReactivate = () => handleUpdateResidentStatus(true);
+  const handleDeleteResident = async () => {
+    if (!resident || !resident.id || isDeletingResident) return;
+
+    setIsDeletingResident(true);
+    try {
+      await removeResident({ residentId: resident.id });
+      toast.success("Morador excluído com sucesso");
+      onResidentDeleted?.();
+      onNavigate("residents");
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir o morador",
+      );
+    } finally {
+      setIsDeletingResident(false);
+    }
+  };
   const handleUnlinkUnit = async (unit: ResidentUnitLink) => {
     if (!unit.membershipId) {
       toast.error("Vínculo não encontrado");
@@ -296,9 +358,14 @@ export function ResidentDetailPage({
         <Alert className="mb-6 border-warning bg-warning/10">
           <AlertDescription className="flex items-center justify-between">
             <span>Este morador está inativo e não pode acessar o sistema.</span>
-            <Button onClick={handleReactivate} size="sm" variant="outline">
+            <Button
+              onClick={handleReactivate}
+              size="sm"
+              variant="outline"
+              disabled={isUpdatingResidentStatus}
+            >
               <UserCheck className="mr-2 h-4 w-4" />
-              Reativar
+              {isUpdatingResidentStatus ? "Reativando..." : "Reativar"}
             </Button>
           </AlertDescription>
         </Alert>
@@ -493,12 +560,16 @@ export function ResidentDetailPage({
             <CardHeader>
               <CardTitle className="text-destructive">Ações Perigosas</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full">
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    disabled={!resident.isActive || isUpdatingResidentStatus}
+                  >
                     <UserX className="mr-2 h-4 w-4" />
-                    Desativar Morador
+                    {isUpdatingResidentStatus ? "Atualizando..." : "Desativar Morador"}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -513,13 +584,51 @@ export function ResidentDetailPage({
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDeactivate}
+                      disabled={isUpdatingResidentStatus}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Desativar
+                      {isUpdatingResidentStatus ? "Desativando..." : "Desativar"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                    disabled={resident.isActive || isDeletingResident || isUpdatingResidentStatus}
+                  >
+                    {isDeletingResident ? "Excluindo..." : "Excluir Morador"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Morador</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação é permanente e removerá o cadastro de {resident.name}
+                      e seus vínculos com unidades. O histórico de votos será
+                      preservado sem dados pessoais identificáveis.
+                      Continue somente se tiver certeza.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteResident}
+                      disabled={isDeletingResident}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isDeletingResident ? "Excluindo..." : "Excluir"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              {resident.isActive && (
+                <p className="text-sm text-muted-foreground">
+                  Para excluir, primeiro desative o morador.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -16,7 +16,7 @@ export const get = query({
           .withIndex("byEmail", (q) => q.eq("email", normalizeEmail(email!)))
           .first();
 
-    if (!resident) return null;
+    if (!resident || resident.deletedAt !== undefined) return null;
 
     const condo = await ctx.db.get(resident.condoId);
 
