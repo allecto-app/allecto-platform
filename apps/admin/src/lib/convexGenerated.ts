@@ -82,6 +82,8 @@ type AugmentedApi = typeof baseApi & {
   };
   notifications: {
     listLogs: QueryRef;
+    getReadState: QueryRef;
+    markRead: MutationRef;
   };
   residentDetail: {
     get: QueryRef;
@@ -131,6 +133,7 @@ export type TableNames =
   | "minutes"
   | "votes"
   | "notificationLogs"
+  | "notificationReads"
   | "documents"
   | "documentEvents"
   | "otps"
@@ -308,6 +311,13 @@ type DocByTable = {
     errorCount: number;
     createdAt: number;
     meta?: Record<string, unknown>;
+  };
+  notificationReads: DefaultDoc<"notificationReads"> & {
+    userId: string;
+    scopeKey: string;
+    condoId?: Id<"condos">;
+    lastReadAt: number;
+    updatedAt: number;
   };
   usages: DefaultDoc<"usages"> & {
     tenantId: Id<"condos">;

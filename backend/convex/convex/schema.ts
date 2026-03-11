@@ -151,6 +151,16 @@ export default defineSchema({
     meta: v.optional(v.any()),
   }).index("byCondo", ["condoId"]),
 
+  notificationReads: defineTable({
+    userId: v.string(),
+    scopeKey: v.string(),
+    condoId: v.optional(v.id("condos")),
+    lastReadAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byUserScope", ["userId", "scopeKey"])
+    .index("byUser", ["userId"]),
+
   otps: defineTable({
     condoId: v.id("condos"),
     email: v.optional(v.string()),

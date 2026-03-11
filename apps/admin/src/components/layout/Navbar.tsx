@@ -26,6 +26,7 @@ interface NavbarProps {
   onSelectCondo?: (condoId: Id<"condos"> | null) => void;
   onLogout?: () => void;
   userName?: string;
+  userId?: string;
   sessionToken?: string;
 }
 
@@ -38,6 +39,7 @@ export function Navbar({
   onSelectCondo,
   onLogout,
   userName,
+  userId,
   sessionToken,
 }: NavbarProps) {
   const isPlatformMode = mode === "platform";
@@ -47,16 +49,29 @@ export function Navbar({
     if (!sessionToken) return "skip" as const;
     return {
       condoId: condoId ?? undefined,
-      limit: 5,
+      limit: 200,
     } as const;
   }, [condoId, sessionToken]);
   const notifications = useQuery(api.notifications.listLogs, notificationArgs);
+  const readState = useQuery(
+    api.notifications.getReadState,
+    userId
+      ? {
+          userId,
+          condoId: condoId ?? undefined,
+        }
+      : "skip",
+  );
   const isLoadingNotifications =
     condoId !== null && notifications === undefined;
+  const lastReadAt = readState?.lastReadAt ?? 0;
+  const allNotifications = Array.isArray(notifications) ? notifications : [];
   const headerNotifications = Array.isArray(notifications)
     ? notifications.slice(0, 5)
     : [];
-  const unreadCount = headerNotifications.length;
+  const unreadCount = userId
+    ? allNotifications.filter((notification) => notification.createdAt > lastReadAt).length
+    : 0;
   const { data: entitlements } = useEntitlements(
     condoId ? selectedCondo?._id ?? null : null
   );

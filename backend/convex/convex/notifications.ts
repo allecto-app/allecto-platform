@@ -1,4 +1,4 @@
-import { internalAction, internalMutation, query } from "./_generated/server";
+import { internalAction, internalMutation, mutation, query } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 import { normalizeEmail } from "./_secu";
@@ -483,5 +483,70 @@ export const listLogs = query({
           minuteId: log.minuteId ?? null,
         };
       });
+  },
+});
+
+function buildNotificationScopeKey(condoId?: Id<"condos">): string {
+  return condoId ? String(condoId) : "all";
+}
+
+export const getReadState = query({
+  args: {
+    userId: v.string(),
+    condoId: v.optional(v.id("condos")),
+  },
+  handler: async (ctx, { userId, condoId }) => {
+    const scopeKey = buildNotificationScopeKey(condoId);
+    const existing = await ctx.db
+      .query("notificationReads")
+      .withIndex("byUserScope", (q) => q.eq("userId", userId).eq("scopeKey", scopeKey))
+      .first();
+
+    return {
+      lastReadAt: existing?.lastReadAt ?? 0,
+      updatedAt: existing?.updatedAt ?? null,
+    };
+  },
+});
+
+export const markRead = mutation({
+  args: {
+    userId: v.string(),
+    condoId: v.optional(v.id("condos")),
+    lastReadAt: v.number(),
+  },
+  handler: async (ctx, { userId, condoId, lastReadAt }) => {
+    const scopeKey = buildNotificationScopeKey(condoId);
+    const existing = await ctx.db
+      .query("notificationReads")
+      .withIndex("byUserScope", (q) => q.eq("userId", userId).eq("scopeKey", scopeKey))
+      .first();
+
+    const safeLastReadAt = Number.isFinite(lastReadAt) && lastReadAt > 0 ? Math.floor(lastReadAt) : 0;
+    const nextLastReadAt = Math.max(existing?.lastReadAt ?? 0, safeLastReadAt);
+    const updatedAt = Date.now();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        lastReadAt: nextLastReadAt,
+        updatedAt,
+      });
+      return {
+        ok: true,
+        lastReadAt: nextLastReadAt,
+      };
+    }
+
+    await ctx.db.insert("notificationReads", {
+      userId,
+      scopeKey,
+      condoId,
+      lastReadAt: nextLastReadAt,
+      updatedAt,
+    });
+    return {
+      ok: true,
+      lastReadAt: nextLastReadAt,
+    };
   },
 });

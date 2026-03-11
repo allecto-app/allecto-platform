@@ -576,6 +576,7 @@ function AuthenticatedShell({
             }
             onLogout={handleLogout}
             userName={auth.name}
+            userId={String(auth.userId)}
             sessionToken={auth.token}
           />
           <main className="flex-1 overflow-y-auto bg-muted/30 p-4 sm:p-6">
@@ -746,6 +747,7 @@ function AuthenticatedShell({
                 <NotificationsPage
                   condoId={selectedCondo?._id ?? null}
                   condo={selectedCondo}
+                  userId={String(auth.userId)}
                   sessionToken={auth.token}
                 />
               )}

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardContent } from "../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
@@ -14,6 +14,7 @@ import { EmptyState } from "../components/admin/EmptyState";
 type NotificationsPageProps = {
   condoId: Id<"condos"> | null;
   condo: Doc<"condos"> | null;
+  userId?: string;
   sessionToken: string;
 };
 
@@ -35,10 +36,11 @@ type NotificationLog = {
   minuteId: Id<"minutes"> | null;
 };
 
-export function NotificationsPage({ condoId, condo }: NotificationsPageProps) {
+export function NotificationsPage({ condoId, condo, userId }: NotificationsPageProps) {
   const [templateFilter, setTemplateFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
+  const lastMarkedReadAtRef = useRef(0);
 
   const queryArgs = useMemo(() => {
     const template = templateFilter === "all" ? undefined : templateFilter;
@@ -65,8 +67,25 @@ export function NotificationsPage({ condoId, condo }: NotificationsPageProps) {
   }, [channelFilter, condoId, dateFilter, templateFilter]);
 
   const notifications = useQuery(api.notifications.listLogs, queryArgs) as NotificationLog[] | undefined;
+  const markRead = useMutation(api.notifications.markRead);
   const isLoading = notifications === undefined;
   const data = notifications ?? [];
+
+  useEffect(() => {
+    if (!userId || data.length === 0) return;
+    const latestTimestamp = data.reduce(
+      (maxTimestamp, notification) => Math.max(maxTimestamp, notification.createdAt),
+      0,
+    );
+    if (latestTimestamp > 0 && latestTimestamp > lastMarkedReadAtRef.current) {
+      lastMarkedReadAtRef.current = latestTimestamp;
+      void markRead({
+        userId,
+        condoId: condoId ?? undefined,
+        lastReadAt: latestTimestamp,
+      });
+    }
+  }, [condoId, data, markRead, userId]);
 
   const getTemplateBadge = (template: string) => {
     switch (template) {
