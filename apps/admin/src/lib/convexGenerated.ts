@@ -92,6 +92,17 @@ type AugmentedApi = typeof baseApi & {
     triggerRun: MutationRef;
     listRuns: QueryRef;
   };
+  dsar: {
+    createRequest: MutationRef;
+    listRequests: QueryRef;
+    getRequest: QueryRef;
+    updateRequest: MutationRef;
+    generateAccessExport: MutationRef;
+    executeDeletion: MutationRef;
+  };
+  adminAudit: {
+    listEvents: QueryRef;
+  };
   residentDetail: {
     get: QueryRef;
     resendOtp: ActionRef;
@@ -155,6 +166,9 @@ export type TableNames =
   | "inviteRate"
   | "dataRetentionPolicies"
   | "dataRetentionRuns"
+  | "dsarRequests"
+  | "dsarRequestEvents"
+  | "adminAuditEvents"
   | "usages"
   | (string & {});
 
@@ -250,6 +264,48 @@ type DocByTable = {
     maxRowsPerTarget: number;
     triggeredBy?: string;
     summary: any;
+    createdAt: number;
+  };
+  dsarRequests: DefaultDoc<"dsarRequests"> & {
+    type: "access" | "deletion";
+    status: "open" | "in_review" | "approved" | "rejected" | "completed";
+    subjectType: "resident";
+    residentId?: Id<"residents">;
+    residentEmail?: string;
+    condoId?: Id<"condos">;
+    protocol: string;
+    requestedAt: number;
+    dueAt: number;
+    completedAt?: number;
+    assignedTo?: string;
+    createdBy: string;
+    updatedBy: string;
+    resolutionNote?: string;
+    exportLastGeneratedAt?: number;
+    deletionExecutedAt?: number;
+    lastResultSummary?: any;
+    createdAt: number;
+    updatedAt: number;
+  };
+  dsarRequestEvents: DefaultDoc<"dsarRequestEvents"> & {
+    requestId: Id<"dsarRequests">;
+    action: string;
+    actor: string;
+    createdAt: number;
+    note?: string;
+    payload?: any;
+  };
+  adminAuditEvents: DefaultDoc<"adminAuditEvents"> & {
+    action: string;
+    actorType: string;
+    actorId?: string;
+    actorKey: string;
+    condoId?: Id<"condos">;
+    entityType: string;
+    entityId?: string;
+    before?: any;
+    after?: any;
+    metadata?: any;
     createdAt: number;
   };
   minutes: DefaultDoc<"minutes"> & {

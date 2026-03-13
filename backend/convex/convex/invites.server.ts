@@ -8,6 +8,7 @@ import {
 } from "./invites.shared";
 import { requireCondoRole, requirePlatformRole } from "./guards";
 import type { Id } from "./_generated/dataModel";
+import { recordAdminAuditEvent } from "./lib/adminAudit";
 
 type SubtleDigest = {
   digest: (algorithm: string, data: ArrayBuffer) => Promise<ArrayBuffer>;
@@ -284,11 +285,14 @@ export const revoke = mutation({
       throw inviteError();
     }
 
+    let actor: { type: "platform" | "resident"; id: string } | null = null;
     try {
-      await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
+      const { user } = await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
+      actor = { type: "platform", id: String(user._id) };
     } catch {
       try {
-        await requireCondoRole(ctx, invite.condoId, ["syndic", "manager"], token);
+        const { resident } = await requireCondoRole(ctx, invite.condoId, ["syndic", "manager"], token);
+        actor = { type: "resident", id: String(resident._id) };
       } catch {
         throw inviteError();
       }
@@ -299,6 +303,7 @@ export const revoke = mutation({
       return { ok: true, status: invite.status };
     }
 
+    const beforeStatus = invite.status;
     await ctx.db.patch(invite._id, {
       status: "revoked",
       updatedAt: now,
@@ -309,6 +314,17 @@ export const revoke = mutation({
       key: invite.email,
       createdAt: now,
       meta: { condoId: invite.condoId, inviteId: invite._id },
+    });
+
+    await recordAdminAuditEvent(ctx, {
+      action: "invite.revoked",
+      actor: actor ?? { type: "unknown" },
+      condoId: invite.condoId,
+      entityType: "invite",
+      entityId: String(invite._id),
+      before: { status: beforeStatus },
+      after: { status: "revoked" },
+      metadata: { email: invite.email },
     });
 
     return { ok: true, status: "revoked" };

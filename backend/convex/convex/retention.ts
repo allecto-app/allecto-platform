@@ -2,6 +2,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireCondoRole, requirePlatformRole } from "./guards";
+import { recordAdminAuditEvent } from "./lib/adminAudit";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_ROWS_PER_TARGET = 500;
@@ -84,6 +85,26 @@ function resolvePolicy(
 function isPastCutoff(refTimestamp: number | undefined, cutoff: number): boolean {
   if (typeof refTimestamp !== "number") return false;
   return refTimestamp <= cutoff;
+}
+
+async function authorizeRetentionScope(
+  ctx: any,
+  token: string,
+  condoId?: any,
+): Promise<{ actor: string }> {
+  if (!condoId) {
+    const { user } = await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
+    return { actor: `platform:${String(user._id)}` };
+  }
+
+  try {
+    const { user } = await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
+    return { actor: `platform:${String(user._id)}` };
+  } catch {
+    const { resident, user } = await requireCondoRole(ctx, condoId, ["syndic", "manager"], token);
+    if (resident) return { actor: `resident:${String(resident._id)}` };
+    return { actor: `platform:${String(user._id)}` };
+  }
 }
 
 type TargetSummary = {
@@ -241,11 +262,7 @@ export const getPolicies = query({
     condoId: v.optional(v.id("condos")),
   },
   handler: async (ctx, { token, condoId }) => {
-    if (condoId) {
-      await requireCondoRole(ctx, condoId, ["syndic", "manager"], token);
-    } else {
-      await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
-    }
+    await authorizeRetentionScope(ctx, token, condoId);
 
     const records = await ctx.db.query("dataRetentionPolicies").collect();
     const maps = buildPolicyMaps(records);
@@ -280,14 +297,7 @@ export const upsertPolicy = mutation({
       throw new Error("Retention days must be between 1 and 3650");
     }
 
-    let updatedBy = "unknown";
-    if (condoId) {
-      const { resident, user } = await requireCondoRole(ctx, condoId, ["syndic", "manager"], token);
-      updatedBy = resident ? `resident:${String(resident._id)}` : `platform:${String(user._id)}`;
-    } else {
-      const { user } = await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
-      updatedBy = `platform:${String(user._id)}`;
-    }
+    const { actor: updatedBy } = await authorizeRetentionScope(ctx, token, condoId);
 
     const now = Date.now();
     const existing = condoId
@@ -303,12 +313,36 @@ export const upsertPolicy = mutation({
         ).find((record) => record.condoId === undefined);
 
     if (existing) {
+      const before = {
+        target: existing.target,
+        condoId: existing.condoId ?? null,
+        retentionDays: existing.retentionDays,
+        enabled: existing.enabled,
+        note: existing.note ?? null,
+      };
       await ctx.db.patch(existing._id, {
         retentionDays,
         enabled,
         note,
         updatedAt: now,
         updatedBy,
+      });
+      await recordAdminAuditEvent(ctx, {
+        action: "retention.policy.updated",
+        actor: updatedBy.startsWith("resident:")
+          ? { type: "resident", id: updatedBy.replace("resident:", "") }
+          : { type: "platform", id: updatedBy.replace("platform:", "") },
+        condoId,
+        entityType: "dataRetentionPolicy",
+        entityId: String(existing._id),
+        before,
+        after: {
+          target,
+          condoId: condoId ?? null,
+          retentionDays,
+          enabled,
+          note: note ?? null,
+        },
       });
       return { id: existing._id, updated: true };
     }
@@ -322,6 +356,23 @@ export const upsertPolicy = mutation({
       createdAt: now,
       updatedAt: now,
       updatedBy,
+    });
+    await recordAdminAuditEvent(ctx, {
+      action: "retention.policy.created",
+      actor: updatedBy.startsWith("resident:")
+        ? { type: "resident", id: updatedBy.replace("resident:", "") }
+        : { type: "platform", id: updatedBy.replace("platform:", "") },
+      condoId,
+      entityType: "dataRetentionPolicy",
+      entityId: String(id),
+      before: null,
+      after: {
+        target,
+        condoId: condoId ?? null,
+        retentionDays,
+        enabled,
+        note: note ?? null,
+      },
     });
     return { id, updated: false };
   },
@@ -366,6 +417,23 @@ export const executeRetention = internalMutation({
       createdAt: finishedAt,
     });
 
+    await recordAdminAuditEvent(ctx, {
+      action: "retention.run.completed",
+      actor: triggeredBy?.startsWith("platform:")
+        ? { type: "platform", id: triggeredBy.replace("platform:", "") }
+        : triggeredBy?.startsWith("resident:")
+          ? { type: "resident", id: triggeredBy.replace("resident:", "") }
+          : { type: "system", id: triggeredBy ?? "system" },
+      entityType: "dataRetentionRun",
+      entityId: String(runId),
+      after: {
+        dryRun,
+        maxRowsPerTarget: safeMaxRows,
+        summary,
+      },
+      metadata: { triggeredBy: triggeredBy ?? "system" },
+    });
+
     return {
       runId,
       dryRun,
@@ -385,10 +453,20 @@ export const triggerRun = mutation({
   handler: async (ctx, { token, dryRun, maxRowsPerTarget }) => {
     const { user } = await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
     const now = Date.now();
+    const safeRows = clampRows(maxRowsPerTarget);
     await ctx.scheduler.runAfter(0, internal.retention.executeRetention, {
       dryRun: dryRun ?? true,
-      maxRowsPerTarget: clampRows(maxRowsPerTarget),
+      maxRowsPerTarget: safeRows,
       triggeredBy: `platform:${String(user._id)}`,
+    });
+    await recordAdminAuditEvent(ctx, {
+      action: "retention.run.queued",
+      actor: { type: "platform", id: String(user._id) },
+      entityType: "dataRetentionRun",
+      after: {
+        dryRun: dryRun ?? true,
+        maxRowsPerTarget: safeRows,
+      },
     });
     return { queued: true, queuedAt: now };
   },

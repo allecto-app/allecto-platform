@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeEmail } from "./_secu";
 import { internal } from "./_generated/api";
+import { anonymizeResidentById } from "./lib/residentPrivacy";
 
 type ResidentRole = "resident" | "syndic" | "manager" | "council";
 const RESIDENT_WELCOME_TEMPLATE_ID = process.env.RESEND_TEMPLATE_RESIDENT_WELCOME ?? "";
@@ -279,91 +280,8 @@ export const remove = mutation({
     },
     handler: async (ctx, { residentId }) => {
         const resident = await ctx.db.get(residentId);
-        if (!resident) {
-            return false;
-        }
-        if (resident.deletedAt !== undefined) {
-            return true;
-        }
-
-        if (resident.isActive) {
-            throw new Error("Apenas moradores inativos podem ser excluídos");
-        }
-
-        const now = Date.now();
-
-        const memberships = await ctx.db
-            .query("memberships")
-            .withIndex("byResident", (q) => q.eq("residentId", residentId))
-            .collect();
-        for (const membership of memberships) {
-            await ctx.db.delete(membership._id);
-        }
-
-        const votes = await ctx.db
-            .query("votes")
-            .withIndex("byResidentMinute", (q) => q.eq("residentId", residentId))
-            .collect();
-        for (const vote of votes) {
-            await ctx.db.patch(vote._id, { comment: undefined });
-        }
-
-        const sessions = await ctx.db
-            .query("sessions")
-            .withIndex("byResident", (q) => q.eq("residentId", residentId))
-            .collect();
-        for (const session of sessions) {
-            await ctx.db.patch(session._id, {
-                residentId: undefined,
-                revokedAt: now,
-                ip: undefined,
-                userAgent: undefined,
-            });
-        }
-
-        if (resident.email) {
-            const invites = await ctx.db
-                .query("invites")
-                .withIndex("byCondoEmail", (q) =>
-                    q.eq("condoId", resident.condoId).eq("email", resident.email!),
-                )
-                .collect();
-            for (const invite of invites) {
-                await ctx.db.delete(invite._id);
-            }
-
-            const otpsByEmail = await ctx.db
-                .query("otps")
-                .withIndex("byCondoEmail", (q) =>
-                    q.eq("condoId", resident.condoId).eq("email", resident.email!),
-                )
-                .collect();
-            for (const otp of otpsByEmail) {
-                await ctx.db.delete(otp._id);
-            }
-        }
-
-        if (resident.phone) {
-            const otpsByPhone = await ctx.db
-                .query("otps")
-                .withIndex("byCondoPhone", (q) =>
-                    q.eq("condoId", resident.condoId).eq("phone", resident.phone!),
-                )
-                .collect();
-            for (const otp of otpsByPhone) {
-                await ctx.db.delete(otp._id);
-            }
-        }
-
-        await ctx.db.patch(residentId, {
-            name: "Morador removido",
-            email: undefined,
-            phone: undefined,
-            isActive: false,
-            deletedAt: now,
-            anonymizedAt: now,
-            updatedAt: now,
-        });
-        return true;
+        if (!resident) return false;
+        const result = await anonymizeResidentById(ctx, residentId);
+        return result.ok;
     },
 });

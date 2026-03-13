@@ -25,6 +25,7 @@ import { OnboardingPage } from "./screens/OnboardingPage";
 import { AuditPage } from "./screens/AuditPage";
 import { SupportPage } from "./screens/SupportPage";
 import { RetentionPage } from "./screens/RetentionPage";
+import { DsarRequestsPage } from "./screens/DsarRequestsPage";
 import { Toaster } from "./components/ui/sonner";
 import { Palette, Package, Loader2 } from "lucide-react";
 import { Button } from "./components/ui/button";
@@ -235,6 +236,8 @@ function AuthenticatedShell({
       auth.roles.includes("ops"));
   const canManageRetention =
     isPortalDomain && auth.type === "platform" && auth.roles.includes("super_admin");
+  const canManageDsar =
+    isPortalDomain && auth.type === "platform" && auth.roles.includes("super_admin");
   const isResident = isResidentSession;
   const canSwitchResidentCondo = isResidentSyndic && !isCondoDomain;
 
@@ -388,7 +391,14 @@ function AuthenticatedShell({
     }
   }, [selectedCondo]);
 
-  const restrictedPlatformPages = new Set(["tenants", "onboarding", "audit", "support", "retention"]);
+  const restrictedPlatformPages = new Set([
+    "tenants",
+    "onboarding",
+    "audit",
+    "support",
+    "retention",
+    "dsar",
+  ]);
 
   useEffect(() => {
     if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(currentPage)) {
@@ -397,7 +407,10 @@ function AuthenticatedShell({
     if (currentPage === "retention" && !canManageRetention) {
       setCurrentPage("dashboard");
     }
-  }, [canSeePlatform, currentPage, isResident, isCondoDomain, canManageRetention]);
+    if (currentPage === "dsar" && !canManageDsar) {
+      setCurrentPage("dashboard");
+    }
+  }, [canSeePlatform, currentPage, isResident, isCondoDomain, canManageRetention, canManageDsar]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -409,6 +422,9 @@ function AuthenticatedShell({
       return;
     }
     if (page === "retention" && !canManageRetention) {
+      return;
+    }
+    if (page === "dsar" && !canManageDsar) {
       return;
     }
     setIsMobileSidebarOpen(false);
@@ -571,6 +587,7 @@ function AuthenticatedShell({
             mode={sidebarMode}
             selectedCondo={selectedCondo}
             showRetention={canManageRetention}
+            showDsar={canManageDsar}
           />
         </div>
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -608,9 +625,14 @@ function AuthenticatedShell({
                   sessionToken={auth.token}
                 />
               )}
-              {showPlatformSections && currentPage === "audit" && <AuditPage />}
+              {showPlatformSections && currentPage === "audit" && (
+                <AuditPage sessionToken={auth.token} />
+              )}
               {showPlatformSections && currentPage === "support" && (
                 <SupportPage onNavigate={handleNavigate} onSelectCondo={handleSelectCondo} />
+              )}
+              {showPlatformSections && canManageDsar && currentPage === "dsar" && (
+                <DsarRequestsPage sessionToken={auth.token} condo={selectedCondo} />
               )}
               {showPlatformSections && canManageRetention && currentPage === "retention" && (
                 <RetentionPage sessionToken={auth.token} condo={selectedCondo} />
@@ -805,6 +827,7 @@ function AuthenticatedShell({
             mode={sidebarMode}
             selectedCondo={selectedCondo}
             showRetention={canManageRetention}
+            showDsar={canManageDsar}
           />
         </div>
       </div>

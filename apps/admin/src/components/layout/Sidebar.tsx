@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X, CreditCard, ShieldCheck } from "lucide-react";
+import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X, CreditCard, ShieldCheck, ClipboardList } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -22,6 +22,7 @@ interface SidebarProps {
   mode?: "platform" | "tenant" | "resident";
   selectedCondo?: Doc<"condos"> | null;
   showRetention?: boolean;
+  showDsar?: boolean;
 }
 
 const platformNavigation: NavItem[] = [
@@ -58,6 +59,7 @@ export function Sidebar({
   mode = "tenant",
   selectedCondo,
   showRetention = false,
+  showDsar = false,
 }: SidebarProps) {
   const isPlatformMode = mode === "platform";
   const isResidentMode = mode === "resident";
@@ -76,6 +78,7 @@ export function Sidebar({
   const condoLogoUrl = branding?.logoUrl ?? null;
   const platformItems = [
     ...platformNavigation,
+    ...(showDsar ? [{ name: "Solicitações LGPD", icon: ClipboardList, page: "dsar" }] : []),
     ...(showRetention ? [{ name: "Retenção LGPD", icon: ShieldCheck, page: "retention" }] : []),
   ];
 

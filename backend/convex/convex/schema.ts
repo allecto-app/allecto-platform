@@ -346,6 +346,68 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("byStartedAt", ["startedAt"]),
 
+  dsarRequests: defineTable({
+    type: v.union(v.literal("access"), v.literal("deletion")),
+    status: v.union(
+      v.literal("open"),
+      v.literal("in_review"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("completed"),
+    ),
+    subjectType: v.literal("resident"),
+    residentId: v.optional(v.id("residents")),
+    residentEmail: v.optional(v.string()),
+    condoId: v.optional(v.id("condos")),
+    protocol: v.string(),
+    requestedAt: v.number(),
+    dueAt: v.number(),
+    completedAt: v.optional(v.number()),
+    assignedTo: v.optional(v.string()),
+    createdBy: v.string(),
+    updatedBy: v.string(),
+    resolutionNote: v.optional(v.string()),
+    exportLastGeneratedAt: v.optional(v.number()),
+    deletionExecutedAt: v.optional(v.number()),
+    lastResultSummary: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byProtocol", ["protocol"])
+    .index("byStatus", ["status"])
+    .index("byRequestedAt", ["requestedAt"])
+    .index("byResidentId", ["residentId"])
+    .index("byCondo", ["condoId"]),
+
+  dsarRequestEvents: defineTable({
+    requestId: v.id("dsarRequests"),
+    action: v.string(),
+    actor: v.string(),
+    createdAt: v.number(),
+    note: v.optional(v.string()),
+    payload: v.optional(v.any()),
+  })
+    .index("byRequest", ["requestId"])
+    .index("byCreatedAt", ["createdAt"]),
+
+  adminAuditEvents: defineTable({
+    action: v.string(),
+    actorType: v.string(),
+    actorId: v.optional(v.string()),
+    actorKey: v.string(),
+    condoId: v.optional(v.id("condos")),
+    entityType: v.string(),
+    entityId: v.optional(v.string()),
+    before: v.optional(v.any()),
+    after: v.optional(v.any()),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("byCreatedAt", ["createdAt"])
+    .index("byActionCreatedAt", ["action", "createdAt"])
+    .index("byActorCreatedAt", ["actorKey", "createdAt"])
+    .index("byCondoCreatedAt", ["condoId", "createdAt"]),
+
   usages: defineTable({
     tenantId: v.id("condos"),
     type: v.literal("assembly"),
