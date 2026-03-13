@@ -194,6 +194,8 @@ type DocByTable = {
     code: string;
     block?: string;
     floor?: string;
+    deletedAt?: number;
+    anonymizedAt?: number;
     createdAt: number;
     updatedAt: number;
   };

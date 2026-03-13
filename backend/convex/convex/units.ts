@@ -15,7 +15,7 @@ export const upsert = mutation({
       .query("units")
       .withIndex("byCondoCode", (q) => q.eq("condoId", a.condoId).eq("code", a.code))
       .unique();
-    if (existing) {
+    if (existing && existing.deletedAt === undefined) {
       await ctx.db.patch(existing._id, { block: a.block, floor: a.floor, updatedAt: now });
       return existing._id;
     }
@@ -24,6 +24,8 @@ export const upsert = mutation({
       code: a.code,
       block: a.block,
       floor: a.floor,
+      deletedAt: undefined,
+      anonymizedAt: undefined,
       createdAt: now,
       updatedAt: now,
     });
@@ -46,6 +48,9 @@ export const addMembership = mutation({
 
     if (!unit) {
       throw new Error("Unit not found");
+    }
+    if (unit.deletedAt !== undefined) {
+      throw new Error("Unit was deleted");
     }
     if (!resident) {
       throw new Error("Resident not found");
@@ -88,6 +93,9 @@ export const update = mutation({
     if (!unit) {
       throw new Error("Unit not found");
     }
+    if (unit.deletedAt !== undefined) {
+      throw new Error("Unit was deleted");
+    }
 
     const trimmedCode = code.trim();
     if (!trimmedCode) {
@@ -99,7 +107,7 @@ export const update = mutation({
         .query("units")
         .withIndex("byCondoCode", (q) => q.eq("condoId", unit.condoId).eq("code", trimmedCode))
         .unique();
-      if (duplicate) {
+      if (duplicate && duplicate.deletedAt === undefined) {
         throw new Error("Unit code already exists for this condo");
       }
     }
@@ -139,24 +147,27 @@ export const remove = mutation({
     if (!unit) {
       return false;
     }
+    if (unit.deletedAt !== undefined) {
+      return true;
+    }
 
+    const now = Date.now();
     const memberships = await ctx.db
       .query("memberships")
       .withIndex("byUnit", (q) => q.eq("unitId", unitId))
       .collect();
-    for (const membership of memberships) {
-      await ctx.db.delete(membership._id);
+    if (memberships.length > 0) {
+      throw new Error("Desvincule todos os moradores antes de excluir a unidade");
     }
 
-    const votes = await ctx.db
-      .query("votes")
-      .withIndex("byUnit", (q) => q.eq("unitId", unitId))
-      .collect();
-    for (const vote of votes) {
-      await ctx.db.delete(vote._id);
-    }
-
-    await ctx.db.delete(unitId);
+    await ctx.db.patch(unitId, {
+      code: `Unidade removida ${String(unitId).slice(-6)}`,
+      block: undefined,
+      floor: undefined,
+      deletedAt: now,
+      anonymizedAt: now,
+      updatedAt: now,
+    });
     return true;
   },
 });
@@ -194,7 +205,7 @@ export const detail = query({
   args: { unitId: v.id("units") },
   handler: async (ctx, { unitId }) => {
     const unit = await ctx.db.get(unitId);
-    if (!unit) {
+    if (!unit || unit.deletedAt !== undefined) {
       return null;
     }
 
@@ -269,9 +280,10 @@ export const detail = query({
 export const listByCondo = query({
   args: { condoId: v.id("condos"), limit: v.optional(v.number()) },
   handler: async (ctx, { condoId, limit }) => {
-    return await ctx.db
+    const units = await ctx.db
       .query("units")
       .withIndex("byCondo", (q) => q.eq("condoId", condoId))
       .take(limit ?? 500);
+    return units.filter((unit) => unit.deletedAt === undefined);
   },
 });

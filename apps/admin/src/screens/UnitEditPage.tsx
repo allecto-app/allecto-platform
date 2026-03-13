@@ -269,6 +269,10 @@ export function UnitEditPage({
 
   const handleDelete = async () => {
     if (!unit) return;
+    if (membershipCount > 0) {
+      toast.error("Desvincule todos os moradores antes de excluir a unidade");
+      return;
+    }
     setIsDeleting(true);
     try {
       await removeUnit({ unitId: unit.id });
@@ -277,7 +281,11 @@ export function UnitEditPage({
       onNavigate("units");
     } catch (error) {
       console.error(error);
-      toast.error("Não foi possível excluir a unidade");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a unidade",
+      );
     } finally {
       setIsDeleting(false);
     }

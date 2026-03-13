@@ -47,6 +47,8 @@ export default defineSchema({
     code: v.string(),
     block: v.optional(v.string()),
     floor: v.optional(v.string()),
+    deletedAt: v.optional(v.number()),
+    anonymizedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

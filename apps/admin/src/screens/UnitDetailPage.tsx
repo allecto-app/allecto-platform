@@ -84,6 +84,7 @@ export function UnitDetailPage({
   const [selectedRole, setSelectedRole] = useState<MembershipRole | "">("");
   const [isLinking, setIsLinking] = useState(false);
   const [pendingMembershipId, setPendingMembershipId] = useState<Id<"memberships"> | null>(null);
+  const [isDeletingUnit, setIsDeletingUnit] = useState(false);
 
   const effectiveUnitId = unitId ?? unitFallback?.id ?? null;
 
@@ -172,9 +173,29 @@ export function UnitDetailPage({
   const addMembership = useMutation(api.units.addMembership);
   const updateMembershipRole = useMutation(api.units.updateMembershipRole);
   const removeMembership = useMutation(api.units.removeMembership);
+  const removeUnit = useMutation(api.units.remove);
 
-  const handleDelete = () => {
-    toast.warning("Exclusão de unidade ainda não está disponível");
+  const handleDelete = async () => {
+    if (!unit || isDeletingUnit) return;
+    if (linkedResidents.length > 0) {
+      toast.error("Desvincule todos os moradores antes de excluir a unidade");
+      return;
+    }
+    setIsDeletingUnit(true);
+    try {
+      await removeUnit({ unitId: unit.id });
+      toast.success("Unidade removida com sucesso");
+      onNavigate("units");
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível remover a unidade",
+      );
+    } finally {
+      setIsDeletingUnit(false);
+    }
   };
 
   const handleEdit = () => {
@@ -509,25 +530,27 @@ export function UnitDetailPage({
             <CardContent>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full">
+                  <Button variant="destructive" className="w-full" disabled={isDeletingUnit}>
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Excluir Unidade
+                    {isDeletingUnit ? "Removendo..." : "Excluir Unidade"}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Excluir Unidade</AlertDialogTitle>
                     <AlertDialogDescription>
-                      A exclusão de unidades ainda não está disponível nesta versão.
+                      Esta ação anonimiza os dados da unidade, preservando o histórico
+                      de votos. A exclusão só é permitida quando não houver moradores vinculados.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDelete}
+                      disabled={isDeletingUnit}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Entendi
+                      {isDeletingUnit ? "Removendo..." : "Excluir"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
