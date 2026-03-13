@@ -86,6 +86,12 @@ type AugmentedApi = typeof baseApi & {
     getReadState: QueryRef;
     markRead: MutationRef;
   };
+  retention: {
+    getPolicies: QueryRef;
+    upsertPolicy: MutationRef;
+    triggerRun: MutationRef;
+    listRuns: QueryRef;
+  };
   residentDetail: {
     get: QueryRef;
     resendOtp: ActionRef;
@@ -147,6 +153,8 @@ export type TableNames =
   | "securityEvents"
   | "invites"
   | "inviteRate"
+  | "dataRetentionPolicies"
+  | "dataRetentionRuns"
   | "usages"
   | (string & {});
 
@@ -224,6 +232,25 @@ type DocByTable = {
     status: string;
     attempts: number;
     updatedAt?: number;
+  };
+  dataRetentionPolicies: DefaultDoc<"dataRetentionPolicies"> & {
+    target: string;
+    condoId?: Id<"condos">;
+    retentionDays: number;
+    enabled: boolean;
+    createdAt: number;
+    updatedAt: number;
+    updatedBy?: string;
+    note?: string;
+  };
+  dataRetentionRuns: DefaultDoc<"dataRetentionRuns"> & {
+    startedAt: number;
+    finishedAt: number;
+    dryRun: boolean;
+    maxRowsPerTarget: number;
+    triggeredBy?: string;
+    summary: any;
+    createdAt: number;
   };
   minutes: DefaultDoc<"minutes"> & {
     condoId: Id<"condos">;

@@ -24,6 +24,7 @@ import { TenantsPage } from "./screens/TenantsPage";
 import { OnboardingPage } from "./screens/OnboardingPage";
 import { AuditPage } from "./screens/AuditPage";
 import { SupportPage } from "./screens/SupportPage";
+import { RetentionPage } from "./screens/RetentionPage";
 import { Toaster } from "./components/ui/sonner";
 import { Palette, Package, Loader2 } from "lucide-react";
 import { Button } from "./components/ui/button";
@@ -232,6 +233,8 @@ function AuthenticatedShell({
     (auth.roles.includes("super_admin") ||
       auth.roles.includes("support") ||
       auth.roles.includes("ops"));
+  const canManageRetention =
+    isPortalDomain && auth.type === "platform" && auth.roles.includes("super_admin");
   const isResident = isResidentSession;
   const canSwitchResidentCondo = isResidentSyndic && !isCondoDomain;
 
@@ -385,13 +388,16 @@ function AuthenticatedShell({
     }
   }, [selectedCondo]);
 
-  const restrictedPlatformPages = new Set(["tenants", "onboarding", "audit", "support"]);
+  const restrictedPlatformPages = new Set(["tenants", "onboarding", "audit", "support", "retention"]);
 
   useEffect(() => {
     if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(currentPage)) {
       setCurrentPage(isResident ? "minutes" : "dashboard");
     }
-  }, [canSeePlatform, currentPage, isResident, isCondoDomain]);
+    if (currentPage === "retention" && !canManageRetention) {
+      setCurrentPage("dashboard");
+    }
+  }, [canSeePlatform, currentPage, isResident, isCondoDomain, canManageRetention]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -400,6 +406,9 @@ function AuthenticatedShell({
 
   const handleNavigate = (page: string) => {
     if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(page)) {
+      return;
+    }
+    if (page === "retention" && !canManageRetention) {
       return;
     }
     setIsMobileSidebarOpen(false);
@@ -561,6 +570,7 @@ function AuthenticatedShell({
             onToggleCollapse={handleDesktopSidebarToggle}
             mode={sidebarMode}
             selectedCondo={selectedCondo}
+            showRetention={canManageRetention}
           />
         </div>
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -601,6 +611,9 @@ function AuthenticatedShell({
               {showPlatformSections && currentPage === "audit" && <AuditPage />}
               {showPlatformSections && currentPage === "support" && (
                 <SupportPage onNavigate={handleNavigate} onSelectCondo={handleSelectCondo} />
+              )}
+              {showPlatformSections && canManageRetention && currentPage === "retention" && (
+                <RetentionPage sessionToken={auth.token} condo={selectedCondo} />
               )}
 
               {currentPage === "dashboard" && (
@@ -791,6 +804,7 @@ function AuthenticatedShell({
             onToggleCollapse={closeMobileSidebar}
             mode={sidebarMode}
             selectedCondo={selectedCondo}
+            showRetention={canManageRetention}
           />
         </div>
       </div>

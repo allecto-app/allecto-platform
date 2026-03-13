@@ -323,6 +323,29 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("byKey", ["key"]),
 
+  dataRetentionPolicies: defineTable({
+    target: v.string(),
+    condoId: v.optional(v.id("condos")),
+    retentionDays: v.number(),
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.string()),
+    note: v.optional(v.string()),
+  })
+    .index("byTarget", ["target"])
+    .index("byCondoTarget", ["condoId", "target"]),
+
+  dataRetentionRuns: defineTable({
+    startedAt: v.number(),
+    finishedAt: v.number(),
+    dryRun: v.boolean(),
+    maxRowsPerTarget: v.number(),
+    triggeredBy: v.optional(v.string()),
+    summary: v.any(),
+    createdAt: v.number(),
+  }).index("byStartedAt", ["startedAt"]),
+
   usages: defineTable({
     tenantId: v.id("condos"),
     type: v.literal("assembly"),

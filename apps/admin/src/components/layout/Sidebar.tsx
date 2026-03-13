@@ -1,11 +1,18 @@
 import { useMemo } from "react";
-import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X, CreditCard } from "lucide-react";
+import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X, CreditCard, ShieldCheck } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "../ui/utils";
 import { Separator } from "../ui/separator";
 import { Doc } from "../../lib/convexGenerated";
+import type { LucideIcon } from "lucide-react";
+
+type NavItem = {
+  name: string;
+  icon: LucideIcon;
+  page: string;
+};
 
 interface SidebarProps {
   currentPage: string;
@@ -14,9 +21,10 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   mode?: "platform" | "tenant" | "resident";
   selectedCondo?: Doc<"condos"> | null;
+  showRetention?: boolean;
 }
 
-const platformNavigation = [
+const platformNavigation: NavItem[] = [
   { name: "Dashboard", icon: Home, page: "dashboard" },
   { name: "Condomínios", icon: Globe, page: "tenants" },
   { name: "Criar Condomínio", icon: Building2, page: "onboarding" },
@@ -24,7 +32,7 @@ const platformNavigation = [
   { name: "Suporte", icon: Wrench, page: "support" },
 ];
 
-const tenantNavigation = [
+const tenantNavigation: NavItem[] = [
   { name: "Dashboard", icon: Home, page: "dashboard" },
   { name: "Atas", icon: FileText, page: "minutes" },
   { name: "Moradores", icon: Users, page: "residents" },
@@ -34,15 +42,23 @@ const tenantNavigation = [
   { name: "Configurações", icon: Settings, page: "settings" },
 ];
 
-const residentNavigation = [
+const residentNavigation: NavItem[] = [
   { name: "Atas", icon: FileText, page: "resident:minutes" },
   { name: "Minha Unidade", icon: Building2, page: "resident:unit" },
   { name: "Meu Perfil", icon: Users, page: "resident:profile" },
 ];
 
-const logoutNavigation = { name: "Sair", icon: LogOut, page: "__logout" } as const;
+const logoutNavigation: NavItem = { name: "Sair", icon: LogOut, page: "__logout" };
 
-export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, mode = "tenant", selectedCondo }: SidebarProps) {
+export function Sidebar({
+  currentPage,
+  onNavigate,
+  collapsed,
+  onToggleCollapse,
+  mode = "tenant",
+  selectedCondo,
+  showRetention = false,
+}: SidebarProps) {
   const isPlatformMode = mode === "platform";
   const isResidentMode = mode === "resident";
   const hasCondoSelected = !!selectedCondo;
@@ -58,14 +74,12 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, 
   }, [condoName]);
 
   const condoLogoUrl = branding?.logoUrl ?? null;
+  const platformItems = [
+    ...platformNavigation,
+    ...(showRetention ? [{ name: "Retenção LGPD", icon: ShieldCheck, page: "retention" }] : []),
+  ];
 
-  const renderNavItem = (
-    item:
-      | (typeof platformNavigation)[number]
-      | (typeof tenantNavigation)[number]
-      | typeof logoutNavigation,
-    disabled = false,
-  ) => {
+  const renderNavItem = (item: NavItem, disabled = false) => {
     const Icon = item.icon;
     const isActive = currentPage === item.page;
 
@@ -156,7 +170,7 @@ export function Sidebar({ currentPage, onNavigate, collapsed, onToggleCollapse, 
               {!collapsed && (
                 <div className="px-3 py-2 text-muted-foreground">Platform</div>
               )}
-              {platformNavigation.map((item) => renderNavItem(item))}
+              {platformItems.map((item) => renderNavItem(item))}
 
               <Separator className="my-2" />
 
