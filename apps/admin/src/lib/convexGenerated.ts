@@ -86,6 +86,12 @@ type AugmentedApi = typeof baseApi & {
     getReadState: QueryRef;
     markRead: MutationRef;
   };
+  communications: {
+    publish: MutationRef;
+    listByCondo: QueryRef;
+    listForResident: QueryRef;
+    archive: MutationRef;
+  };
   retention: {
     getPolicies: QueryRef;
     upsertPolicy: MutationRef;
@@ -152,6 +158,7 @@ export type TableNames =
   | "votes"
   | "notificationLogs"
   | "notificationReads"
+  | "residentCommunications"
   | "documents"
   | "documentEvents"
   | "otps"
@@ -405,6 +412,17 @@ type DocByTable = {
     scopeKey: string;
     condoId?: Id<"condos">;
     lastReadAt: number;
+    updatedAt: number;
+  };
+  residentCommunications: DefaultDoc<"residentCommunications"> & {
+    condoId: Id<"condos">;
+    title: string;
+    message?: string;
+    documentId?: Id<"documents">;
+    publishedBy: Id<"residents">;
+    status: "published" | "archived";
+    publishedAt: number;
+    createdAt: number;
     updatedAt: number;
   };
   usages: DefaultDoc<"usages"> & {

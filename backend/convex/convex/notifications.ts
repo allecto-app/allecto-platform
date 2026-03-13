@@ -34,6 +34,23 @@ type MinuteContext = {
   } | null;
 };
 
+type ResidentCommunicationContext = {
+  communication: {
+    _id: Id<"residentCommunications">;
+    condoId: Id<"condos">;
+    title: string;
+    message?: string;
+    documentId?: Id<"documents">;
+    publishedAt: number;
+    status: "published" | "archived";
+  };
+  condo: {
+    _id: Id<"condos">;
+    name: string;
+    subdomain?: string;
+  } | null;
+};
+
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeStyle: "short",
@@ -50,6 +67,16 @@ function firstName(name: string | null | undefined): string {
 }
 
 function buildMinuteLink(condo: MinuteContext["condo"], minuteId: Id<"minutes">): string {
+  if (condo?.subdomain) {
+    return `https://${condo.subdomain}.allecto.app`;
+  }
+  return "https://portal.allecto.app";
+}
+
+function buildResidentCommunicationLink(
+  condo: ResidentCommunicationContext["condo"],
+  communicationId: Id<"residentCommunications">,
+): string {
   if (condo?.subdomain) {
     return `https://${condo.subdomain}.allecto.app`;
   }
@@ -86,6 +113,33 @@ async function loadMinuteContext(ctx: any, minuteId: Id<"minutes">): Promise<Min
     console.error("[notifications] Failed to load minute", error);
     return null;
   }
+}
+
+async function loadResidentCommunicationContext(
+  ctx: any,
+  communicationId: Id<"residentCommunications">,
+): Promise<ResidentCommunicationContext | null> {
+  const communication = await ctx.db.get(communicationId);
+  if (!communication) return null;
+  const condo = await ctx.db.get(communication.condoId);
+  return {
+    communication: {
+      _id: communication._id,
+      condoId: communication.condoId,
+      title: communication.title,
+      message: communication.message ?? undefined,
+      documentId: communication.documentId ?? undefined,
+      publishedAt: communication.publishedAt,
+      status: communication.status as "published" | "archived",
+    },
+    condo: condo
+      ? {
+          _id: condo._id,
+          name: condo.name ?? "Condomínio",
+          subdomain: condo.subdomain ?? undefined,
+        }
+      : null,
+  };
 }
 
 async function collectOwnerRecipients(ctx: any, condoId: Id<"condos">): Promise<Recipient[]> {
@@ -134,6 +188,26 @@ async function collectOwnerRecipients(ctx: any, condoId: Id<"condos">): Promise<
   }
 
   return Array.from(recipientMap.values());
+}
+
+async function collectActiveResidentRecipients(
+  ctx: any,
+  condoId: Id<"condos">,
+): Promise<Array<{ residentId: Id<"residents">; name: string; email: string }>> {
+  const residents = (await ctx.runQuery(api.residents.list, { condoId, limit: 500 })) as Array<{
+    _id: Id<"residents">;
+    name: string;
+    email?: string | null;
+    isActive: boolean;
+  }>;
+
+  return residents
+    .filter((resident) => resident.isActive !== false && resident.email)
+    .map((resident) => ({
+      residentId: resident._id,
+      name: resident.name ?? "Morador(a)",
+      email: resident.email!,
+    }));
 }
 
 async function collectPendingVoteRecipients(ctx: any, minuteId: Id<"minutes">): Promise<Recipient[]> {
@@ -399,6 +473,82 @@ export const sendMinuteClosedEmail = internalAction({
       audienceCount: recipients.length,
       successCount,
       errorCount,
+    });
+  },
+});
+
+export const sendResidentCommunicationEmail = internalAction({
+  args: { communicationId: v.id("residentCommunications") },
+  handler: async (ctx, { communicationId }) => {
+    const context = await loadResidentCommunicationContext(ctx, communicationId);
+    if (!context) return;
+    if (context.communication.status !== "published") return;
+
+    const recipients = await collectActiveResidentRecipients(ctx, context.communication.condoId);
+    if (recipients.length === 0) {
+      await ctx.runMutation(internal.notifications.recordNotificationLog, {
+        condoId: context.communication.condoId,
+        template: "communication",
+        channel: "email",
+        audienceCount: 0,
+        successCount: 0,
+        errorCount: 0,
+        note: "Nenhum morador ativo com email para comunicado",
+      });
+      return;
+    }
+
+    const link = buildResidentCommunicationLink(context.condo, communicationId);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const recipient of recipients) {
+      try {
+        await ctx.runAction(internal.email.send, {
+          to: recipient.email,
+          subject: `Novo comunicado: ${context.communication.title}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+              <p>Olá ${firstName(recipient.name)},</p>
+              <p>Um novo comunicado foi publicado em ${context.condo?.name ?? "seu condomínio"}.</p>
+              <p><strong>${context.communication.title}</strong></p>
+              ${context.communication.message ? `<p>${context.communication.message}</p>` : ""}
+              <p>Acesse o portal para visualizar os detalhes e o documento anexado (quando houver):</p>
+              <p><a href="${link}" style="color: #2563eb;">${link}</a></p>
+              <p>Equipe Allecto</p>
+            </div>
+          `.trim(),
+          text: [
+            `Olá ${firstName(recipient.name)},`,
+            `Um novo comunicado foi publicado em ${context.condo?.name ?? "seu condomínio"}.`,
+            context.communication.title,
+            context.communication.message ?? "",
+            `Acesse o portal: ${link}`,
+            "",
+            "Equipe Allecto",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        });
+        successCount += 1;
+      } catch (error) {
+        errorCount += 1;
+        console.error("[notifications] Failed to send resident communication email", {
+          communicationId,
+          email: recipient.email,
+          error,
+        });
+      }
+    }
+
+    await ctx.runMutation(internal.notifications.recordNotificationLog, {
+      condoId: context.communication.condoId,
+      template: "communication",
+      channel: "email",
+      audienceCount: recipients.length,
+      successCount,
+      errorCount,
+      note: `Comunicado ${context.communication._id}`,
     });
   },
 });

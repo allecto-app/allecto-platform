@@ -20,6 +20,8 @@ import { UnitEditPage } from "./screens/UnitEditPage";
 import { SettingsPage } from "./screens/SettingsPage";
 import { BillingPage } from "./screens/BillingPage";
 import { NotificationsPage } from "./screens/NotificationsPage";
+import { CommunicationsPage } from "./screens/CommunicationsPage";
+import { CommunicationsNewPage } from "./screens/CommunicationsNewPage";
 import { TenantsPage } from "./screens/TenantsPage";
 import { OnboardingPage } from "./screens/OnboardingPage";
 import { AuditPage } from "./screens/AuditPage";
@@ -791,6 +793,20 @@ function AuthenticatedShell({
                   condo={selectedCondo}
                   userId={String(auth.userId)}
                   sessionToken={auth.token}
+                />
+              )}
+              {currentPage === "communications" && (
+                <CommunicationsPage
+                  condo={selectedCondo}
+                  sessionToken={auth.token}
+                  onNavigate={handleNavigate}
+                />
+              )}
+              {currentPage === "communications-new" && (
+                <CommunicationsNewPage
+                  condo={selectedCondo}
+                  sessionToken={auth.token}
+                  onNavigate={handleNavigate}
                 />
               )}
             </div>

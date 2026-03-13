@@ -80,6 +80,20 @@ export default defineSchema({
     .index("byResident", ["residentId"])
     .index("byUnit", ["unitId"]),
 
+  residentCommunications: defineTable({
+    condoId: v.id("condos"),
+    title: v.string(),
+    message: v.optional(v.string()),
+    documentId: v.optional(v.id("documents")),
+    publishedBy: v.id("residents"),
+    status: v.union(v.literal("published"), v.literal("archived")),
+    publishedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byCondo", ["condoId"])
+    .index("byCondoStatus", ["condoId", "status"]),
+
   minutes: defineTable({
     condoId: v.id("condos"),
     title: v.string(),

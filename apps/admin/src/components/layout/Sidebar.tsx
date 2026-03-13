@@ -36,6 +36,7 @@ const platformNavigation: NavItem[] = [
 const tenantNavigation: NavItem[] = [
   { name: "Dashboard", icon: Home, page: "dashboard" },
   { name: "Atas", icon: FileText, page: "minutes" },
+  { name: "Comunicados", icon: ClipboardList, page: "communications" },
   { name: "Moradores", icon: Users, page: "residents" },
   { name: "Unidades", icon: Building2, page: "units" },
   { name: "Notificações", icon: Bell, page: "notifications" },
@@ -45,6 +46,7 @@ const tenantNavigation: NavItem[] = [
 
 const residentNavigation: NavItem[] = [
   { name: "Atas", icon: FileText, page: "resident:minutes" },
+  { name: "Comunicados", icon: ClipboardList, page: "resident:communications" },
   { name: "Minha Unidade", icon: Building2, page: "resident:unit" },
   { name: "Meu Perfil", icon: Users, page: "resident:profile" },
 ];

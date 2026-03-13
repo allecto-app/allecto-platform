@@ -10,6 +10,7 @@ import { ResidentMinutesPage } from "./ResidentMinutesPage";
 import { ResidentMinuteDetailPage } from "./ResidentMinuteDetailPage";
 import { ResidentUnitPage } from "./ResidentUnitPage";
 import { ResidentProfilePage } from "./ResidentProfilePage";
+import { ResidentCommunicationsPage } from "./ResidentCommunicationsPage";
 import { cn } from "../components/ui/utils";
 
 type ResidentAuth = Extract<AdminAuthSession, { type: "resident" }>;
@@ -23,7 +24,12 @@ type ResidentUnitLink = {
 
 const RESIDENT_PAGE_STORAGE_KEY = "allecto-resident-current-page";
 
-type ResidentPage = "resident:minutes" | "resident:minute-detail" | "resident:unit" | "resident:profile";
+type ResidentPage =
+  | "resident:minutes"
+  | "resident:minute-detail"
+  | "resident:unit"
+  | "resident:profile"
+  | "resident:communications";
 
 interface ResidentShellProps {
   auth: ResidentAuth;
@@ -40,6 +46,7 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
       "resident:minute-detail",
       "resident:unit",
       "resident:profile",
+      "resident:communications",
     ];
     return allowed.includes(stored as ResidentPage) ? (stored as ResidentPage) : "resident:minutes";
   });
@@ -174,6 +181,9 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
               )}
               {currentPage === "resident:unit" && <ResidentUnitPage units={units} />}
               {currentPage === "resident:profile" && <ResidentProfilePage resident={resident} />}
+              {currentPage === "resident:communications" && (
+                <ResidentCommunicationsPage condoId={auth.condoId} sessionToken={auth.token} />
+              )}
             </div>
           </main>
         </div>
