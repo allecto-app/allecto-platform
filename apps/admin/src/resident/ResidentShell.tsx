@@ -11,6 +11,7 @@ import { ResidentMinuteDetailPage } from "./ResidentMinuteDetailPage";
 import { ResidentUnitPage } from "./ResidentUnitPage";
 import { ResidentProfilePage } from "./ResidentProfilePage";
 import { ResidentCommunicationsPage } from "./ResidentCommunicationsPage";
+import { ResidentCommunicationDetailPage } from "./ResidentCommunicationDetailPage";
 import { cn } from "../components/ui/utils";
 
 type ResidentAuth = Extract<AdminAuthSession, { type: "resident" }>;
@@ -29,7 +30,8 @@ type ResidentPage =
   | "resident:minute-detail"
   | "resident:unit"
   | "resident:profile"
-  | "resident:communications";
+  | "resident:communications"
+  | "resident:communication-detail";
 
 interface ResidentShellProps {
   auth: ResidentAuth;
@@ -47,12 +49,15 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
       "resident:unit",
       "resident:profile",
       "resident:communications",
+      "resident:communication-detail",
     ];
     return allowed.includes(stored as ResidentPage) ? (stored as ResidentPage) : "resident:minutes";
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedMinuteId, setSelectedMinuteId] = useState<Id<"minutes"> | null>(null);
+  const [selectedCommunicationId, setSelectedCommunicationId] =
+    useState<Id<"residentCommunications"> | null>(null);
 
   const condo = useQuery(api.condos.getBySubdomain, { subdomain: auth.condoSubdomain }) as Doc<"condos"> | undefined;
   const residentDetail = useQuery(api.residentDetail.get, { residentId: auth.userId }) as
@@ -104,6 +109,9 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
     setIsMobileSidebarOpen(false);
     if (page !== "resident:minute-detail") {
       setSelectedMinuteId(null);
+    }
+    if (page !== "resident:communication-detail") {
+      setSelectedCommunicationId(null);
     }
     setCurrentPage(page);
   };
@@ -182,7 +190,23 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
               {currentPage === "resident:unit" && <ResidentUnitPage units={units} />}
               {currentPage === "resident:profile" && <ResidentProfilePage resident={resident} />}
               {currentPage === "resident:communications" && (
-                <ResidentCommunicationsPage condoId={auth.condoId} sessionToken={auth.token} />
+                <ResidentCommunicationsPage
+                  condoId={auth.condoId}
+                  sessionToken={auth.token}
+                  onSelectCommunication={(communicationId) => {
+                    setSelectedCommunicationId(communicationId);
+                    setCurrentPage("resident:communication-detail");
+                    setIsMobileSidebarOpen(false);
+                  }}
+                />
+              )}
+              {currentPage === "resident:communication-detail" && (
+                <ResidentCommunicationDetailPage
+                  communicationId={selectedCommunicationId}
+                  condoId={auth.condoId}
+                  sessionToken={auth.token}
+                  onBack={() => handleNavigate("resident:communications")}
+                />
               )}
             </div>
           </main>

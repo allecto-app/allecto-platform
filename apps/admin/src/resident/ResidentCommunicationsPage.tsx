@@ -10,6 +10,7 @@ import { api, type Doc, type Id } from "../lib/convexGenerated";
 interface ResidentCommunicationsPageProps {
   condoId: Id<"condos">;
   sessionToken: string;
+  onSelectCommunication: (communicationId: Id<"residentCommunications">) => void;
 }
 
 const formatDateTime = (timestamp: number) =>
@@ -18,7 +19,11 @@ const formatDateTime = (timestamp: number) =>
     timeStyle: "short",
   }).format(new Date(timestamp));
 
-export function ResidentCommunicationsPage({ condoId, sessionToken }: ResidentCommunicationsPageProps) {
+export function ResidentCommunicationsPage({
+  condoId,
+  sessionToken,
+  onSelectCommunication,
+}: ResidentCommunicationsPageProps) {
   const communications = useQuery(api.communications.listForResident, {
     token: sessionToken,
     condoId,
@@ -65,7 +70,18 @@ export function ResidentCommunicationsPage({ condoId, sessionToken }: ResidentCo
                   <p className="mt-3 text-sm whitespace-pre-wrap">{communication.message}</p>
                 ) : null}
                 {communication.documentId ? (
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-sm text-primary underline"
+                      onClick={() =>
+                        onSelectCommunication(
+                          communication._id as Id<"residentCommunications">,
+                        )
+                      }
+                    >
+                      Ver detalhes
+                    </button>
                     <ViewPdfButton
                       docId={communication.documentId as Id<"documents">}
                       sessionToken={sessionToken}
@@ -75,7 +91,21 @@ export function ResidentCommunicationsPage({ condoId, sessionToken }: ResidentCo
                       size="sm"
                     />
                   </div>
-                ) : null}
+                ) : (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      className="text-sm text-primary underline"
+                      onClick={() =>
+                        onSelectCommunication(
+                          communication._id as Id<"residentCommunications">,
+                        )
+                      }
+                    >
+                      Ver detalhes
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           )}

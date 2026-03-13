@@ -22,6 +22,7 @@ import { BillingPage } from "./screens/BillingPage";
 import { NotificationsPage } from "./screens/NotificationsPage";
 import { CommunicationsPage } from "./screens/CommunicationsPage";
 import { CommunicationsNewPage } from "./screens/CommunicationsNewPage";
+import { CommunicationsDetailPage } from "./screens/CommunicationsDetailPage";
 import { TenantsPage } from "./screens/TenantsPage";
 import { OnboardingPage } from "./screens/OnboardingPage";
 import { AuditPage } from "./screens/AuditPage";
@@ -264,6 +265,8 @@ function AuthenticatedShell({
   const [selectedUnit, setSelectedUnit] = useState<UnitRecord | null>(null);
   const [selectedMinuteId, setSelectedMinuteId] = useState<Id<"minutes"> | null>(null);
   const [selectedMinute, setSelectedMinute] = useState<Doc<"minutes"> | null>(null);
+  const [selectedCommunicationId, setSelectedCommunicationId] =
+    useState<Id<"residentCommunications"> | null>(null);
 
   const platformCondos = useQuery(
     api.platform.listCondos,
@@ -800,10 +803,21 @@ function AuthenticatedShell({
                   condo={selectedCondo}
                   sessionToken={auth.token}
                   onNavigate={handleNavigate}
+                  onSelectCommunication={(communication) => {
+                    setSelectedCommunicationId(communication._id as Id<"residentCommunications">);
+                  }}
                 />
               )}
               {currentPage === "communications-new" && (
                 <CommunicationsNewPage
+                  condo={selectedCondo}
+                  sessionToken={auth.token}
+                  onNavigate={handleNavigate}
+                />
+              )}
+              {currentPage === "communications-detail" && (
+                <CommunicationsDetailPage
+                  communicationId={selectedCommunicationId}
                   condo={selectedCondo}
                   sessionToken={auth.token}
                   onNavigate={handleNavigate}

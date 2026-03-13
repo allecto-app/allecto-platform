@@ -41,6 +41,9 @@ type ResidentCommunicationContext = {
     title: string;
     message?: string;
     documentId?: Id<"documents">;
+    audienceType: "all" | "role" | "block";
+    targetRole?: string;
+    targetBlock?: string;
     publishedAt: number;
     status: "published" | "archived";
   };
@@ -129,6 +132,9 @@ async function loadResidentCommunicationContext(
       title: communication.title,
       message: communication.message ?? undefined,
       documentId: communication.documentId ?? undefined,
+      audienceType: (communication.audienceType ?? "all") as "all" | "role" | "block",
+      targetRole: communication.targetRole ?? undefined,
+      targetBlock: communication.targetBlock ?? undefined,
       publishedAt: communication.publishedAt,
       status: communication.status as "published" | "archived",
     },
@@ -190,19 +196,56 @@ async function collectOwnerRecipients(ctx: any, condoId: Id<"condos">): Promise<
   return Array.from(recipientMap.values());
 }
 
-async function collectActiveResidentRecipients(
+async function collectCommunicationRecipients(
   ctx: any,
-  condoId: Id<"condos">,
+  context: ResidentCommunicationContext,
 ): Promise<Array<{ residentId: Id<"residents">; name: string; email: string }>> {
-  const residents = (await ctx.runQuery(api.residents.list, { condoId, limit: 500 })) as Array<{
+  const residents = (await ctx.runQuery(api.residents.list, {
+    condoId: context.communication.condoId,
+    limit: 500,
+  })) as Array<{
     _id: Id<"residents">;
     name: string;
+    role: string;
     email?: string | null;
     isActive: boolean;
   }>;
 
-  return residents
-    .filter((resident) => resident.isActive !== false && resident.email)
+  let filteredResidents = residents.filter(
+    (resident) => resident.isActive !== false && resident.email,
+  );
+
+  if (context.communication.audienceType === "role" && context.communication.targetRole) {
+    filteredResidents = filteredResidents.filter(
+      (resident) => resident.role === context.communication.targetRole,
+    );
+  }
+
+  if (context.communication.audienceType === "block" && context.communication.targetBlock) {
+    const targetBlock = context.communication.targetBlock.trim().toLowerCase();
+    const units = ((await ctx.runQuery(api.units.listByCondo, {
+      condoId: context.communication.condoId,
+    })) ?? []) as Array<{ _id: Id<"units">; block?: string | null }>;
+    const targetUnits = units.filter((unit) => (unit.block ?? "").trim().toLowerCase() === targetBlock);
+
+    const targetResidentIds = new Set<string>();
+    const unitDetails = await Promise.all(
+      targetUnits.map((unit) => ctx.runQuery(api.units.detail, { unitId: unit._id })),
+    );
+    unitDetails.forEach((detail) => {
+      (detail?.memberships ?? []).forEach((membership: any) => {
+        if (membership?.resident?.id) {
+          targetResidentIds.add(String(membership.resident.id));
+        }
+      });
+    });
+
+    filteredResidents = filteredResidents.filter((resident) =>
+      targetResidentIds.has(String(resident._id)),
+    );
+  }
+
+  return filteredResidents
     .map((resident) => ({
       residentId: resident._id,
       name: resident.name ?? "Morador(a)",
@@ -478,13 +521,16 @@ export const sendMinuteClosedEmail = internalAction({
 });
 
 export const sendResidentCommunicationEmail = internalAction({
-  args: { communicationId: v.id("residentCommunications") },
-  handler: async (ctx, { communicationId }) => {
+  args: {
+    communicationId: v.id("residentCommunications"),
+    isResend: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { communicationId, isResend }) => {
     const context = await loadResidentCommunicationContext(ctx, communicationId);
     if (!context) return;
     if (context.communication.status !== "published") return;
 
-    const recipients = await collectActiveResidentRecipients(ctx, context.communication.condoId);
+    const recipients = await collectCommunicationRecipients(ctx, context);
     if (recipients.length === 0) {
       await ctx.runMutation(internal.notifications.recordNotificationLog, {
         condoId: context.communication.condoId,
@@ -493,7 +539,7 @@ export const sendResidentCommunicationEmail = internalAction({
         audienceCount: 0,
         successCount: 0,
         errorCount: 0,
-        note: "Nenhum morador ativo com email para comunicado",
+        note: "Nenhum morador elegível com email para comunicado",
       });
       return;
     }
@@ -531,8 +577,22 @@ export const sendResidentCommunicationEmail = internalAction({
             .join("\n"),
         });
         successCount += 1;
+        await ctx.runMutation(internal.notifications.recordCommunicationReceipt, {
+          communicationId,
+          residentId: recipient.residentId,
+          email: recipient.email,
+          status: "sent",
+        });
       } catch (error) {
         errorCount += 1;
+        const message = error instanceof Error ? error.message : "Falha no envio";
+        await ctx.runMutation(internal.notifications.recordCommunicationReceipt, {
+          communicationId,
+          residentId: recipient.residentId,
+          email: recipient.email,
+          status: "failed",
+          errorMessage: message,
+        });
         console.error("[notifications] Failed to send resident communication email", {
           communicationId,
           email: recipient.email,
@@ -548,7 +608,53 @@ export const sendResidentCommunicationEmail = internalAction({
       audienceCount: recipients.length,
       successCount,
       errorCount,
-      note: `Comunicado ${context.communication._id}`,
+      note: `Comunicado ${context.communication._id}${isResend ? " (reenvio)" : ""}`,
+    });
+  },
+});
+
+export const recordCommunicationReceipt = internalMutation({
+  args: {
+    communicationId: v.id("residentCommunications"),
+    residentId: v.id("residents"),
+    email: v.optional(v.string()),
+    status: v.union(v.literal("sent"), v.literal("failed")),
+    errorMessage: v.optional(v.string()),
+  },
+  handler: async (ctx, { communicationId, residentId, email, status, errorMessage }) => {
+    const existing = await ctx.db
+      .query("residentCommunicationReceipts")
+      .withIndex("byCommunicationResident", (q: any) =>
+        q.eq("communicationId", communicationId).eq("residentId", residentId),
+      )
+      .unique();
+    const now = Date.now();
+
+    if (!existing) {
+      await ctx.db.insert("residentCommunicationReceipts", {
+        communicationId,
+        residentId,
+        email,
+        sentCount: status === "sent" ? 1 : 0,
+        failedCount: status === "failed" ? 1 : 0,
+        lastSentAt: status === "sent" ? now : undefined,
+        lastFailedAt: status === "failed" ? now : undefined,
+        lastError: status === "failed" ? errorMessage : undefined,
+        openCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return;
+    }
+
+    await ctx.db.patch(existing._id, {
+      email: email ?? existing.email,
+      sentCount: existing.sentCount + (status === "sent" ? 1 : 0),
+      failedCount: existing.failedCount + (status === "failed" ? 1 : 0),
+      lastSentAt: status === "sent" ? now : existing.lastSentAt,
+      lastFailedAt: status === "failed" ? now : existing.lastFailedAt,
+      lastError: status === "failed" ? errorMessage : existing.lastError,
+      updatedAt: now,
     });
   },
 });

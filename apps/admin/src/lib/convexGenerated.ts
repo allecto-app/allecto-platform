@@ -90,7 +90,12 @@ type AugmentedApi = typeof baseApi & {
     publish: MutationRef;
     listByCondo: QueryRef;
     listForResident: QueryRef;
+    getForResident: QueryRef;
+    getDetail: QueryRef;
     archive: MutationRef;
+    resend: MutationRef;
+    markOpened: MutationRef;
+    deleteHard: MutationRef;
   };
   retention: {
     getPolicies: QueryRef;
@@ -159,6 +164,7 @@ export type TableNames =
   | "notificationLogs"
   | "notificationReads"
   | "residentCommunications"
+  | "residentCommunicationReceipts"
   | "documents"
   | "documentEvents"
   | "otps"
@@ -419,9 +425,26 @@ type DocByTable = {
     title: string;
     message?: string;
     documentId?: Id<"documents">;
+    audienceType: "all" | "role" | "block";
+    targetRole?: string;
+    targetBlock?: string;
     publishedBy: Id<"residents">;
     status: "published" | "archived";
     publishedAt: number;
+    createdAt: number;
+    updatedAt: number;
+  };
+  residentCommunicationReceipts: DefaultDoc<"residentCommunicationReceipts"> & {
+    communicationId: Id<"residentCommunications">;
+    residentId: Id<"residents">;
+    email?: string;
+    sentCount: number;
+    failedCount: number;
+    lastSentAt?: number;
+    lastFailedAt?: number;
+    lastError?: string;
+    openCount: number;
+    lastOpenedAt?: number;
     createdAt: number;
     updatedAt: number;
   };

@@ -85,6 +85,9 @@ export default defineSchema({
     title: v.string(),
     message: v.optional(v.string()),
     documentId: v.optional(v.id("documents")),
+    audienceType: v.union(v.literal("all"), v.literal("role"), v.literal("block")),
+    targetRole: v.optional(v.string()),
+    targetBlock: v.optional(v.string()),
     publishedBy: v.id("residents"),
     status: v.union(v.literal("published"), v.literal("archived")),
     publishedAt: v.number(),
@@ -93,6 +96,23 @@ export default defineSchema({
   })
     .index("byCondo", ["condoId"])
     .index("byCondoStatus", ["condoId", "status"]),
+
+  residentCommunicationReceipts: defineTable({
+    communicationId: v.id("residentCommunications"),
+    residentId: v.id("residents"),
+    email: v.optional(v.string()),
+    sentCount: v.number(),
+    failedCount: v.number(),
+    lastSentAt: v.optional(v.number()),
+    lastFailedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    openCount: v.number(),
+    lastOpenedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byCommunication", ["communicationId"])
+    .index("byCommunicationResident", ["communicationId", "residentId"]),
 
   minutes: defineTable({
     condoId: v.id("condos"),
