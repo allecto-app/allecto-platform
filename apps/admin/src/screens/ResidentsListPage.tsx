@@ -62,6 +62,8 @@ export function ResidentsListPage({
   const [statusFilter, setStatusFilter] = useState("all");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [pendingInviteActionId, setPendingInviteActionId] = useState<string | null>(null);
+  const [pendingInviteActionType, setPendingInviteActionType] = useState<"resend" | "revoke" | null>(null);
 
   const residents = useQuery(
     api.residents.list,
@@ -99,6 +101,59 @@ export function ResidentsListPage({
       return;
     }
     setCreateModalOpen(true);
+  };
+
+  const handleResendInvite = async (invite: InviteDoc, fallbackName?: string) => {
+    if (!condo) {
+      toast.error("Selecione um condomínio");
+      return;
+    }
+
+    setPendingInviteActionId(String(invite._id));
+    setPendingInviteActionType("resend");
+    try {
+      const response = await fetch("/api/invites/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          condoId: String(condo._id),
+          email: invite.email,
+          name: invite.name ?? fallbackName ?? undefined,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to resend invite");
+      }
+      toast.success("Convite reenviado com sucesso");
+    } catch (error) {
+      console.error("Failed to resend invite", error);
+      toast.error("Não foi possível reenviar o convite");
+    } finally {
+      setPendingInviteActionId(null);
+      setPendingInviteActionType(null);
+    }
+  };
+
+  const handleRevokeInvite = async (invite: InviteDoc) => {
+    setPendingInviteActionId(String(invite._id));
+    setPendingInviteActionType("revoke");
+    try {
+      const response = await fetch("/api/invites/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteId: String(invite._id) }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to revoke invite");
+      }
+      toast.success("Convite revogado com sucesso");
+    } catch (error) {
+      console.error("Failed to revoke invite", error);
+      toast.error("Não foi possível revogar o convite");
+    } finally {
+      setPendingInviteActionId(null);
+      setPendingInviteActionType(null);
+    }
   };
 
   return (
@@ -210,6 +265,13 @@ export function ResidentsListPage({
                   const inviteStatus = invite
                     ? INVITE_STATUS_LABEL[invite.status]
                     : undefined;
+                  const isPendingAction = invite
+                    ? pendingInviteActionId === String(invite._id)
+                    : false;
+                  const isResending =
+                    isPendingAction && pendingInviteActionType === "resend";
+                  const isRevoking =
+                    isPendingAction && pendingInviteActionType === "revoke";
 
                   return (
                     <TableRow key={resident._id}>
@@ -260,20 +322,18 @@ export function ResidentsListPage({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
-                                  toast.info("Função disponível em breve")
-                                }
+                                onClick={() => handleResendInvite(invite, resident.name)}
+                                disabled={isPendingAction}
                               >
-                                Reenviar
+                                {isResending ? "Reenviando..." : "Reenviar"}
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
-                                  toast.info("Função disponível em breve")
-                                }
+                                onClick={() => handleRevokeInvite(invite)}
+                                disabled={isPendingAction}
                               >
-                                Revogar
+                                {isRevoking ? "Revogando..." : "Revogar"}
                               </Button>
                             </div>
                           )}

@@ -278,7 +278,39 @@ export const revoke = mutation({
     token: v.string(),
     inviteId: v.id("invites"),
   },
-  handler: async () => {
-    throw new Error("Not implemented");
+  handler: async (ctx, { token, inviteId }) => {
+    const invite = await ctx.db.get(inviteId);
+    if (!invite) {
+      throw inviteError();
+    }
+
+    try {
+      await requirePlatformRole(ctx, ["super_admin", "ops", "support"], token);
+    } catch {
+      try {
+        await requireCondoRole(ctx, invite.condoId, ["syndic", "manager"], token);
+      } catch {
+        throw inviteError();
+      }
+    }
+
+    const now = Date.now();
+    if (invite.status !== "pending") {
+      return { ok: true, status: invite.status };
+    }
+
+    await ctx.db.patch(invite._id, {
+      status: "revoked",
+      updatedAt: now,
+    });
+
+    await ctx.db.insert("securityEvents", {
+      type: "invite_revoke",
+      key: invite.email,
+      createdAt: now,
+      meta: { condoId: invite.condoId, inviteId: invite._id },
+    });
+
+    return { ok: true, status: "revoked" };
   },
 });
