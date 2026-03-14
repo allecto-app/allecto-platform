@@ -1,9 +1,9 @@
 {
-    "name": "backend-convex",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "dev": "convex dev",
+  "name": "backend-convex",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
     "deploy": "convex deploy",
     "seed:demo": "convex run seeds:demo",
     "seed:deleteDemo": "convex run seeds:deleteDemo",
@@ -12,6 +12,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "convex": "^1.14.0",
+    "pdf-lib": "^1.17.1",
     "resend": "^3.2.0",
     "stripe": "^16.0.0",
     "zod": "^3.23.8"

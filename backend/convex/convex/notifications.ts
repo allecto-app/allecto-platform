@@ -475,6 +475,12 @@ export const sendMinuteClosedEmail = internalAction({
       allUnitIds.size > 0 ? Math.round((votedUnitIds.size / allUnitIds.size) * 100) : 0;
 
     const minuteLink = buildMinuteLink(context.condo, minuteId);
+    await ctx.runAction(internal.minutes.ensureFinalReportPdf, { minuteId });
+    const finalReport = await ctx.runQuery(api.minutes.getFinalReport, { minuteId }) as
+      | { reportStorageId?: string | null }
+      | null;
+    const reportUrl =
+      finalReport?.reportStorageId ? await ctx.storage.getUrl(finalReport.reportStorageId) : null;
 
     const { successCount, errorCount } = await sendEmails(ctx, recipients, (recipient) => ({
       subject: `Resultado da assembleia ${context.minute.title}`,
@@ -489,6 +495,11 @@ export const sendMinuteClosedEmail = internalAction({
             <li>Votos contra: ${disagreeVotes}</li>
             <li>Participação das unidades: ${participationPct}%</li>
           </ul>
+          ${
+            reportUrl
+              ? `<p><strong>Relatório final (PDF):</strong> <a href="${reportUrl}" style="color: #2563eb;">Abrir PDF</a></p>`
+              : ""
+          }
           <p>Acesse o portal do condomínio para consultar a ata e detalhes completos:</p>
           <p><a href="${minuteLink}" style="color: #2563eb;">${minuteLink}</a></p>
           <p>Obrigado,<br/>Equipe Allecto</p>
@@ -502,6 +513,7 @@ export const sendMinuteClosedEmail = internalAction({
         `- Votos a favor: ${agreeVotes}`,
         `- Votos contra: ${disagreeVotes}`,
         `- Participação das unidades: ${participationPct}%`,
+        reportUrl ? `Relatório final (PDF): ${reportUrl}` : "",
         `Consulte detalhes no portal: ${minuteLink}`,
         "",
         "Equipe Allecto",

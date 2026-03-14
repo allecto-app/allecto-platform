@@ -50,6 +50,7 @@ type AugmentedApi = typeof baseApi & {
   minutes: {
     list: QueryRef;
     get: QueryRef;
+    getFinalReport: QueryRef;
     publish: MutationRef;
     close: MutationRef;
   };
@@ -160,6 +161,7 @@ export type TableNames =
   | "residents"
   | "memberships"
   | "minutes"
+  | "minuteFinalReports"
   | "votes"
   | "notificationLogs"
   | "notificationReads"
@@ -334,6 +336,20 @@ type DocByTable = {
     reminderD2Scheduled: boolean;
     reminderD4Scheduled: boolean;
     closeScheduled: boolean;
+    createdAt: number;
+    updatedAt: number;
+  };
+  minuteFinalReports: DefaultDoc<"minuteFinalReports"> & {
+    minuteId: Id<"minutes">;
+    condoId: Id<"condos">;
+    source: "manual" | "automatic";
+    generatedAt: number;
+    closedAt: number;
+    snapshotHash: string;
+    snapshot: any;
+    htmlContent: string;
+    reportStorageId?: string;
+    reportDocumentId?: Id<"documents">;
     createdAt: number;
     updatedAt: number;
   };

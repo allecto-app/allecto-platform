@@ -134,6 +134,23 @@ export default defineSchema({
     .index("byCondoStatus", ["condoId", "status"])
     .index("byCloseTime", ["closesAt"]),
 
+  minuteFinalReports: defineTable({
+    minuteId: v.id("minutes"),
+    condoId: v.id("condos"),
+    source: v.union(v.literal("manual"), v.literal("automatic")),
+    generatedAt: v.number(),
+    closedAt: v.number(),
+    snapshotHash: v.string(),
+    snapshot: v.any(),
+    htmlContent: v.string(),
+    reportStorageId: v.optional(v.string()),
+    reportDocumentId: v.optional(v.id("documents")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byMinute", ["minuteId"])
+    .index("byCondo", ["condoId"]),
+
   votes: defineTable({
     minuteId: v.id("minutes"),
     unitId: v.id("units"),

@@ -92,6 +92,7 @@ export function MinutesDetailPage({
   sessionToken,
 }: MinutesDetailPageProps) {
   const [isClosing, setIsClosing] = useState(false);
+  const [isDownloadingFinalPdf, setIsDownloadingFinalPdf] = useState(false);
 
   if (!minuteId) {
     return (
@@ -167,6 +168,10 @@ export function MinutesDetailPage({
   const votes = useQuery(api.votes.listForMinute, { minuteId }) as
     | VoteWithDetails[]
     | undefined;
+  const finalReport = useQuery(api.minutes.getFinalReport, { minuteId }) as
+    | Doc<"minuteFinalReports">
+    | null
+    | undefined;
 
   const notificationLogs = useQuery(
     api.notifications.listLogs,
@@ -174,6 +179,7 @@ export function MinutesDetailPage({
   );
 
   const closeMinute = useMutation(api.minutes.close);
+  const getViewToken = useMutation(api.documents.getViewToken);
 
   const filteredLogs = useMemo(
     () =>
@@ -207,6 +213,40 @@ export function MinutesDetailPage({
       toast.error(message);
     } finally {
       setIsClosing(false);
+    }
+  };
+
+  const downloadFinalReportPdf = async () => {
+    if (!finalReport?.reportDocumentId) return;
+    try {
+      setIsDownloadingFinalPdf(true);
+      const { url } = await getViewToken({
+        docId: finalReport.reportDocumentId,
+        sessionToken,
+        orgId,
+      });
+      if (!url) throw new Error("URL do PDF indisponível");
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Falha ao baixar PDF");
+
+      const blob = await response.blob();
+      const fileUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const safeTitle = minuteData.title.replace(/[^a-zA-Z0-9-_]+/g, "-");
+      anchor.href = fileUrl;
+      anchor.download = `relatorio-final-${safeTitle || "ata"}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(fileUrl), 30_000);
+      toast.success("Download do relatório iniciado");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Não foi possível baixar o relatório em PDF";
+      toast.error(message);
+    } finally {
+      setIsDownloadingFinalPdf(false);
     }
   };
 
@@ -369,6 +409,66 @@ export function MinutesDetailPage({
               {disagreeCount} votos
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Relatório Final</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {finalReport === undefined ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verificando relatório final...
+            </div>
+          ) : !finalReport ? (
+            <p className="text-sm text-muted-foreground">
+              O relatório final será gerado automaticamente ao encerrar a ata.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                <div>
+                  <span className="font-medium text-foreground">Gerado em: </span>
+                  {formatDateTime(finalReport.generatedAt)}
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Encerrado em: </span>
+                  {formatDateTime(finalReport.closedAt)}
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Origem: </span>
+                  {finalReport.source === "manual" ? "Fechamento manual" : "Fechamento automático"}
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Hash: </span>
+                  <span className="break-all">{finalReport.snapshotHash}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {finalReport.reportDocumentId ? (
+                  <ViewPdfButton
+                    docId={finalReport.reportDocumentId as Id<"documents">}
+                    sessionToken={sessionToken}
+                    orgId={orgId}
+                    label="Visualizar PDF"
+                    variant="outline"
+                  />
+                ) : null}
+                {finalReport.reportDocumentId ? (
+                  <button
+                    type="button"
+                    onClick={() => void downloadFinalReportPdf()}
+                    disabled={isDownloadingFinalPdf}
+                    className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDownloadingFinalPdf ? "Baixando PDF..." : "Baixar PDF"}
+                  </button>
+                ) : null}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
