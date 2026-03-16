@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { api, Id } from "../../../../../src/lib/convexGenerated";
-import { badRequest, convex, mapConvexError, requireAccessToken } from "../../_lib/routeUtils";
+import { badRequest, convex, mapConvexError, parseClientIp, requireAccessToken } from "../../_lib/routeUtils";
 
 export async function GET(request: Request, { params }: { params: { unitId: string } }) {
   const auth = await requireAccessToken(request);
@@ -16,6 +16,7 @@ export async function GET(request: Request, { params }: { params: { unitId: stri
     const item = await convex.query(api.externalApi.getUnitDetail, {
       accessToken: auth.token,
       unitId: unitId as Id<"units">,
+      clientIp: parseClientIp(request),
     });
     return NextResponse.json({ ok: true, item });
   } catch (error) {

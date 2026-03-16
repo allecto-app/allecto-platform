@@ -2,12 +2,14 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { api, Id } from "../../../../src/lib/convexGenerated";
-import { badRequest, convex, mapConvexError, readJson, unauthorized } from "../_lib/routeUtils";
+import { badRequest, convex, isSafeText, mapConvexError, readJson, unauthorized } from "../_lib/routeUtils";
 
 type CreateKeyPayload = {
   condoId?: string;
   name?: string;
   expiresAt?: number;
+  scopes?: string[];
+  allowedIps?: string[];
 };
 
 export async function GET(request: Request) {
@@ -43,6 +45,15 @@ export async function POST(request: Request) {
   if (!payload?.condoId) {
     return badRequest("condoId is required");
   }
+  if (!isSafeText(payload.name, 120)) {
+    return badRequest("Invalid key payload");
+  }
+  if (payload.scopes && (!Array.isArray(payload.scopes) || payload.scopes.length === 0)) {
+    return badRequest("Invalid scopes");
+  }
+  if (payload.allowedIps && !Array.isArray(payload.allowedIps)) {
+    return badRequest("Invalid allowedIps");
+  }
 
   try {
     const result = await convex.mutation(api.externalApi.createApiKey, {
@@ -50,6 +61,8 @@ export async function POST(request: Request) {
       condoId: payload.condoId as Id<"condos">,
       name: payload.name?.trim() || undefined,
       expiresAt: payload.expiresAt,
+      scopes: payload.scopes,
+      allowedIps: payload.allowedIps,
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {

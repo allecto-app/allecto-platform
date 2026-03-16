@@ -1,7 +1,18 @@
 
 import { NextResponse } from "next/server";
 import { api, Id } from "../../../../src/lib/convexGenerated";
-import { badRequest, convex, mapConvexError, requireAccessToken, readJson } from "../_lib/routeUtils";
+import {
+  badRequest,
+  clampLimit,
+  clampPage,
+  convex,
+  isSafeText,
+  mapConvexError,
+  parseClientIp,
+  parseOptionalNumber,
+  requireAccessToken,
+  readJson,
+} from "../_lib/routeUtils";
 
 type CreateMinutePayload = {
   title?: string;
@@ -15,18 +26,21 @@ export async function GET(request: Request) {
   if ("error" in auth) return auth.error;
 
   const url = new URL(request.url);
-  const limitParam = url.searchParams.get("limit");
   const statusParam = url.searchParams.get("status");
-  const limit = limitParam ? Number(limitParam) : undefined;
+  const limit = clampLimit(parseOptionalNumber(url.searchParams.get("limit")));
+  const page = clampPage(parseOptionalNumber(url.searchParams.get("page")));
   const status = statusParam === "open" || statusParam === "closed" ? statusParam : undefined;
+  const clientIp = parseClientIp(request);
 
   try {
     const items = await convex.query(api.externalApi.getMinutes, {
       accessToken: auth.token,
       status,
-      limit: Number.isFinite(limit) ? limit : undefined,
+      limit,
+      page,
+      clientIp,
     });
-    return NextResponse.json({ ok: true, items });
+    return NextResponse.json({ ok: true, ...items });
   } catch (error) {
     return mapConvexError(error);
   }
@@ -35,10 +49,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireAccessToken(request);
   if ("error" in auth) return auth.error;
+  const clientIp = parseClientIp(request);
 
   const payload = await readJson<CreateMinutePayload>(request);
   if (!payload?.title?.trim()) {
     return badRequest("title is required");
+  }
+  if (!isSafeText(payload.title, 180) || !isSafeText(payload.summary, 3000)) {
+    return badRequest("Invalid minute payload");
   }
   if (!payload?.documentId) {
     return badRequest("documentId is required");
@@ -54,6 +72,7 @@ export async function POST(request: Request) {
       summary: payload.summary?.trim() || undefined,
       documentId: payload.documentId as Id<"documents">,
       closesAt: payload.closesAt,
+      clientIp,
     });
     return NextResponse.json({ ok: true, item });
   } catch (error) {

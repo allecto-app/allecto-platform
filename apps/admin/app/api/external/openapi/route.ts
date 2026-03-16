@@ -65,6 +65,17 @@ function buildOpenApiSpec() {
             },
           },
         },
+        ApiKeyCreate: {
+          type: "object",
+          required: ["condoId"],
+          properties: {
+            condoId: { type: "string" },
+            name: { type: "string" },
+            expiresAt: { type: "number" },
+            scopes: { type: "array", items: { type: "string" } },
+            allowedIps: { type: "array", items: { type: "string" } },
+          },
+        },
       },
     },
     paths: {
@@ -110,7 +121,10 @@ function buildOpenApiSpec() {
           tags: ["Units"],
           summary: "Listar unidades",
           security: [{ bearerAuth: [] }],
-          parameters: [{ in: "query", name: "limit", schema: { type: "integer" } }],
+          parameters: [
+            { in: "query", name: "limit", schema: { type: "integer" } },
+            { in: "query", name: "page", schema: { type: "integer" } },
+          ],
           responses: { "200": { description: "OK" } },
         },
         post: {
@@ -140,7 +154,10 @@ function buildOpenApiSpec() {
           tags: ["Residents"],
           summary: "Listar moradores",
           security: [{ bearerAuth: [] }],
-          parameters: [{ in: "query", name: "limit", schema: { type: "integer" } }],
+          parameters: [
+            { in: "query", name: "limit", schema: { type: "integer" } },
+            { in: "query", name: "page", schema: { type: "integer" } },
+          ],
           responses: { "200": { description: "OK" } },
         },
         post: {
@@ -172,6 +189,7 @@ function buildOpenApiSpec() {
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: "query", name: "limit", schema: { type: "integer" } },
+            { in: "query", name: "page", schema: { type: "integer" } },
             { in: "query", name: "status", schema: { type: "string", enum: ["open", "closed"] } },
           ],
           responses: { "200": { description: "OK" } },
@@ -212,7 +230,25 @@ function buildOpenApiSpec() {
           tags: ["Minutes"],
           summary: "Resultado da ata",
           security: [{ bearerAuth: [] }],
-          parameters: [{ in: "path", name: "minuteId", required: true, schema: { type: "string" } }],
+          parameters: [
+            { in: "path", name: "minuteId", required: true, schema: { type: "string" } },
+            { in: "query", name: "includeVotes", schema: { type: "boolean" } },
+            { in: "query", name: "votesLimit", schema: { type: "integer" } },
+          ],
+          responses: { "200": { description: "OK" } },
+        },
+      },
+      "/api/external/keys": {
+        post: {
+          tags: ["Management"],
+          summary: "Criar API key",
+          description: "Disponível para síndico (condo) e super_admin (portal).",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/ApiKeyCreate" } },
+            },
+          },
           responses: { "200": { description: "OK" } },
         },
       },

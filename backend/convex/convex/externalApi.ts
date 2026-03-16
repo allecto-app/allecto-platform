@@ -4,14 +4,37 @@ import { v } from "convex/values";
 import { requireCondoRole, requirePlatformRole } from "./guards";
 import { randomToken, sha256 } from "./_secu";
 
+type ExternalScope =
+  | "units:read"
+  | "units:write"
+  | "residents:read"
+  | "residents:write"
+  | "minutes:read"
+  | "minutes:write"
+  | "minutes:close"
+  | "minutes:result:read";
+
 type ExternalAccess = {
   condoId: any;
   residentId: any;
   key: any;
+  scopes: ExternalScope[];
 };
 
 const ACTIVE_BILLING_STATUSES = new Set(["active", "trialing"]);
 const API_TOKEN_TTL_MS = 15 * 60 * 1000;
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 25;
+const ALL_SCOPES: ExternalScope[] = [
+  "units:read",
+  "units:write",
+  "residents:read",
+  "residents:write",
+  "minutes:read",
+  "minutes:write",
+  "minutes:close",
+  "minutes:result:read",
+];
 
 function normalizeTier(value: string | null | undefined): "essencial" | "plus" | "pro" | null {
   if (!value) return null;
@@ -22,11 +45,45 @@ function normalizeTier(value: string | null | undefined): "essencial" | "plus" |
   return null;
 }
 
+function assert(condition: unknown, errorCode: string) {
+  if (!condition) {
+    throw new Error(errorCode);
+  }
+}
+
+function normalizeScopes(scopes?: string[] | null): ExternalScope[] {
+  const values = Array.isArray(scopes) ? scopes : ALL_SCOPES;
+  const normalized = Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
+  const invalid = normalized.find((value) => !ALL_SCOPES.includes(value as ExternalScope));
+  assert(!invalid, "EXT_VALIDATION_INVALID_SCOPE");
+  return normalized as ExternalScope[];
+}
+
+function requireScope(access: ExternalAccess, required: ExternalScope) {
+  assert(access.scopes.includes(required), "EXT_FORBIDDEN_SCOPE");
+}
+
+function normalizeIp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.trim();
+}
+
+function assertIpAllowed(allowlist: string[] | undefined, clientIp: string | null) {
+  if (!allowlist || allowlist.length === 0) return;
+  assert(clientIp, "EXT_AUTH_IP_REQUIRED");
+  assert(allowlist.includes(clientIp), "EXT_AUTH_IP_NOT_ALLOWED");
+}
+
+function clampPage(limit?: number | null, page?: number | null) {
+  const safeLimit = Math.max(1, Math.min(MAX_PAGE_SIZE, Math.floor(limit ?? DEFAULT_PAGE_SIZE)));
+  const safePage = Math.max(1, Math.floor(page ?? 1));
+  const offset = (safePage - 1) * safeLimit;
+  return { safeLimit, safePage, offset };
+}
+
 async function assertProPlan(ctx: any, condoId: any) {
   const condo = await ctx.db.get(condoId);
-  if (!condo) {
-    throw new Error("Condominium not found");
-  }
+  assert(condo, "EXT_NOT_FOUND_CONDO");
 
   const subscriptions = await ctx.db
     .query("subscriptions")
@@ -43,18 +100,18 @@ async function assertProPlan(ctx: any, condoId: any) {
   const isActive = ACTIVE_BILLING_STATUSES.has(status) && isWithinPeriod;
 
   const tier = normalizeTier(current?.tierKey ?? condo.billingTier ?? null);
-
-  if (!isActive || tier !== "pro") {
-    throw new Error("Pro plan required");
-  }
+  assert(isActive && tier === "pro", "EXT_FORBIDDEN_PRO_REQUIRED");
 
   return condo;
 }
 
-async function requireExternalAccess(ctx: any, accessToken: string): Promise<ExternalAccess> {
-  if (!accessToken || accessToken.length < 32) {
-    throw new Error("Invalid access token");
-  }
+async function requireExternalAccess(
+  ctx: any,
+  accessToken: string,
+  requiredScope: ExternalScope,
+  clientIp?: string,
+): Promise<ExternalAccess> {
+  assert(accessToken && accessToken.length >= 32, "EXT_AUTH_INVALID_TOKEN");
 
   const tokenHash = await sha256(accessToken);
   const tokenRecord = await ctx.db
@@ -62,37 +119,47 @@ async function requireExternalAccess(ctx: any, accessToken: string): Promise<Ext
     .withIndex("byTokenHash", (q: any) => q.eq("tokenHash", tokenHash))
     .unique();
 
-  if (!tokenRecord || tokenRecord.revokedAt !== undefined || tokenRecord.expiresAt <= Date.now()) {
-    throw new Error("Invalid or expired access token");
-  }
+  assert(tokenRecord, "EXT_AUTH_INVALID_TOKEN");
+  assert(tokenRecord.revokedAt === undefined, "EXT_AUTH_TOKEN_REVOKED");
+  assert(tokenRecord.expiresAt > Date.now(), "EXT_AUTH_TOKEN_EXPIRED");
 
   const key = await ctx.db.get(tokenRecord.keyId);
-  if (!key || key.status !== "active") {
-    throw new Error("API key revoked");
-  }
-  if (key.expiresAt !== undefined && key.expiresAt <= Date.now()) {
-    throw new Error("API key expired");
+  assert(key && key.status === "active", "EXT_AUTH_KEY_REVOKED");
+  assert(key.expiresAt === undefined || key.expiresAt > Date.now(), "EXT_AUTH_KEY_EXPIRED");
+
+  const normalizedClientIp = normalizeIp(clientIp);
+  const keyAllowlist = Array.isArray(key.allowedIps) ? key.allowedIps : undefined;
+  assertIpAllowed(keyAllowlist, normalizedClientIp);
+
+  const tokenIp = normalizeIp(tokenRecord.issuedForIp);
+  if (tokenIp) {
+    assert(normalizedClientIp === tokenIp, "EXT_AUTH_TOKEN_IP_MISMATCH");
   }
 
   const resident = await ctx.db.get(key.residentId);
-  if (!resident || resident.deletedAt !== undefined || resident.isActive !== true || resident.role !== "syndic") {
-    throw new Error("API key owner is not active");
-  }
+  assert(
+    resident && resident.deletedAt === undefined && resident.isActive === true && resident.role === "syndic",
+    "EXT_AUTH_KEY_OWNER_INACTIVE",
+  );
 
   await assertProPlan(ctx, key.condoId);
 
-  return {
+  const scopes = normalizeScopes(tokenRecord.scopes ?? key.scopes);
+  const access: ExternalAccess = {
     condoId: key.condoId,
     residentId: key.residentId,
     key,
+    scopes,
   };
+  requireScope(access, requiredScope);
+  return access;
 }
 
 async function requireApiKeyManagerAccess(ctx: any, token: string, condoId: any) {
   try {
     const { resident } = await requireCondoRole(ctx, condoId, ["syndic"], token);
     if (!resident || resident.role !== "syndic") {
-      throw new Error("Only syndic can manage API keys");
+      throw new Error("EXT_FORBIDDEN_API_KEY_MANAGEMENT");
     }
     return;
   } catch {
@@ -106,22 +173,29 @@ export const createApiKey = mutation({
     condoId: v.id("condos"),
     name: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
+    scopes: v.optional(v.array(v.string())),
+    allowedIps: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { token, condoId, name, expiresAt }) => {
+  handler: async (ctx, { token, condoId, name, expiresAt, scopes, allowedIps }) => {
     await requireApiKeyManagerAccess(ctx, token, condoId);
-
     await assertProPlan(ctx, condoId);
 
     const now = Date.now();
     if (expiresAt !== undefined && expiresAt <= now) {
-      throw new Error("Invalid expiresAt");
+      throw new Error("EXT_VALIDATION_INVALID_EXPIRES_AT");
     }
+
+    const normalizedScopes = normalizeScopes(scopes);
+    const normalizedAllowedIps = Array.isArray(allowedIps)
+      ? Array.from(new Set(allowedIps.map((ip) => ip.trim()).filter(Boolean)))
+      : undefined;
 
     const apiKey = `alk_${randomToken(20)}`;
     const apiSecret = `als_${randomToken(24)}`;
 
     const keyHash = await sha256(apiKey);
     const secretHash = await sha256(apiSecret);
+
     let ownerResidentId: any = null;
     try {
       const auth = await requireCondoRole(ctx, condoId, ["syndic"], token);
@@ -129,6 +203,7 @@ export const createApiKey = mutation({
     } catch {
       // super_admin path falls back to first active syndic in condo
     }
+
     if (!ownerResidentId) {
       const condoResidents = await ctx.db
         .query("residents")
@@ -142,9 +217,7 @@ export const createApiKey = mutation({
             resident.deletedAt === undefined,
         )?._id ?? null;
     }
-    if (!ownerResidentId) {
-      throw new Error("No active syndic found for condo");
-    }
+    assert(ownerResidentId, "EXT_NOT_FOUND_ACTIVE_SYNDIC");
 
     const keyId = await ctx.db.insert("externalApiKeys", {
       condoId,
@@ -153,6 +226,8 @@ export const createApiKey = mutation({
       keyHash,
       secretHash,
       keyPrefix: apiKey.slice(0, 12),
+      scopes: normalizedScopes,
+      allowedIps: normalizedAllowedIps,
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -166,6 +241,8 @@ export const createApiKey = mutation({
       apiKey,
       apiSecret,
       condoId,
+      scopes: normalizedScopes,
+      allowedIps: normalizedAllowedIps ?? [],
       createdAt: now,
       expiresAt: expiresAt ?? null,
     };
@@ -191,6 +268,8 @@ export const listApiKeys = query({
         _id: key._id,
         name: key.name ?? null,
         keyPrefix: key.keyPrefix,
+        scopes: normalizeScopes(key.scopes),
+        allowedIps: Array.isArray(key.allowedIps) ? key.allowedIps : [],
         status: key.status,
         createdAt: key.createdAt,
         updatedAt: key.updatedAt,
@@ -208,9 +287,7 @@ export const revokeApiKey = mutation({
   },
   handler: async (ctx, { token, keyId }) => {
     const key = await ctx.db.get(keyId);
-    if (!key) {
-      throw new Error("API key not found");
-    }
+    assert(key, "EXT_NOT_FOUND_API_KEY");
 
     await requireApiKeyManagerAccess(ctx, token, key.condoId);
 
@@ -229,6 +306,7 @@ export const revokeApiKey = mutation({
       .query("externalApiTokens")
       .withIndex("byKey", (q: any) => q.eq("keyId", keyId))
       .collect();
+
     await Promise.all(
       activeTokens
         .filter((token: any) => token.revokedAt === undefined)
@@ -243,14 +321,12 @@ export const issueToken = mutation({
   args: {
     apiKey: v.string(),
     apiSecret: v.string(),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { apiKey, apiSecret }) => {
+  handler: async (ctx, { apiKey, apiSecret, clientIp }) => {
     const trimmedKey = apiKey.trim();
     const trimmedSecret = apiSecret.trim();
-
-    if (!trimmedKey || !trimmedSecret) {
-      throw new Error("Invalid credentials");
-    }
+    assert(trimmedKey && trimmedSecret, "EXT_AUTH_INVALID_CREDENTIALS");
 
     const keyHash = await sha256(trimmedKey);
     const keyRecord = await ctx.db
@@ -258,23 +334,20 @@ export const issueToken = mutation({
       .withIndex("byKeyHash", (q: any) => q.eq("keyHash", keyHash))
       .unique();
 
-    if (!keyRecord || keyRecord.status !== "active") {
-      throw new Error("Invalid credentials");
-    }
-
-    if (keyRecord.expiresAt !== undefined && keyRecord.expiresAt <= Date.now()) {
-      throw new Error("API key expired");
-    }
+    assert(keyRecord && keyRecord.status === "active", "EXT_AUTH_INVALID_CREDENTIALS");
+    assert(keyRecord.expiresAt === undefined || keyRecord.expiresAt > Date.now(), "EXT_AUTH_KEY_EXPIRED");
 
     const secretHash = await sha256(trimmedSecret);
-    if (secretHash !== keyRecord.secretHash) {
-      throw new Error("Invalid credentials");
-    }
+    assert(secretHash === keyRecord.secretHash, "EXT_AUTH_INVALID_CREDENTIALS");
+
+    const normalizedClientIp = normalizeIp(clientIp);
+    assertIpAllowed(Array.isArray(keyRecord.allowedIps) ? keyRecord.allowedIps : undefined, normalizedClientIp);
 
     const resident = await ctx.db.get(keyRecord.residentId);
-    if (!resident || resident.deletedAt !== undefined || resident.isActive !== true || resident.role !== "syndic") {
-      throw new Error("API key owner inactive");
-    }
+    assert(
+      resident && resident.deletedAt === undefined && resident.isActive === true && resident.role === "syndic",
+      "EXT_AUTH_KEY_OWNER_INACTIVE",
+    );
 
     await assertProPlan(ctx, keyRecord.condoId);
 
@@ -282,12 +355,15 @@ export const issueToken = mutation({
     const rawAccessToken = `alt_${randomToken(48)}`;
     const tokenHash = await sha256(rawAccessToken);
     const expiresAt = now + API_TOKEN_TTL_MS;
+    const tokenScopes = normalizeScopes(keyRecord.scopes);
 
     await ctx.db.insert("externalApiTokens", {
       keyId: keyRecord._id,
       condoId: keyRecord.condoId,
       residentId: keyRecord.residentId,
       tokenHash,
+      scopes: tokenScopes,
+      issuedForIp: normalizedClientIp ?? undefined,
       createdAt: now,
       updatedAt: now,
       expiresAt,
@@ -306,6 +382,7 @@ export const issueToken = mutation({
       expiresAt,
       expiresInSeconds: Math.floor(API_TOKEN_TTL_MS / 1000),
       condoId: keyRecord.condoId,
+      scopes: tokenScopes,
     };
   },
 });
@@ -314,13 +391,26 @@ export const getUnits = query({
   args: {
     accessToken: v.string(),
     limit: v.optional(v.number()),
+    page: v.optional(v.number()),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, limit }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
-    return await ctx.runQuery(api.units.listByCondo, {
-      condoId: access.condoId,
-      limit,
-    });
+  handler: async (ctx, { accessToken, limit, page, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "units:read", clientIp);
+    const units = await ctx.db
+      .query("units")
+      .withIndex("byCondo", (q: any) => q.eq("condoId", access.condoId))
+      .collect();
+    const active = units.filter((unit: any) => unit.deletedAt === undefined).sort((a: any, b: any) => a.code.localeCompare(b.code));
+    const { safeLimit, safePage, offset } = clampPage(limit, page);
+    const items = active.slice(offset, offset + safeLimit);
+
+    return {
+      items,
+      page: safePage,
+      limit: safeLimit,
+      total: active.length,
+      hasMore: offset + safeLimit < active.length,
+    };
   },
 });
 
@@ -328,12 +418,13 @@ export const getUnitDetail = query({
   args: {
     accessToken: v.string(),
     unitId: v.id("units"),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, unitId }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
+  handler: async (ctx, { accessToken, unitId, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "units:read", clientIp);
     const detail = await ctx.runQuery(api.units.detail, { unitId });
     if (!detail || detail.unit.condoId !== access.condoId) {
-      throw new Error("Unit not found");
+      throw new Error("EXT_NOT_FOUND_UNIT");
     }
     return detail;
   },
@@ -345,9 +436,10 @@ export const createUnit = mutation({
     code: v.string(),
     block: v.optional(v.string()),
     floor: v.optional(v.string()),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, code, block, floor }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
+  handler: async (ctx, { accessToken, code, block, floor, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "units:write", clientIp);
     const unitId = await ctx.runMutation(api.units.upsert, {
       condoId: access.condoId,
       code,
@@ -363,13 +455,28 @@ export const getResidents = query({
   args: {
     accessToken: v.string(),
     limit: v.optional(v.number()),
+    page: v.optional(v.number()),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, limit }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
-    return await ctx.runQuery(api.residents.list, {
-      condoId: access.condoId,
-      limit,
-    });
+  handler: async (ctx, { accessToken, limit, page, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "residents:read", clientIp);
+    const residents = await ctx.db
+      .query("residents")
+      .withIndex("byCondo", (q: any) => q.eq("condoId", access.condoId))
+      .collect();
+    const active = residents
+      .filter((resident: any) => resident.deletedAt === undefined)
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+    const { safeLimit, safePage, offset } = clampPage(limit, page);
+    const items = active.slice(offset, offset + safeLimit);
+
+    return {
+      items,
+      page: safePage,
+      limit: safeLimit,
+      total: active.length,
+      hasMore: offset + safeLimit < active.length,
+    };
   },
 });
 
@@ -377,12 +484,13 @@ export const getResidentDetail = query({
   args: {
     accessToken: v.string(),
     residentId: v.id("residents"),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, residentId }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
+  handler: async (ctx, { accessToken, residentId, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "residents:read", clientIp);
     const resident = await ctx.db.get(residentId);
     if (!resident || resident.deletedAt !== undefined || resident.condoId !== access.condoId) {
-      throw new Error("Resident not found");
+      throw new Error("EXT_NOT_FOUND_RESIDENT");
     }
 
     const memberships = await ctx.db
@@ -421,9 +529,10 @@ export const createResident = mutation({
     ),
     unitId: v.optional(v.id("units")),
     membershipRole: v.optional(v.union(v.literal("owner"), v.literal("tenant"))),
+    clientIp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const access = await requireExternalAccess(ctx, args.accessToken);
+    const access = await requireExternalAccess(ctx, args.accessToken, "residents:write", args.clientIp);
 
     let unitLink:
       | {
@@ -435,7 +544,7 @@ export const createResident = mutation({
     if (args.unitId) {
       const unit = await ctx.db.get(args.unitId);
       if (!unit || unit.condoId !== access.condoId || unit.deletedAt !== undefined) {
-        throw new Error("Unit not found");
+        throw new Error("EXT_NOT_FOUND_UNIT");
       }
       unitLink = {
         unitId: args.unitId,
@@ -459,14 +568,30 @@ export const getMinutes = query({
     accessToken: v.string(),
     status: v.optional(v.union(v.literal("open"), v.literal("closed"))),
     limit: v.optional(v.number()),
+    page: v.optional(v.number()),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, status, limit }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
-    return await ctx.runQuery(api.minutes.list, {
-      condoId: access.condoId,
-      status,
-      limit,
-    });
+  handler: async (ctx, { accessToken, status, limit, page, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "minutes:read", clientIp);
+    const rows = await ctx.db
+      .query("minutes")
+      .withIndex("byCondo", (q: any) => q.eq("condoId", access.condoId))
+      .collect();
+
+    const filtered = rows
+      .filter((minute: any) => (status ? minute.status === status : true))
+      .sort((a: any, b: any) => b.publishedAt - a.publishedAt);
+
+    const { safeLimit, safePage, offset } = clampPage(limit, page);
+    const items = filtered.slice(offset, offset + safeLimit);
+
+    return {
+      items,
+      page: safePage,
+      limit: safeLimit,
+      total: filtered.length,
+      hasMore: offset + safeLimit < filtered.length,
+    };
   },
 });
 
@@ -474,12 +599,13 @@ export const getMinuteDetail = query({
   args: {
     accessToken: v.string(),
     minuteId: v.id("minutes"),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, minuteId }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
+  handler: async (ctx, { accessToken, minuteId, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "minutes:read", clientIp);
     const minute = await ctx.runQuery(api.minutes.get, { minuteId });
     if (!minute || minute.condoId !== access.condoId) {
-      throw new Error("Minute not found");
+      throw new Error("EXT_NOT_FOUND_MINUTE");
     }
     return minute;
   },
@@ -492,9 +618,10 @@ export const createMinute = mutation({
     summary: v.optional(v.string()),
     documentId: v.id("documents"),
     closesAt: v.number(),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, title, summary, documentId, closesAt }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
+  handler: async (ctx, { accessToken, title, summary, documentId, closesAt, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "minutes:write", clientIp);
     const minuteId = await ctx.runMutation(api.minutes.publish, {
       condoId: access.condoId,
       title,
@@ -512,12 +639,13 @@ export const closeMinute = mutation({
   args: {
     accessToken: v.string(),
     minuteId: v.id("minutes"),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, minuteId }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
+  handler: async (ctx, { accessToken, minuteId, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "minutes:close", clientIp);
     const minute = await ctx.db.get(minuteId);
     if (!minute || minute.condoId !== access.condoId) {
-      throw new Error("Minute not found");
+      throw new Error("EXT_NOT_FOUND_MINUTE");
     }
     await ctx.runMutation(api.minutes.close, { minuteId });
     return await ctx.runQuery(api.minutes.get, { minuteId });
@@ -528,17 +656,25 @@ export const getMinuteResult = query({
   args: {
     accessToken: v.string(),
     minuteId: v.id("minutes"),
+    includeVotes: v.optional(v.boolean()),
+    votesLimit: v.optional(v.number()),
+    clientIp: v.optional(v.string()),
   },
-  handler: async (ctx, { accessToken, minuteId }) => {
-    const access = await requireExternalAccess(ctx, accessToken);
+  handler: async (ctx, { accessToken, minuteId, includeVotes, votesLimit, clientIp }) => {
+    const access = await requireExternalAccess(ctx, accessToken, "minutes:result:read", clientIp);
     const minute = await ctx.db.get(minuteId);
     if (!minute || minute.condoId !== access.condoId) {
-      throw new Error("Minute not found");
+      throw new Error("EXT_NOT_FOUND_MINUTE");
     }
 
     const summary = await ctx.runQuery(api.votes.summary, { minuteId });
-    const votes = await ctx.runQuery(api.votes.listForMinute, { minuteId });
     const finalReport = await ctx.runQuery(api.minutes.getFinalReport, { minuteId });
+
+    const shouldIncludeVotes = includeVotes === true;
+    const safeVotesLimit = Math.max(1, Math.min(100, Math.floor(votesLimit ?? 25)));
+    const votes = shouldIncludeVotes
+      ? (await ctx.runQuery(api.votes.listForMinute, { minuteId })).slice(0, safeVotesLimit)
+      : [];
 
     return {
       minute: {
@@ -551,6 +687,8 @@ export const getMinuteResult = query({
       },
       summary,
       votes,
+      votesReturned: votes.length,
+      votesTruncated: shouldIncludeVotes ? summary.total > votes.length : false,
       finalReport: finalReport
         ? {
             id: finalReport._id,

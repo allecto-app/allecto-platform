@@ -7,11 +7,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Doc, Id } from "../lib/convexGenerated";
+import { cn } from "../components/ui/utils";
+
+const AVAILABLE_SCOPES = [
+  "units:read",
+  "units:write",
+  "residents:read",
+  "residents:write",
+  "minutes:read",
+  "minutes:write",
+  "minutes:close",
+  "minutes:result:read",
+] as const;
 
 type ExternalApiKeyItem = {
   _id: Id<"externalApiKeys">;
   name: string | null;
   keyPrefix: string;
+  scopes: string[];
+  allowedIps: string[];
   status: "active" | "revoked";
   createdAt: number;
   updatedAt: number;
@@ -35,6 +49,8 @@ export function SettingsApiPage({ condo }: SettingsApiPageProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyExpiresAt, setNewKeyExpiresAt] = useState("");
+  const [newKeyScopes, setNewKeyScopes] = useState<string[]>([...AVAILABLE_SCOPES]);
+  const [allowedIpsRaw, setAllowedIpsRaw] = useState("");
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     keyId: string;
     apiKey: string;
@@ -79,6 +95,11 @@ export function SettingsApiPage({ condo }: SettingsApiPageProps) {
           condoId: condo._id,
           name: newKeyName.trim() || undefined,
           expiresAt: expiresMs,
+          scopes: newKeyScopes,
+          allowedIps: allowedIpsRaw
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
         }),
       });
 
@@ -101,6 +122,8 @@ export function SettingsApiPage({ condo }: SettingsApiPageProps) {
       });
       setNewKeyName("");
       setNewKeyExpiresAt("");
+      setNewKeyScopes([...AVAILABLE_SCOPES]);
+      setAllowedIpsRaw("");
       toast.success("Chave de API criada. Copie o segredo agora.");
       await loadKeys();
     } catch (error) {
@@ -138,6 +161,15 @@ export function SettingsApiPage({ condo }: SettingsApiPageProps) {
     }
   };
 
+  const toggleScope = (scope: string) => {
+    setNewKeyScopes((prev) => {
+      if (prev.includes(scope)) {
+        return prev.filter((item) => item !== scope);
+      }
+      return [...prev, scope];
+    });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -169,9 +201,42 @@ export function SettingsApiPage({ condo }: SettingsApiPageProps) {
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label>Escopos da chave</Label>
+            <div className="flex flex-wrap gap-2">
+              {AVAILABLE_SCOPES.map((scope) => {
+                const selected = newKeyScopes.includes(scope);
+                return (
+                  <Button
+                    key={scope}
+                    type="button"
+                    variant={selected ? "default" : "outline"}
+                    size="sm"
+                    className={cn("h-8")}
+                    onClick={() => toggleScope(scope)}
+                  >
+                    {scope}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="text-muted-foreground text-xs">Selecione apenas os acessos necessários para a integração.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="api-key-allow-ips">Allowlist de IPs (opcional)</Label>
+            <Input
+              id="api-key-allow-ips"
+              value={allowedIpsRaw}
+              onChange={(event) => setAllowedIpsRaw(event.target.value)}
+              placeholder="Ex: 203.0.113.5, 198.51.100.10"
+            />
+            <p className="text-muted-foreground text-xs">
+              Se informado, o token só funciona para os IPs listados (separados por vírgula).
+            </p>
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => void handleCreateKey()} disabled={isCreating}>
+            <Button onClick={() => void handleCreateKey()} disabled={isCreating || newKeyScopes.length === 0}>
               <KeyRound className="mr-2 h-4 w-4" />
               {isCreating ? "Gerando..." : "Gerar nova chave"}
             </Button>
@@ -256,6 +321,10 @@ export function SettingsApiPage({ condo }: SettingsApiPageProps) {
                     <div>Criada: {formatDate(key.createdAt)}</div>
                     <div>Último uso: {formatDate(key.lastUsedAt)}</div>
                     <div>Expira em: {formatDate(key.expiresAt)}</div>
+                  </div>
+                  <div className="text-muted-foreground mt-2 text-xs">
+                    Escopos: {key.scopes.join(", ")}
+                    {key.allowedIps.length > 0 ? ` • IPs: ${key.allowedIps.join(", ")}` : ""}
                   </div>
                   {key.status === "active" && (
                     <div className="mt-3 flex justify-end">
