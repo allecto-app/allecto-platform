@@ -98,6 +98,23 @@ type AugmentedApi = typeof baseApi & {
     markOpened: MutationRef;
     deleteHard: MutationRef;
   };
+  externalApi: {
+    createApiKey: MutationRef;
+    listApiKeys: QueryRef;
+    revokeApiKey: MutationRef;
+    issueToken: MutationRef;
+    getUnits: QueryRef;
+    getUnitDetail: QueryRef;
+    createUnit: MutationRef;
+    getResidents: QueryRef;
+    getResidentDetail: QueryRef;
+    createResident: MutationRef;
+    getMinutes: QueryRef;
+    getMinuteDetail: QueryRef;
+    createMinute: MutationRef;
+    closeMinute: MutationRef;
+    getMinuteResult: QueryRef;
+  };
   retention: {
     getPolicies: QueryRef;
     upsertPolicy: MutationRef;
@@ -179,6 +196,8 @@ export type TableNames =
   | "securityEvents"
   | "invites"
   | "inviteRate"
+  | "externalApiKeys"
+  | "externalApiTokens"
   | "dataRetentionPolicies"
   | "dataRetentionRuns"
   | "dsarRequests"

@@ -780,6 +780,10 @@ function AuthenticatedShell({
               {currentPage === "settings" && (
                 <SettingsPage
                   condo={selectedCondo}
+                  canManageExternalApi={
+                    (auth.type === "resident" && auth.roles.includes("syndic")) ||
+                    (auth.type === "platform" && auth.roles.includes("super_admin"))
+                  }
                   onBrandingApplied={(branding) => applyBrandingTheme(branding)}
                   onCondoUpdated={(condoDoc) => {
                     setSelectedCondoOverride(condoDoc);

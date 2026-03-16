@@ -5,15 +5,22 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { SettingsBrandingPage } from "./SettingsBrandingPage";
 import { SettingsCondoPage } from "./SettingsCondoPage";
+import { SettingsApiPage } from "./SettingsApiPage";
 import { api, Doc } from "../lib/convexGenerated";
 
 interface SettingsPageProps {
   condo: Doc<"condos"> | null;
+  canManageExternalApi?: boolean;
   onBrandingApplied?: (branding: Doc<"condos">["branding"] | null | undefined) => void;
   onCondoUpdated?: (condo: Doc<"condos">) => void;
 }
 
-export function SettingsPage({ condo, onBrandingApplied, onCondoUpdated }: SettingsPageProps) {
+export function SettingsPage({
+  condo,
+  canManageExternalApi = false,
+  onBrandingApplied,
+  onCondoUpdated,
+}: SettingsPageProps) {
   const condoId = condo?._id ?? null;
 
   const detail = useQuery(
@@ -91,6 +98,7 @@ export function SettingsPage({ condo, onBrandingApplied, onCondoUpdated }: Setti
         <TabsList>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="condo">Condomínio</TabsTrigger>
+          {canManageExternalApi ? <TabsTrigger value="api">API</TabsTrigger> : null}
         </TabsList>
         <TabsContent value="branding">
           <SettingsBrandingPage
@@ -112,6 +120,11 @@ export function SettingsPage({ condo, onBrandingApplied, onCondoUpdated }: Setti
             }}
           />
         </TabsContent>
+        {canManageExternalApi ? (
+          <TabsContent value="api">
+            <SettingsApiPage condo={currentCondo} />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );

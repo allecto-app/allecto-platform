@@ -349,6 +349,38 @@ export default defineSchema({
     .index("byKey", ["key"])
     .index("byType", ["type"]),
 
+  externalApiKeys: defineTable({
+    condoId: v.id("condos"),
+    residentId: v.id("residents"),
+    name: v.optional(v.string()),
+    keyHash: v.string(),
+    secretHash: v.string(),
+    keyPrefix: v.string(),
+    status: v.union(v.literal("active"), v.literal("revoked")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("byCondo", ["condoId"])
+    .index("byKeyHash", ["keyHash"]),
+
+  externalApiTokens: defineTable({
+    keyId: v.id("externalApiKeys"),
+    condoId: v.id("condos"),
+    residentId: v.id("residents"),
+    tokenHash: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("byTokenHash", ["tokenHash"])
+    .index("byKey", ["keyId"])
+    .index("byCondo", ["condoId"]),
+
   invites: defineTable({
     condoId: v.id("condos"),
     email: v.string(),
