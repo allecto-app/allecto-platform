@@ -70,10 +70,12 @@ export function Navbar({
     ? notifications.slice(0, 5)
     : [];
   const unreadCount = userId
-    ? allNotifications.filter((notification) => notification.createdAt > lastReadAt).length
+    ? allNotifications.filter(
+        (notification) => notification.createdAt > lastReadAt,
+      ).length
     : 0;
   const { data: entitlements } = useEntitlements(
-    condoId ? selectedCondo?._id ?? null : null
+    condoId ? (selectedCondo?._id ?? null) : null,
   );
   const showDunningBanner = Boolean(entitlements?.inDunning);
 

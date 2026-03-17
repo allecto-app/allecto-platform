@@ -251,6 +251,7 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
             <PdfUploader
               orgId={orgId}
               sessionToken={sessionToken}
+              suggestedTitle={title}
               onUploaded={({ id, title: uploadedTitle }) => {
                 setSelectedDocumentId(id as Id<"documents">);
                 setSelectedDocumentTitle(uploadedTitle);

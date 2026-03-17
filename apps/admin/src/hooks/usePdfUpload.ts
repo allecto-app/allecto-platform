@@ -2,12 +2,11 @@ import { useCallback, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../lib/convexGenerated";
 
-type Visibility = "org" | "assembly" | "private";
+type Visibility = "org" | "private";
 
 export type UploadDocumentMeta = {
   title: string;
   visibility: Visibility;
-  assemblyId?: string | null;
   allowedRoles?: string[];
   allowedUserIds?: string[];
 };
@@ -85,7 +84,6 @@ export function usePdfUpload(options: UsePdfUploadOptions) {
           size: file.size,
           sha256,
           visibility: meta.visibility,
-          assemblyId: meta.assemblyId ?? undefined,
           allowedRoles,
           allowedUserIds,
           orgId: effectiveOrgId,

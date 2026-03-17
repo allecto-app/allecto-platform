@@ -18,15 +18,20 @@ type Visibility = UploadDocumentMeta["visibility"];
 type PdfUploaderProps = {
   orgId: string | null;
   sessionToken?: string | null;
+  suggestedTitle?: string | null;
   className?: string;
   onUploaded?: (doc: { id: string; title: string }) => void;
 };
 
-export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfUploaderProps) {
+export function PdfUploader({
+  orgId,
+  sessionToken,
+  suggestedTitle,
+  className,
+  onUploaded,
+}: PdfUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("org");
-  const [assemblyId, setAssemblyId] = useState("");
   const [allowedRoles, setAllowedRoles] = useState<RoleOption[]>(["admin", "syndic", "resident"]);
   const [allowedUsersRaw, setAllowedUsersRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,13 +50,7 @@ export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfU
   const applyFile = useCallback((nextFile: File | null) => {
     setFile(nextFile);
     setError(null);
-    if (nextFile && title.trim().length === 0) {
-      const base = nextFile.name.replace(/\.pdf$/i, "").trim();
-      if (base.length > 0) {
-        setTitle(base);
-      }
-    }
-  }, [title]);
+  }, []);
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0] ?? null;
@@ -91,13 +90,11 @@ export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfU
       setError("Selecione um condomínio antes de enviar o PDF.");
       return;
     }
-    if (title.trim().length === 0) {
-      setError("Informe um título para o documento.");
-      return;
-    }
-
-    if (visibility === "assembly" && assemblyId.trim().length === 0) {
-      setError("Informe o ID da assembleia para documentos restritos à assembleia.");
+    const titleFromContext = suggestedTitle?.trim() ?? "";
+    const titleFromFile = file.name.replace(/\.pdf$/i, "").trim();
+    const resolvedTitle = titleFromContext.length > 0 ? titleFromContext : titleFromFile;
+    if (resolvedTitle.length === 0) {
+      setError("Não foi possível identificar um título para o documento.");
       return;
     }
 
@@ -109,9 +106,8 @@ export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfU
     setError(null);
     try {
       const result = await uploadPdf(file, {
-        title: title.trim(),
+        title: resolvedTitle,
         visibility,
-        assemblyId: visibility === "assembly" ? assemblyId.trim() : undefined,
         allowedRoles,
         allowedUserIds: parsedAllowedUserIds,
       });
@@ -121,10 +117,8 @@ export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfU
       }
 
       toast.success("PDF enviado com sucesso!");
-      onUploaded?.({ id: result.id as string, title: title.trim() });
+      onUploaded?.({ id: result.id as string, title: resolvedTitle });
       setFile(null);
-      setTitle("");
-      setAssemblyId("");
       setAllowedUsersRaw("");
     } catch (uploadError) {
       const message =
@@ -134,7 +128,7 @@ export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfU
       setError(message);
       toast.error(message);
     }
-  }, [allowedRoles, assemblyId, file, onUploaded, orgId, parsedAllowedUserIds, title, uploadPdf, visibility]);
+  }, [allowedRoles, file, onUploaded, orgId, parsedAllowedUserIds, suggestedTitle, uploadPdf, visibility]);
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -209,17 +203,6 @@ export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfU
         <p className="text-sm text-muted-foreground">Formato PDF até 10 MB.</p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="pdf-title">Título</Label>
-        <Input
-          id="pdf-title"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="Título do documento"
-          required
-        />
-      </div>
-
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Visibilidade</Label>
@@ -229,23 +212,10 @@ export function PdfUploader({ orgId, sessionToken, className, onUploaded }: PdfU
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="org">Condomínio inteiro</SelectItem>
-              <SelectItem value="assembly">Somente assembleia</SelectItem>
               <SelectItem value="private">Acesso restrito</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        {visibility === "assembly" && (
-          <div className="space-y-2">
-            <Label htmlFor="assembly-id">ID da assembleia</Label>
-            <Input
-              id="assembly-id"
-              value={assemblyId}
-              onChange={(event) => setAssemblyId(event.target.value)}
-              placeholder="Ex: assembleia-2025"
-              required
-            />
-          </div>
-        )}
       </div>
 
       <div className="space-y-3">

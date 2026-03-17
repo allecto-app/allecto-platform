@@ -2,12 +2,11 @@ import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../lib/convexGenerated";
 
-type Visibility = "org" | "assembly" | "private";
+type Visibility = "org" | "private";
 
 type UseDocumentsOptions = {
   orgId: string | null;
   sessionToken?: string | null;
-  assemblyId?: string | null;
   visibility?: Visibility | null;
   limit?: number;
 };
@@ -16,7 +15,6 @@ export function useDocuments(options: UseDocumentsOptions) {
   const {
     orgId,
     sessionToken,
-    assemblyId = null,
     visibility = null,
     limit,
   } = options;
@@ -24,10 +22,9 @@ export function useDocuments(options: UseDocumentsOptions) {
   const args =
     orgId === null
       ? "skip"
-      : {
+        : {
           orgId,
           sessionToken: sessionToken ?? undefined,
-          assemblyId: assemblyId ?? undefined,
           visibility: visibility ?? undefined,
           limit,
         };
