@@ -163,7 +163,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                   id="condo-name"
                   value={condoName}
                   onChange={(e) => setCondoName(e.target.value)}
-                  placeholder="e.g., Jardim das Flores"
+                  placeholder="Ex.: Jardim das Flores"
                   required
                 />
               </div>
@@ -266,7 +266,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
                   id="syndic-name"
                   value={syndicName}
                   onChange={(e) => setSyndicName(e.target.value)}
-                  placeholder="John Doe"
+                  placeholder="Nome completo"
                   required
                 />
               </div>

@@ -116,7 +116,7 @@ export function RetentionPage({ sessionToken, condo }: RetentionPageProps) {
   const handleSaveGlobalPolicy = async () => {
     const days = Number(retentionDays);
     if (!Number.isFinite(days) || days < 1 || days > 3650) {
-      toast.error("Retention days deve estar entre 1 e 3650");
+      toast.error("Os dias de retenção devem estar entre 1 e 3650");
       return;
     }
 
@@ -144,7 +144,7 @@ export function RetentionPage({ sessionToken, condo }: RetentionPageProps) {
     }
     const days = Number(retentionDays);
     if (!Number.isFinite(days) || days < 1 || days > 3650) {
-      toast.error("Retention days deve estar entre 1 e 3650");
+      toast.error("Os dias de retenção devem estar entre 1 e 3650");
       return;
     }
 
@@ -273,7 +273,7 @@ export function RetentionPage({ sessionToken, condo }: RetentionPageProps) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="days">Retention days</Label>
+                  <Label htmlFor="days">Dias de retenção</Label>
                   <Input
                     id="days"
                     type="number"
@@ -325,7 +325,7 @@ export function RetentionPage({ sessionToken, condo }: RetentionPageProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Alvo</TableHead>
-                    <TableHead>Default</TableHead>
+                    <TableHead>Padrão</TableHead>
                     <TableHead>Global</TableHead>
                     <TableHead>Condomínio</TableHead>
                     <TableHead>Efetiva</TableHead>
@@ -385,8 +385,8 @@ export function RetentionPage({ sessionToken, condo }: RetentionPageProps) {
                   <TableHead>Início</TableHead>
                   <TableHead>Fim</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Scanned</TableHead>
-                  <TableHead>Eligible</TableHead>
+                  <TableHead>Analisados</TableHead>
+                  <TableHead>Elegíveis</TableHead>
                   <TableHead>Affected</TableHead>
                   <TableHead>Origem</TableHead>
                 </TableRow>

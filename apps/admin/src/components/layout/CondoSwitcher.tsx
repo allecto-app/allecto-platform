@@ -19,9 +19,14 @@ interface CondoSwitcherProps {
   onSelectCondo: (condoId: Id<"condos"> | null) => void;
 }
 
-export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoSwitcherProps) {
+export function CondoSwitcher({
+  condos,
+  selectedCondoId,
+  onSelectCondo,
+}: CondoSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const getCondoInitial = (name?: string) => name?.trim().charAt(0).toUpperCase() || "?";
+  const getCondoInitial = (name?: string) =>
+    name?.trim().charAt(0).toUpperCase() || "?";
   const selectedCondo = useMemo(
     () => condos.find((condo) => condo._id === selectedCondoId) ?? null,
     [condos, selectedCondoId],
@@ -34,7 +39,7 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full max-w-[230px] justify-between"
+          className="w-full max-w-[250px] justify-between"
         >
           {selectedCondo ? (
             <div className="flex items-center gap-2 overflow-hidden">
@@ -45,15 +50,12 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
               </div>
               <div className="flex flex-col items-start overflow-hidden">
                 <span className="truncate">{selectedCondo.name}</span>
-                <span className="text-muted-foreground truncate">
-                  {selectedCondo.subdomain}
-                </span>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Select a condo...</span>
+              <span className="text-muted-foreground">Selecione um condomínio...</span>
             </div>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -61,9 +63,9 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
       </PopoverTrigger>
       <PopoverContent className="w-[280px] p-0">
         <Command>
-          <CommandInput placeholder="Search condos..." />
+          <CommandInput placeholder="Buscar condomínios..." />
           <CommandList>
-            <CommandEmpty>No condo found.</CommandEmpty>
+            <CommandEmpty>Nenhum condomínio encontrado.</CommandEmpty>
             <CommandGroup>
               {condos.map((condo) => (
                 <CommandItem
@@ -79,7 +81,9 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      selectedCondo?._id === condo._id ? "opacity-100" : "opacity-0",
+                      selectedCondo?._id === condo._id
+                        ? "opacity-100"
+                        : "opacity-0",
                     )}
                   />
                   <div className="flex items-center gap-2 overflow-hidden">
@@ -90,9 +94,6 @@ export function CondoSwitcher({ condos, selectedCondoId, onSelectCondo }: CondoS
                     </div>
                     <div className="flex flex-col items-start overflow-hidden">
                       <span className="truncate">{condo.name}</span>
-                      <span className="text-muted-foreground truncate">
-                        {condo.subdomain}
-                      </span>
                     </div>
                   </div>
                 </CommandItem>

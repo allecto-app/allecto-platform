@@ -1,8 +1,30 @@
 import { useMemo } from "react";
-import { Home, FileText, Users, Building2, Settings, ChevronLeft, ChevronRight, Globe, Wrench, Bell, BarChart3, LogOut, X, CreditCard, ShieldCheck, ClipboardList } from "lucide-react";
+import {
+  Home,
+  FileText,
+  Users,
+  Building2,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+  Wrench,
+  Bell,
+  BarChart3,
+  LogOut,
+  X,
+  CreditCard,
+  ShieldCheck,
+  ClipboardList,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import { cn } from "../ui/utils";
 import { Separator } from "../ui/separator";
 import { Doc } from "../../lib/convexGenerated";
@@ -51,7 +73,11 @@ const residentNavigation: NavItem[] = [
   { name: "Meu Perfil", icon: Users, page: "resident:profile" },
 ];
 
-const logoutNavigation: NavItem = { name: "Sair", icon: LogOut, page: "__logout" };
+const logoutNavigation: NavItem = {
+  name: "Sair",
+  icon: LogOut,
+  page: "__logout",
+};
 
 export function Sidebar({
   currentPage,
@@ -67,21 +93,29 @@ export function Sidebar({
   const isResidentMode = mode === "resident";
   const hasCondoSelected = !!selectedCondo;
   const branding = selectedCondo?.branding;
-  const condoName = branding?.displayName?.trim() || selectedCondo?.name || "Allecto Admin";
+  const condoName =
+    branding?.displayName?.trim() || selectedCondo?.name || "Allecto Admin";
 
   const condoInitials = useMemo(() => {
     if (!condoName) return "A";
     const parts = condoName.trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) return "A";
-    const initials = parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+    const initials = parts
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
     return initials || "A";
   }, [condoName]);
 
   const condoLogoUrl = branding?.logoUrl ?? null;
   const platformItems = [
     ...platformNavigation,
-    ...(showDsar ? [{ name: "Solicitações LGPD", icon: ClipboardList, page: "dsar" }] : []),
-    ...(showRetention ? [{ name: "Retenção LGPD", icon: ShieldCheck, page: "retention" }] : []),
+    ...(showDsar
+      ? [{ name: "Solicitações LGPD", icon: ClipboardList, page: "dsar" }]
+      : []),
+    ...(showRetention
+      ? [{ name: "Retenção LGPD", icon: ShieldCheck, page: "retention" }]
+      : []),
   ];
 
   const renderNavItem = (item: NavItem, disabled = false) => {
@@ -96,8 +130,12 @@ export function Sidebar({
         className={cn(
           "flex w-full items-center gap-3 rounded-md px-3 py-2 transition-colors",
           disabled && "cursor-not-allowed opacity-50",
-          !disabled && isActive && "bg-sidebar-primary text-sidebar-primary-foreground",
-          !disabled && !isActive && "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          !disabled &&
+            isActive &&
+            "bg-sidebar-primary text-sidebar-primary-foreground",
+          !disabled &&
+            !isActive &&
+            "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         )}
       >
         <Icon className="h-5 w-5 shrink-0" />
@@ -111,7 +149,7 @@ export function Sidebar({
           <Tooltip>
             <TooltipTrigger asChild>{button}</TooltipTrigger>
             <TooltipContent side="right">
-              Select a condo to enter tenant view
+              Selecione um condomínio para acessar a visão de condomínio
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -124,8 +162,8 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "relative h-screen border-r border-border bg-sidebar transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
+        "relative h-screen border-r border-border md:bg-sidebar transition-all duration-300",
+        collapsed ? "w-16" : "w-64",
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
@@ -137,7 +175,11 @@ export function Sidebar({
         >
           <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground">
             {condoLogoUrl ? (
-              <img src={condoLogoUrl} alt={condoName} className="h-full w-full object-cover" />
+              <img
+                src={condoLogoUrl}
+                alt={condoName}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <span>{condoInitials}</span>
             )}
@@ -161,9 +203,16 @@ export function Sidebar({
             variant="ghost"
             size="icon"
             onClick={onToggleCollapse}
-            className={cn("hidden h-8 w-8 md:inline-flex", collapsed && "mx-auto")}
+            className={cn(
+              "hidden h-8 w-8 md:inline-flex",
+              collapsed && "mx-auto",
+            )}
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
@@ -173,16 +222,22 @@ export function Sidebar({
           {isPlatformMode ? (
             <>
               {!collapsed && (
-                <div className="px-3 py-2 text-muted-foreground">Platform</div>
+                <div className="px-3 py-2 text-muted-foreground">
+                  Plataforma
+                </div>
               )}
               {platformItems.map((item) => renderNavItem(item))}
 
               <Separator className="my-2" />
 
               {!collapsed && (
-                <div className="px-3 py-2 text-muted-foreground">Tenant Views</div>
+                <div className="px-3 py-2 text-muted-foreground">
+                  Condomínio
+                </div>
               )}
-              {tenantNavigation.map((item) => renderNavItem(item, !hasCondoSelected))}
+              {tenantNavigation.map((item) =>
+                renderNavItem(item, !hasCondoSelected),
+              )}
             </>
           ) : isResidentMode ? (
             residentNavigation.map((item) => renderNavItem(item))
@@ -190,9 +245,7 @@ export function Sidebar({
             tenantNavigation.map((item) => renderNavItem(item))
           )}
         </nav>
-        <div className="p-2">
-          {renderNavItem(logoutNavigation)}
-        </div>
+        <div className="p-2">{renderNavItem(logoutNavigation)}</div>
       </ScrollArea>
     </div>
   );

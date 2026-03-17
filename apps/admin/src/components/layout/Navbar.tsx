@@ -82,7 +82,7 @@ export function Navbar({
       {isPlatformMode && (
         <Alert className="rounded-none border-x-0 border-t-0 bg-info/10">
           <AlertDescription className="text-center">
-            <strong>Super Admin Mode</strong> — Condo:{" "}
+            <strong>Modo Super Admin</strong> — Condomínio:{" "}
             {selectedCondo
               ? `${selectedCondo.name} (${selectedCondo.subdomain})`
               : "None selected"}
