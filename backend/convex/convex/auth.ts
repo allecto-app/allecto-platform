@@ -797,3 +797,45 @@ export const logout = mutation({
         return { success: true };
     },
 });
+
+export const getSession = query({
+    args: { token: v.string() },
+    handler: async (ctx, { token }) => {
+        try {
+            const session = await loadSession(ctx, token);
+            if (session.type === "platform" && session.platformUserId) {
+                const user = await ctx.db.get(session.platformUserId);
+                if (!user) return null;
+                return {
+                    type: "platform" as const,
+                    token,
+                    userId: user._id,
+                    roles: user.roles,
+                    name: user.name ?? "",
+                    expiresAt: session.expiresAt,
+                };
+            }
+
+            if (session.type === "resident" && session.residentId && session.condoId) {
+                const resident = await ctx.db.get(session.residentId);
+                const condo = await ctx.db.get(session.condoId);
+                if (!resident || !condo || resident.isActive === false) return null;
+                return {
+                    type: "resident" as const,
+                    token,
+                    userId: resident._id,
+                    roles: Array.isArray(session.roles) ? session.roles : [resident.role],
+                    name: resident.name ?? "",
+                    expiresAt: session.expiresAt,
+                    condoId: condo._id,
+                    condoName: condo.name,
+                    condoSubdomain: condo.subdomain,
+                };
+            }
+
+            return null;
+        } catch {
+            return null;
+        }
+    },
+});

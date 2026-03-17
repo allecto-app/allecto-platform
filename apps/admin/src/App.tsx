@@ -48,12 +48,27 @@ type CondoDoc = Doc<"condos">;
 
 const PAGE_STORAGE_KEY = "allecto-admin-current-page";
 
+function isSessionValidForHost(
+  session: AdminAuthSession | null,
+  hostSubdomain: string | null,
+  isCondoHost: boolean,
+) {
+  if (!session) return false;
+  if (!session.token || session.token.length < 32 || session.expiresAt <= Date.now()) {
+    return false;
+  }
+  if (isCondoHost) {
+    return session.type === "resident" && session.condoSubdomain === hostSubdomain;
+  }
+  return true;
+}
+
 export default function App() {
   const hostInfo = useHostInfo();
   const hostSubdomain = hostInfo.subdomain ?? null;
   const isCondoHost = hostInfo.isCondoSubdomain;
   const [auth, setAuth] = useState<AdminAuthSession | null>(null);
-  const [isAuthResolved] = useState(true);
+  const [isAuthResolved, setIsAuthResolved] = useState(false);
 
   async function syncSessionCookie(token: string, expiresAt: number) {
     try {
@@ -75,24 +90,42 @@ export default function App() {
     void syncSessionCookie(auth.token, auth.expiresAt);
   }, [auth?.token, auth?.expiresAt]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const bootstrapSession = async () => {
+      try {
+        const response = await fetch("/api/session/me", {
+          method: "GET",
+          credentials: "same-origin",
+        });
+        if (!response.ok) {
+          if (isMounted) setAuth(null);
+          return;
+        }
+        const payload = (await response.json()) as { session?: AdminAuthSession | null };
+        const session = payload?.session ?? null;
+        if (!isMounted) return;
+        if (isSessionValidForHost(session, hostSubdomain, isCondoHost)) {
+          setAuth(session);
+        } else {
+          setAuth(null);
+        }
+      } catch {
+        if (isMounted) setAuth(null);
+      } finally {
+        if (isMounted) setIsAuthResolved(true);
+      }
+    };
+
+    void bootstrapSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [hostSubdomain, isCondoHost]);
+
   const handleLogin = (session: AdminAuthSession) => {
-    if (!session.token || session.token.length < 32 || session.expiresAt <= Date.now()) {
+    if (!isSessionValidForHost(session, hostSubdomain, isCondoHost)) {
       return;
-    }
-    if (session.type === "resident") {
-      if (!session.condoId || !session.condoName || !session.condoSubdomain) {
-        return;
-      }
-    }
-    if (isCondoHost) {
-      if (session.type !== "resident") {
-        console.warn("Platform sessions are not allowed on condo subdomains");
-        return;
-      }
-      if (session.condoSubdomain !== hostSubdomain) {
-        console.warn("Resident session does not match current subdomain");
-        return;
-      }
     }
     setAuth(session);
   };
