@@ -58,6 +58,9 @@ const DATE_TIME_FORMAT = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeStyle: "short",
 });
+const RESIDENT_COMMUNICATION_TEMPLATE_ID =
+  process.env.RESEND_TMPL_COMMUNICATION ??
+  "send-comunicado";
 
 function formatDateTime(timestamp: number): string {
   return DATE_TIME_FORMAT.format(new Date(timestamp));
@@ -566,6 +569,13 @@ export const sendResidentCommunicationEmail = internalAction({
     }
 
     const link = buildResidentCommunicationLink(context.condo, communicationId);
+    const communicationDocumentUrl = context.communication.documentId
+      ? await (async () => {
+          const document = await ctx.db.get(context.communication.documentId!);
+          if (!document?.storageId) return null;
+          return await ctx.storage.getUrl(document.storageId);
+        })()
+      : null;
     let successCount = 0;
     let errorCount = 0;
 
@@ -574,28 +584,17 @@ export const sendResidentCommunicationEmail = internalAction({
         await ctx.runAction(internal.email.send, {
           to: recipient.email,
           subject: `Novo comunicado: ${context.communication.title}`,
-          html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-              <p>Olá ${firstName(recipient.name)},</p>
-              <p>Um novo comunicado foi publicado em ${context.condo?.name ?? "seu condomínio"}.</p>
-              <p><strong>${context.communication.title}</strong></p>
-              ${context.communication.message ? `<p>${context.communication.message}</p>` : ""}
-              <p>Acesse o portal para visualizar os detalhes e o documento anexado (quando houver):</p>
-              <p><a href="${link}" style="color: #2563eb;">${link}</a></p>
-              <p>Equipe Allecto</p>
-            </div>
-          `.trim(),
-          text: [
-            `Olá ${firstName(recipient.name)},`,
-            `Um novo comunicado foi publicado em ${context.condo?.name ?? "seu condomínio"}.`,
-            context.communication.title,
-            context.communication.message ?? "",
-            `Acesse o portal: ${link}`,
-            "",
-            "Equipe Allecto",
-          ]
-            .filter(Boolean)
-            .join("\n"),
+          template: {
+            id: RESIDENT_COMMUNICATION_TEMPLATE_ID,
+            variables: {
+              USER_NAME: firstName(recipient.name),
+              CONDO_NAME: context.condo?.name ?? "seu condomínio",
+              COMMUNICATION_TITLE: context.communication.title,
+              COMMUNICATION_MESSAGE: context.communication.message ?? "",
+              COMMUNICATION_URL: link,
+              COMMUNICATION_DOCUMENT_URL: communicationDocumentUrl ?? "",
+            },
+          },
         });
         successCount += 1;
         await ctx.runMutation(internal.notifications.recordCommunicationReceipt, {
