@@ -19,6 +19,7 @@ interface ResidentEditPageProps {
   condoId: Id<"condos"> | null;
   residentId?: Id<"residents"> | null;
   residentFallback?: ResidentRecord | null;
+  sessionToken: string;
   onResidentUpdated?: (resident: ResidentRecord) => void;
 }
 
@@ -50,14 +51,15 @@ export function ResidentEditPage({
   condoId: _condoId,
   residentId,
   residentFallback,
+  sessionToken,
   onResidentUpdated,
 }: ResidentEditPageProps) {
   const detail = useQuery(
     api.residentDetail.get,
     residentId
-      ? { residentId }
+      ? { sessionToken, residentId }
       : residentFallback?.email
-      ? { email: residentFallback.email }
+      ? { sessionToken, email: residentFallback.email }
       : "skip",
   );
   const updateResident = useMutation(api.residents.update);
@@ -143,6 +145,7 @@ export function ResidentEditPage({
     setIsSaving(true);
     try {
       const result = await updateResident({
+        sessionToken,
         residentId: resident.id,
         name: payload.name,
         email: payload.email,
@@ -194,7 +197,7 @@ export function ResidentEditPage({
       return;
     }
     try {
-      await resendOtp({ residentId: resident.id });
+      await resendOtp({ sessionToken, residentId: resident.id });
       toast.success("Novo código enviado");
     } catch (error) {
       console.error(error);

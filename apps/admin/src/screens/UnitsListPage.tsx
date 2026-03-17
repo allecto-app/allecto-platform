@@ -17,17 +17,18 @@ import { BulkUploadButton } from "../components/bulk-upload/BulkUploadButton";
 interface UnitsListPageProps {
   onNavigate: (page: string) => void;
   condo: Doc<"condos"> | null;
+  sessionToken: string;
   onSelectUnit?: (unit: Doc<"units">) => void;
 }
 
-export function UnitsListPage({ onNavigate, condo, onSelectUnit }: UnitsListPageProps) {
+export function UnitsListPage({ onNavigate, condo, sessionToken, onSelectUnit }: UnitsListPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [blockFilter, setBlockFilter] = useState("all");
   const [floorFilter, setFloorFilter] = useState("all");
 
   const units = useQuery(
     api.units.listByCondo,
-    condo ? { condoId: condo._id } : "skip",
+    condo ? { sessionToken, condoId: condo._id } : "skip",
   ) as Doc<"units">[] | undefined;
 
   const blocks = useMemo(() => {

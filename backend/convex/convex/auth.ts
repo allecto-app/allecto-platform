@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import bcrypt from "bcryptjs";
 import { internal } from "./_generated/api";
 import { loadSession } from "./guards";
+import { enforceRateLimit, recordSecurityEvent } from "./lib/security";
 
 const GENERIC_AUTH_ERROR = "Invalid email or password";
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -16,6 +17,9 @@ const BCRYPT_COST = 12;
 const FALLBACK_PASSWORD_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8p6hX6YsJhBKt3vnDnN/SfXlBx/6C6";
 const RESIDENT_ALLOWED_ROLES = new Set(["syndic", "manager", "resident", "council"]);
 const SEND_OTP_TEMPLATE_ID = process.env.RESEND_TEMPLATE_SEND_OTP ?? "";
+const OTP_RATE_WINDOW_MS = 15 * 60 * 1000;
+const OTP_RATE_LIMIT_PER_EMAIL = 5;
+const RESET_RATE_LIMIT_PER_EMAIL = 5;
 
 async function sendOtpEmail(
     ctx: any,
@@ -239,8 +243,9 @@ export const requestResidentOtp = mutation({
         email: v.string(),
         condoId: v.optional(v.id("condos")),
         subdomain: v.optional(v.string()),
+        ip: v.optional(v.string()),
     },
-    handler: async (ctx, { condoId, subdomain, email }) => {
+    handler: async (ctx, { condoId, subdomain, email, ip }) => {
         const cleanedEmail = email.trim().toLowerCase();
         const cleanedSubdomain = subdomain?.trim().toLowerCase() ?? "";
         if (!cleanedEmail || (!condoId && !cleanedSubdomain)) return { ok: true };
@@ -258,6 +263,23 @@ export const requestResidentOtp = mutation({
             .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
             .unique();
         if (!resident || !RESIDENT_ALLOWED_ROLES.has(resident.role) || resident.isActive === false) {
+            return { ok: true };
+        }
+
+        const limiter = await enforceRateLimit(ctx, {
+            scope: "resident_otp_request",
+            key: `${condo._id}:${cleanedEmail}`,
+            limit: OTP_RATE_LIMIT_PER_EMAIL,
+            windowMs: OTP_RATE_WINDOW_MS,
+        });
+        if (limiter.limited) {
+            await recordSecurityEvent(
+                ctx,
+                "resident_otp_rate_limited",
+                cleanedEmail,
+                { condoId: condo._id, ip: ip?.trim() || null },
+                "warn",
+            );
             return { ok: true };
         }
 
@@ -306,7 +328,14 @@ Equipe Allecto`;
             console.error("Failed to send resident OTP email", error);
         }
 
-        return { ok: true, devCode: code };
+        await recordSecurityEvent(ctx, "resident_otp_requested", cleanedEmail, {
+            condoId: condo._id,
+            residentId: resident._id,
+            ip: ip?.trim() || null,
+        });
+
+        const includeDevCode = process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY;
+        return { ok: true, devCode: includeDevCode ? code : undefined };
     },
 });
 
@@ -323,6 +352,7 @@ export const residentSignIn = mutation({
         const cleanedSubdomain = subdomain?.trim().toLowerCase() ?? "";
         const cleanedEmail = email.trim().toLowerCase();
         const trimmedCode = code.trim();
+        const clientIp = (ip?.trim() ?? "") || "unknown";
 
         if ((!condoId && !cleanedSubdomain) || !cleanedEmail || trimmedCode.length === 0) {
             throw new Error(GENERIC_AUTH_ERROR);
@@ -335,6 +365,31 @@ export const residentSignIn = mutation({
                 .withIndex("bySubdomain", (q) => q.eq("subdomain", cleanedSubdomain))
                 .unique();
         if (!condo) {
+            await recordSecurityEvent(
+                ctx,
+                "resident_login_failed",
+                cleanedEmail || "unknown",
+                { reason: "condo_not_found", ip: clientIp },
+                "warn",
+            );
+            throw new Error(GENERIC_AUTH_ERROR);
+        }
+
+        const limiter = await enforceRateLimit(ctx, {
+            scope: "resident_login",
+            key: `${condo._id}:${cleanedEmail}:${clientIp}`,
+            limit: RATE_LIMIT_MAX_ATTEMPTS,
+            windowMs: RATE_LIMIT_WINDOW_MS,
+            blockMs: RATE_LIMIT_LOCK_MS,
+        });
+        if (limiter.limited) {
+            await recordSecurityEvent(
+                ctx,
+                "resident_login_rate_limited",
+                cleanedEmail,
+                { condoId: condo._id, ip: clientIp },
+                "warn",
+            );
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
@@ -343,6 +398,11 @@ export const residentSignIn = mutation({
             .withIndex("byCondoEmail", (q) => q.eq("condoId", condo._id).eq("email", cleanedEmail))
             .unique();
         if (!resident || !RESIDENT_ALLOWED_ROLES.has(resident.role) || resident.isActive === false) {
+            await recordSecurityEvent(ctx, "resident_login_failed", cleanedEmail, {
+                condoId: condo._id,
+                reason: "resident_not_eligible",
+                ip: clientIp,
+            }, "warn");
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
@@ -352,9 +412,19 @@ export const residentSignIn = mutation({
             .order("desc")
             .first();
         if (!otp || otp.code !== trimmedCode) {
+            await recordSecurityEvent(ctx, "resident_login_failed", cleanedEmail, {
+                condoId: condo._id,
+                reason: "otp_mismatch",
+                ip: clientIp,
+            }, "warn");
             throw new Error(GENERIC_AUTH_ERROR);
         }
         if (otp.expiresAt < now || otp.consumedAt) {
+            await recordSecurityEvent(ctx, "resident_login_failed", cleanedEmail, {
+                condoId: condo._id,
+                reason: "otp_expired_or_used",
+                ip: clientIp,
+            }, "warn");
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
@@ -375,7 +445,13 @@ export const residentSignIn = mutation({
             createdAt: now,
             expiresAt,
             lastUsedAt: now,
-            ip: (ip?.trim() ?? "") || "unknown",
+            ip: clientIp,
+        });
+
+        await recordSecurityEvent(ctx, "resident_login_success", cleanedEmail, {
+            condoId: condo._id,
+            residentId: resident._id,
+            ip: clientIp,
         });
 
         return {
@@ -398,6 +474,18 @@ export const requestPasswordReset = mutation({
     handler: async (ctx, { email }) => {
         const normalizedEmail = email.trim().toLowerCase();
         if (!normalizedEmail) {
+            return { ok: true };
+        }
+
+        const limiter = await enforceRateLimit(ctx, {
+            scope: "password_reset_request",
+            key: normalizedEmail,
+            limit: RESET_RATE_LIMIT_PER_EMAIL,
+            windowMs: OTP_RATE_WINDOW_MS,
+            blockMs: OTP_RATE_WINDOW_MS,
+        });
+        if (limiter.limited) {
+            await recordSecurityEvent(ctx, "password_reset_rate_limited", normalizedEmail, undefined, "warn");
             return { ok: true };
         }
 
@@ -467,6 +555,10 @@ Se você não solicitou esta ação, basta ignorar esta mensagem.`;
             console.error("Failed to send password reset email", error);
         }
 
+        await recordSecurityEvent(ctx, "password_reset_requested", normalizedEmail, {
+            platformUserId: user._id,
+        });
+
         const includeDevCode = process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY;
         return { ok: true, devCode: includeDevCode ? code : undefined };
     },
@@ -482,6 +574,18 @@ export const resetPassword = mutation({
         const normalizedEmail = email.trim().toLowerCase();
         const trimmedCode = code.trim();
         const sanitizedPassword = newPassword.trim();
+
+        const limiter = await enforceRateLimit(ctx, {
+            scope: "password_reset_confirm",
+            key: normalizedEmail,
+            limit: RATE_LIMIT_MAX_ATTEMPTS,
+            windowMs: OTP_RATE_WINDOW_MS,
+            blockMs: OTP_RATE_WINDOW_MS,
+        });
+        if (limiter.limited) {
+            await recordSecurityEvent(ctx, "password_reset_confirm_rate_limited", normalizedEmail, undefined, "warn");
+            throw new Error("INVALID_CODE");
+        }
 
         if (!normalizedEmail || trimmedCode.length === 0 || sanitizedPassword.length === 0) {
             throw new Error("INVALID_CODE");
@@ -500,11 +604,17 @@ export const resetPassword = mutation({
             resetRecord.usedAt ||
             resetRecord.expiresAt <= Date.now()
         ) {
+            await recordSecurityEvent(ctx, "password_reset_failed", normalizedEmail, {
+                reason: "reset_record_invalid",
+            }, "warn");
             throw new Error("INVALID_CODE");
         }
 
         const validCode = bcrypt.compareSync(trimmedCode, resetRecord.codeHash);
         if (!validCode) {
+            await recordSecurityEvent(ctx, "password_reset_failed", normalizedEmail, {
+                reason: "invalid_code",
+            }, "warn");
             throw new Error("INVALID_CODE");
         }
 
@@ -513,6 +623,9 @@ export const resetPassword = mutation({
             .withIndex("byEmail", (q) => q.eq("email", normalizedEmail))
             .unique();
         if (!user) {
+            await recordSecurityEvent(ctx, "password_reset_failed", normalizedEmail, {
+                reason: "user_not_found",
+            }, "warn");
             throw new Error("INVALID_CODE");
         }
 
@@ -520,6 +633,10 @@ export const resetPassword = mutation({
         await ctx.db.patch(user._id, { passwordHash: newHash });
 
         await ctx.db.patch(resetRecord._id, { usedAt: Date.now() });
+
+        await recordSecurityEvent(ctx, "password_reset_success", normalizedEmail, {
+            platformUserId: user._id,
+        });
 
         return { ok: true };
     },
@@ -542,6 +659,10 @@ export const adminSignIn = mutation({
             .unique();
 
         if (attemptRecord?.blockedUntil && attemptRecord.blockedUntil > now) {
+            await recordSecurityEvent(ctx, "platform_login_rate_limited", normalizedEmail, {
+                ip: clientIp,
+                blockedUntil: attemptRecord.blockedUntil,
+            }, "warn");
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
@@ -557,6 +678,10 @@ export const adminSignIn = mutation({
             }
         }
         if (recentIpAttempts >= RATE_LIMIT_MAX_ATTEMPTS_PER_IP) {
+            await recordSecurityEvent(ctx, "platform_login_rate_limited", normalizedEmail, {
+                ip: clientIp,
+                reason: "ip_throttle",
+            }, "warn");
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
@@ -598,6 +723,10 @@ export const adminSignIn = mutation({
                     blockedUntil,
                 });
             }
+            await recordSecurityEvent(ctx, "platform_login_failed", normalizedEmail, {
+                ip: clientIp,
+                attempts,
+            }, attempts >= RATE_LIMIT_MAX_ATTEMPTS ? "warn" : "info");
             throw new Error(GENERIC_AUTH_ERROR);
         }
 
@@ -630,6 +759,12 @@ export const adminSignIn = mutation({
             ip: clientIp,
         });
 
+        await recordSecurityEvent(ctx, "platform_login_success", normalizedEmail, {
+            platformUserId: user._id,
+            roles: user.roles,
+            ip: clientIp,
+        });
+
         return {
             success: true,
             token: rawToken,
@@ -654,6 +789,10 @@ export const logout = mutation({
         if (!session) return { success: true };
         await ctx.db.patch(session._id, {
             revokedAt: Date.now(),
+        });
+        await recordSecurityEvent(ctx, "session_logout", String(session.platformUserId ?? session.residentId ?? "unknown"), {
+            sessionType: session.type,
+            condoId: session.condoId ?? null,
         });
         return { success: true };
     },

@@ -57,7 +57,7 @@ export function MinutesListPage({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [closingId, setClosingId] = useState<Id<"minutes"> | null>(null);
 
-  const minutes = useQuery(api.minutes.list, condoId ? { condoId } : "skip");
+  const minutes = useQuery(api.minutes.list, condoId ? { sessionToken, condoId } : "skip");
   const closeMinuteMutation = useMutation(api.minutes.close);
   const orgId = condoId ? condoId.toString() : null;
   const { documents, isLoading: documentsLoading } = useDocuments({
@@ -91,7 +91,7 @@ export function MinutesListPage({
   const handleCloseMinute = async (minuteId: Id<"minutes">) => {
     try {
       setClosingId(minuteId);
-      await closeMinuteMutation({ minuteId });
+      await closeMinuteMutation({ sessionToken, minuteId });
       toast.success("Ata fechada com sucesso!");
     } catch (error) {
       const message =

@@ -23,6 +23,7 @@ import { api, Doc } from "../lib/convexGenerated";
 interface DashboardPageProps {
   condos: Doc<"condos">[] | undefined;
   selectedCondo: Doc<"condos"> | null;
+  sessionToken: string;
 }
 
 const formatDateTime = (timestamp: number) =>
@@ -31,14 +32,14 @@ const formatDateTime = (timestamp: number) =>
     timeStyle: "short",
   }).format(new Date(timestamp));
 
-export function DashboardPage({ selectedCondo }: DashboardPageProps) {
+export function DashboardPage({ selectedCondo, sessionToken }: DashboardPageProps) {
   const minutes = useQuery(
     api.minutes.list,
-    selectedCondo ? { condoId: selectedCondo._id } : "skip"
+    selectedCondo ? { sessionToken, condoId: selectedCondo._id } : "skip"
   ) as Doc<"minutes">[] | undefined;
   const voteStats = useQuery(
     api.votes.statsByCondo,
-    selectedCondo ? { condoId: selectedCondo._id } : "skip"
+    selectedCondo ? { sessionToken, condoId: selectedCondo._id } : "skip"
   ) as { votesToday: number; participationRate: number } | undefined;
 
   const openMinutes = (minutes ?? []).filter(

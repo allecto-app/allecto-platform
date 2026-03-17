@@ -1,22 +1,15 @@
 'use server';
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { ConvexHttpClient } from "convex/browser";
 import { api, Id } from "../../../../src/lib/convexGenerated";
+import { createServerConvexClient } from "../../../../src/lib/serverConvex";
+import { getAdminSessionCookie } from "../../../../src/lib/serverSession";
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
 const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL!;
-
-if (!convexUrl) {
-  throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
-}
 
 if (!adminUrl) {
   throw new Error("NEXT_PUBLIC_ADMIN_URL is not configured");
 }
-
-const convex = new ConvexHttpClient(convexUrl);
 
 type InvitePayload = {
   condoId?: string;
@@ -48,15 +41,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const sessionToken = cookies().get("allecto_admin")?.value;
+  const sessionToken = getAdminSessionCookie();
   if (!sessionToken) {
     return NextResponse.json(
       { ok: false, error: "Unable to send invite" },
-      { status: 400 },
+      { status: 401 },
     );
   }
 
   try {
+    const convex = createServerConvexClient();
     await convex.action(api.invites.createAndEmail, {
       token: sessionToken,
       condoId,
@@ -70,7 +64,7 @@ export async function POST(request: Request) {
     console.error("Invite creation failed", error);
     return NextResponse.json(
       { ok: false, error: "Unable to send invite" },
-      { status: 400 },
+      { status: 429 },
     );
   }
 }

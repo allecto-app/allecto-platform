@@ -1,8 +1,8 @@
 'use server';
 
 import { NextResponse } from "next/server";
+import { ADMIN_SESSION_COOKIE, buildAdminSessionCookieOptions } from "../../../../src/lib/serverSession";
 
-const COOKIE_NAME = "allecto_admin";
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 type SessionPayload = {
@@ -57,13 +57,8 @@ export async function POST(request: Request) {
   const expiresAt = parseExpiresAt(payload.expiresAt);
   const response = NextResponse.json({ ok: true });
   response.cookies.set({
-    name: COOKIE_NAME,
+    ...buildAdminSessionCookieOptions(expiresAt),
     value: token,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: expiresAt,
   });
   return response;
 }
@@ -71,13 +66,8 @@ export async function POST(request: Request) {
 export async function DELETE() {
   const response = NextResponse.json({ ok: true });
   response.cookies.set({
-    name: COOKIE_NAME,
+    ...buildAdminSessionCookieOptions(new Date(0)),
     value: "",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: new Date(0),
   });
   return response;
 }

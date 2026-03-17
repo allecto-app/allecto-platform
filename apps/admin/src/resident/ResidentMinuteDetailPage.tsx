@@ -59,17 +59,17 @@ export function ResidentMinuteDetailPage({
     null
   );
 
-  const minuteArgs = (minuteId ? { minuteId } : "skip") as
-    | { minuteId: Id<"minutes"> }
-    | "skip";
-  const minute = useQuery(api.minutes.get, minuteArgs) as
+  const minute = useQuery(
+    api.minutes.get,
+    minuteId ? { sessionToken, minuteId } : "skip",
+  ) as
     | Doc<"minutes">
     | null
     | undefined;
 
   const myVotesRaw = useQuery(
     api.votes.getMine,
-    minuteId ? { residentId, minuteId } : "skip"
+    minuteId ? { sessionToken, residentId, minuteId } : "skip"
   ) as Doc<"votes">[] | undefined;
   const myVotes = myVotesRaw ?? [];
 
@@ -106,7 +106,7 @@ export function ResidentMinuteDetailPage({
   const minuteStatus = minute?.status ?? null;
   const voteSummary = useQuery(
     api.votes.summary,
-    minuteId && minuteStatus === "closed" ? { minuteId } : "skip"
+    minuteId && minuteStatus === "closed" ? { sessionToken, minuteId } : "skip"
   );
 
   const unitVotes = useMemo(
@@ -169,6 +169,7 @@ export function ResidentMinuteDetailPage({
     if (!selectedUnitId) return;
     try {
       await castVote({
+        sessionToken,
         minuteId,
         unitId: selectedUnitId,
         residentId,

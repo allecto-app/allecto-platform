@@ -68,6 +68,7 @@ interface UnitDetailPageProps {
   condoId: Id<"condos"> | null;
   unitId?: Id<"units"> | null;
   unitFallback?: UnitRecord | null;
+  sessionToken: string;
   onUnitLoaded?: (unit: UnitRecord) => void;
 }
 
@@ -76,6 +77,7 @@ export function UnitDetailPage({
   condoId,
   unitId,
   unitFallback,
+  sessionToken,
   onUnitLoaded,
 }: UnitDetailPageProps) {
   const [linkResidentOpen, setLinkResidentOpen] = useState(false);
@@ -90,7 +92,7 @@ export function UnitDetailPage({
 
   const detail = useQuery(
     api.units.detail,
-    effectiveUnitId ? { unitId: effectiveUnitId } : "skip",
+    effectiveUnitId ? { sessionToken, unitId: effectiveUnitId } : "skip",
   ) as UnitDetailResponse | undefined;
 
   const unitFromQuery = detail && detail !== null ? detail.unit : null;
@@ -117,7 +119,7 @@ export function UnitDetailPage({
 
   const residents = useQuery(
     api.residents.list,
-    effectiveCondoId ? { condoId: effectiveCondoId } : "skip",
+    effectiveCondoId ? { sessionToken, condoId: effectiveCondoId } : "skip",
   ) as Doc<"residents">[] | undefined;
 
   const isLoadingResidents = effectiveCondoId !== null && residents === undefined;
@@ -183,7 +185,7 @@ export function UnitDetailPage({
     }
     setIsDeletingUnit(true);
     try {
-      await removeUnit({ unitId: unit.id });
+      await removeUnit({ sessionToken, unitId: unit.id });
       toast.success("Unidade removida com sucesso");
       onNavigate("units");
     } catch (error) {
@@ -208,6 +210,7 @@ export function UnitDetailPage({
     setIsLinking(true);
     try {
       await addMembership({
+        sessionToken,
         residentId: selectedResidentId as Id<"residents">,
         unitId: unit.id,
         role: selectedRole,
@@ -237,6 +240,7 @@ export function UnitDetailPage({
     setPendingMembershipId(membership.membershipId);
     try {
       await updateMembershipRole({
+        sessionToken,
         membershipId: membership.membershipId,
         role: newRole,
       });
@@ -256,7 +260,7 @@ export function UnitDetailPage({
   const handleUnlinkResident = async (membership: UnitDetailMembership) => {
     setPendingMembershipId(membership.membershipId);
     try {
-      await removeMembership({ membershipId: membership.membershipId });
+      await removeMembership({ sessionToken, membershipId: membership.membershipId });
       toast.success(`${membership.resident.name} desvinculado com sucesso`);
     } catch (error) {
       console.error(error);

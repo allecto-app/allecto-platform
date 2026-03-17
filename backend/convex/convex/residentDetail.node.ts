@@ -4,15 +4,23 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { sendEmail, DEFAULT_FROM } from "./lib/email";
 import { normalizeEmail } from "./_secu";
+import { requireCondoRole, requirePlatformRole } from "./guards";
 
 const SEND_OTP_TEMPLATE_ID = process.env.RESEND_TEMPLATE_SEND_OTP ?? "";
 
 export const resendOtp = action({
-  args: { residentId: v.id("residents") },
-  handler: async (ctx: any, { residentId }) => {
+  args: { sessionToken: v.optional(v.string()), residentId: v.id("residents") },
+  handler: async (ctx: any, { sessionToken, residentId }) => {
     const resident = await ctx.db.get(residentId);
     if (!resident?.email) {
       throw new Error("Residente sem email cadastrado");
+    }
+    if (sessionToken) {
+      try {
+        await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
+      } catch {
+        await requireCondoRole(ctx, resident.condoId, ["syndic", "manager"], sessionToken);
+      }
     }
 
     const condo = await ctx.db.get(resident.condoId);

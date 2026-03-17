@@ -46,55 +46,14 @@ type UserMode = "platform" | "tenant";
 type CondoDoc = Doc<"condos">;
 
 
-const AUTH_STORAGE_KEY = "allecto-admin-auth";
 const PAGE_STORAGE_KEY = "allecto-admin-current-page";
-
-function readStoredSession(
-  hostSubdomain: string | null,
-  isCondoHost: boolean,
-): AdminAuthSession | null {
-  if (typeof window === "undefined") return null;
-  const stored = window.localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!stored) return null;
-  try {
-    const parsed = JSON.parse(stored) as Partial<AdminAuthSession>;
-    const baseValid =
-      parsed &&
-      typeof parsed.token === "string" &&
-      parsed.token.length >= 32 &&
-      Array.isArray(parsed.roles) &&
-      typeof parsed.expiresAt === "number" &&
-      parsed.expiresAt > Date.now() &&
-      (parsed.type === "platform" || parsed.type === "resident");
-    const platformValid =
-      baseValid && parsed.type === "platform" && typeof parsed.userId === "string";
-    const residentValid =
-      baseValid &&
-      parsed.type === "resident" &&
-      typeof parsed.userId === "string" &&
-      typeof parsed.condoId === "string" &&
-      typeof parsed.condoName === "string" &&
-      typeof parsed.condoSubdomain === "string";
-    const hostAligned = !isCondoHost
-      ? true
-      : parsed?.type === "resident" && parsed.condoSubdomain === hostSubdomain;
-
-    if (hostAligned && (platformValid || residentValid)) {
-      return parsed as AdminAuthSession;
-    }
-  } catch {
-    // fall through and clear below
-  }
-  window.localStorage.removeItem(AUTH_STORAGE_KEY);
-  return null;
-}
 
 export default function App() {
   const hostInfo = useHostInfo();
   const hostSubdomain = hostInfo.subdomain ?? null;
   const isCondoHost = hostInfo.isCondoSubdomain;
   const [auth, setAuth] = useState<AdminAuthSession | null>(null);
-  const [isAuthResolved, setIsAuthResolved] = useState(false);
+  const [isAuthResolved] = useState(true);
 
   async function syncSessionCookie(token: string, expiresAt: number) {
     try {
@@ -108,21 +67,6 @@ export default function App() {
       console.error("Failed to sync admin session cookie", error);
     }
   }
-
-  useEffect(() => {
-    const stored = readStoredSession(hostSubdomain, isCondoHost);
-    setAuth(stored);
-    setIsAuthResolved(true);
-  }, [hostSubdomain, isCondoHost]);
-
-  useEffect(() => {
-    if (!isAuthResolved || typeof window === "undefined") return;
-    if (auth) {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
-    } else {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
-  }, [auth, isAuthResolved]);
 
   useEffect(() => {
     if (!auth || !auth.token || auth.token.length < 32 || auth.expiresAt <= Date.now()) {
@@ -158,23 +102,11 @@ export default function App() {
       try {
         await fetch("/api/logout", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: auth.token }),
-        });
-      } catch {
-        // swallow network errors; we'll still clear the local session
-      }
-      try {
-        await fetch("/api/session/sync", {
-          method: "DELETE",
           credentials: "same-origin",
         });
-      } catch (error) {
-        console.error("Failed to clear admin session cookie", error);
+      } catch {
+        // no-op
       }
-    }
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
     setAuth(null);
   };
@@ -634,7 +566,11 @@ function AuthenticatedShell({
                 <AuditPage sessionToken={auth.token} />
               )}
               {showPlatformSections && currentPage === "support" && (
-                <SupportPage onNavigate={handleNavigate} onSelectCondo={handleSelectCondo} />
+                <SupportPage
+                  onNavigate={handleNavigate}
+                  onSelectCondo={handleSelectCondo}
+                  sessionToken={auth.token}
+                />
               )}
               {showPlatformSections && canManageDsar && currentPage === "dsar" && (
                 <DsarRequestsPage sessionToken={auth.token} condo={selectedCondo} />
@@ -644,7 +580,11 @@ function AuthenticatedShell({
               )}
 
               {currentPage === "dashboard" && (
-                <DashboardPage condos={condos} selectedCondo={selectedCondo} />
+                <DashboardPage
+                  condos={condos}
+                  selectedCondo={selectedCondo}
+                  sessionToken={auth.token}
+                />
               )}
               {currentPage === "minutes" && (
                 <MinutesListPage
@@ -677,6 +617,7 @@ function AuthenticatedShell({
                   onNavigate={handleNavigate}
                   condo={selectedCondo}
                   canInviteSyndic={canInviteSyndic}
+                  sessionToken={auth.token}
                   onSelectResident={(resident) => {
                     const record: ResidentRecord = {
                       id: resident._id,
@@ -702,6 +643,7 @@ function AuthenticatedShell({
                   condoId={selectedCondo?._id ?? null}
                   residentId={selectedResidentId}
                   residentFallback={selectedResident}
+                  sessionToken={auth.token}
                   onResidentLoaded={(resident) => {
                     setSelectedResidentId(resident.id);
                     setSelectedResident(resident);
@@ -719,6 +661,7 @@ function AuthenticatedShell({
                   condoId={selectedCondo?._id ?? null}
                   residentId={selectedResidentId}
                   residentFallback={selectedResident}
+                  sessionToken={auth.token}
                   onResidentUpdated={(resident) => {
                     setSelectedResidentId(resident.id);
                     setSelectedResident(resident);
@@ -729,6 +672,7 @@ function AuthenticatedShell({
                 <UnitsListPage
                   onNavigate={handleNavigate}
                   condo={selectedCondo}
+                  sessionToken={auth.token}
                   onSelectUnit={(unit) => {
                     const record: UnitRecord = {
                       id: unit._id,
@@ -751,6 +695,7 @@ function AuthenticatedShell({
                   condoId={selectedCondo?._id ?? null}
                   unitId={selectedUnitId}
                   unitFallback={selectedUnit}
+                  sessionToken={auth.token}
                   onUnitLoaded={(unit) => {
                     setSelectedUnitId(unit.id);
                     setSelectedUnit(unit);
@@ -763,6 +708,7 @@ function AuthenticatedShell({
                   condoId={selectedCondo?._id ?? null}
                   unitId={selectedUnitId}
                   unitFallback={selectedUnit}
+                  sessionToken={auth.token}
                   onUnitLoaded={(unit) => {
                     setSelectedUnitId(unit.id);
                     setSelectedUnit(unit);
@@ -780,6 +726,7 @@ function AuthenticatedShell({
               {currentPage === "settings" && (
                 <SettingsPage
                   condo={selectedCondo}
+                  sessionToken={auth.token}
                   canManageExternalApi={
                     (auth.type === "resident" && auth.roles.includes("syndic")) ||
                     (auth.type === "platform" && auth.roles.includes("super_admin"))

@@ -60,7 +60,10 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
     useState<Id<"residentCommunications"> | null>(null);
 
   const condo = useQuery(api.condos.getBySubdomain, { subdomain: auth.condoSubdomain }) as Doc<"condos"> | undefined;
-  const residentDetail = useQuery(api.residentDetail.get, { residentId: auth.userId }) as
+  const residentDetail = useQuery(api.residentDetail.get, {
+    sessionToken: auth.token,
+    residentId: auth.userId,
+  }) as
     | {
         resident: ResidentRecord;
         units: ResidentUnitLink[];
@@ -172,6 +175,7 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
                 <ResidentMinutesPage
                   condoId={auth.condoId}
                   residentId={auth.userId}
+                  sessionToken={auth.token}
                   onSelectMinute={handleSelectMinute}
                   units={units}
                 />

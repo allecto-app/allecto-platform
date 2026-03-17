@@ -5,8 +5,41 @@ import { v } from "convex/values";
 import { ensureCanCreateAssembly, incrementAssemblyUsage } from "./usage/helpers";
 import { recordAdminAuditEvent } from "./lib/adminAudit";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { loadSession, requireCondoRole, requirePlatformRole } from "./guards";
 
 const MinuteStatus = v.union(v.literal("open"), v.literal("closed"));
+
+async function requireMinuteWriteAccess(ctx: any, sessionToken: string | undefined, condoId: any) {
+    if (!sessionToken) {
+        throw new Error("Forbidden");
+    }
+    try {
+        const { user } = await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
+        return { actorType: "platform" as const, actorId: String(user._id) };
+    } catch {
+        const { resident } = await requireCondoRole(ctx, condoId, ["syndic", "manager"], sessionToken);
+        return { actorType: "resident" as const, actorId: String(resident._id) };
+    }
+}
+
+async function requireMinuteReadAccess(ctx: any, sessionToken: string | undefined, condoId: any) {
+    if (!sessionToken) {
+        return;
+    }
+    try {
+        await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
+        return;
+    } catch {}
+
+    const session = await loadSession(ctx, sessionToken);
+    if (session.type === "resident" && session.residentId) {
+        const resident = await ctx.db.get(session.residentId);
+        if (resident && resident.condoId === condoId && resident.isActive !== false) {
+            return;
+        }
+    }
+    throw new Error("Forbidden");
+}
 
 function escapeHtml(input: string): string {
     return input
@@ -421,6 +454,7 @@ export const publish = mutation({
     handler: async (ctx, a) => {
         const now = Date.now();
         if (a.closesAt <= now) throw new Error("closesAt must be future");
+        const actor = await requireMinuteWriteAccess(ctx, a.sessionToken, a.condoId);
 
         const document = await ctx.db.get(a.documentId);
         if (!document) {
@@ -430,6 +464,11 @@ export const publish = mutation({
         const condoIdString = a.condoId.toString();
         if (document.orgId !== condoIdString) {
             throw new Error("DOCUMENT_ORG_MISMATCH");
+        }
+
+        const author = await ctx.db.get(a.createdBy);
+        if (!author || author.condoId !== a.condoId || author.isActive === false) {
+            throw new Error("Invalid author for condo");
         }
 
         const usageGate = await ensureCanCreateAssembly(ctx, a.condoId);
@@ -476,13 +515,28 @@ export const publish = mutation({
 
         await incrementAssemblyUsage(ctx, a.condoId, usageGate.bucketKey);
 
+        await recordAdminAuditEvent(ctx, {
+            action: "minute.published",
+            actor: { type: actor.actorType, id: actor.actorId },
+            condoId: a.condoId,
+            entityType: "minute",
+            entityId: String(minuteId),
+            metadata: { title: a.title, closesAt: a.closesAt },
+        });
+
         return minuteId;
     },
 });
 
 export const list = query({
-    args: { condoId: v.id("condos"), status: v.optional(MinuteStatus), limit: v.optional(v.number()) },
+    args: {
+        sessionToken: v.optional(v.string()),
+        condoId: v.id("condos"),
+        status: v.optional(MinuteStatus),
+        limit: v.optional(v.number()),
+    },
     handler: async (ctx, a) => {
+        await requireMinuteReadAccess(ctx, a.sessionToken, a.condoId);
         let items = await ctx.db
             .query("minutes")
             .withIndex("byCondo", (q) => q.eq("condoId", a.condoId))
@@ -494,19 +548,21 @@ export const list = query({
 });
 
 export const get = query({
-    args: { minuteId: v.id("minutes") },
-    handler: async (ctx, { minuteId }) => {
+    args: { sessionToken: v.optional(v.string()), minuteId: v.id("minutes") },
+    handler: async (ctx, { sessionToken, minuteId }) => {
         const m = await ctx.db.get(minuteId);
         if (!m) throw new Error("Minute not found");
+        await requireMinuteReadAccess(ctx, sessionToken, m.condoId);
         return m;
     },
 });
 
 export const close = mutation({
-    args: { minuteId: v.id("minutes") },
-    handler: async (ctx, { minuteId }) => {
+    args: { sessionToken: v.optional(v.string()), minuteId: v.id("minutes") },
+    handler: async (ctx, { sessionToken, minuteId }) => {
         const m = await ctx.db.get(minuteId);
         if (!m) throw new Error("Minute not found");
+        const actor = await requireMinuteWriteAccess(ctx, sessionToken, m.condoId);
         if (m.status === "closed") {
             await generateFinalReport(ctx, minuteId, "manual");
             return true;
@@ -516,6 +572,13 @@ export const close = mutation({
         await generateFinalReport(ctx, minuteId, "manual");
         await ctx.scheduler.runAfter(0, internal.notifications.sendMinuteClosedEmail, {
             minuteId,
+        });
+        await recordAdminAuditEvent(ctx, {
+            action: "minute.closed",
+            actor: { type: actor.actorType, id: actor.actorId },
+            condoId: m.condoId,
+            entityType: "minute",
+            entityId: String(minuteId),
         });
         return true;
     },
@@ -537,8 +600,13 @@ export const internalClose = internalMutation({
 });
 
 export const getFinalReport = query({
-    args: { minuteId: v.id("minutes") },
-    handler: async (ctx, { minuteId }) => {
+    args: { sessionToken: v.optional(v.string()), minuteId: v.id("minutes") },
+    handler: async (ctx, { sessionToken, minuteId }) => {
+        const minute = await ctx.db.get(minuteId);
+        if (!minute) {
+            return null;
+        }
+        await requireMinuteReadAccess(ctx, sessionToken, minute.condoId);
         const report = await ctx.db
             .query("minuteFinalReports")
             .withIndex("byMinute", (q: any) => q.eq("minuteId", minuteId))

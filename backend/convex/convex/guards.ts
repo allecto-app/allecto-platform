@@ -43,35 +43,75 @@ export async function loadSession(ctx: any, sessionToken: string | null | undefi
 }
 
 export async function requirePlatformRole(ctx: any, allowed: string[], sessionToken: string) {
+    return requirePlatformRoleForToken(ctx, sessionToken, allowed);
+}
+
+export async function requireCondoRole(ctx: any, condoId: string, allowed: string[], sessionToken: string) {
+    return requireCondoRoleForToken(ctx, sessionToken, condoId, allowed);
+}
+
+export async function requirePlatformRoleForToken(
+    ctx: any,
+    sessionToken: string,
+    allowedRoles: string[],
+) {
     const session = await loadSession(ctx, sessionToken);
     assert(session.type === "platform" && session.platformUserId, UNAUTHORIZED);
 
     const user = await ctx.db.get(session.platformUserId);
     assert(user, UNAUTHORIZED);
 
-    const hasRole = user.roles.some((r: string) => allowed.includes(r));
+    const hasRole = user.roles.some((r: string) => allowedRoles.includes(r));
     assert(hasRole, FORBIDDEN);
 
     return { user, session };
 }
 
-export async function requireCondoRole(ctx: any, condoId: string, allowed: string[], sessionToken: string) {
+export async function requireCondoRoleForToken(
+    ctx: any,
+    sessionToken: string,
+    condoId: string,
+    allowedRoles: string[],
+) {
     const session = await loadSession(ctx, sessionToken);
 
     if (session.type === "resident" && session.residentId) {
         const resident = await ctx.db.get(session.residentId);
         assert(resident && resident.condoId === condoId, FORBIDDEN);
-        assert(allowed.includes(resident.role), FORBIDDEN);
+        assert(allowedRoles.includes(resident.role), FORBIDDEN);
         return { resident, session };
     }
 
     if (session.type === "platform" && session.platformUserId) {
         const user = await ctx.db.get(session.platformUserId);
         assert(user, UNAUTHORIZED);
-        const hasRole = user.roles.some((r: string) => allowed.includes(r));
+        const hasRole = user.roles.some((r: string) => allowedRoles.includes(r));
         assert(hasRole, FORBIDDEN);
         return { user, session };
     }
 
     throw new Error(FORBIDDEN);
+}
+
+export async function requireResidentMembership(
+    ctx: any,
+    sessionToken: string,
+    condoId: string,
+    unitId: string,
+) {
+    const session = await loadSession(ctx, sessionToken);
+    assert(session.type === "resident" && session.residentId, FORBIDDEN);
+
+    const resident = await ctx.db.get(session.residentId);
+    assert(resident && resident.condoId === condoId && resident.deletedAt === undefined, FORBIDDEN);
+    assert(resident.isActive !== false, FORBIDDEN);
+
+    const memberships = await ctx.db
+        .query("memberships")
+        .withIndex("byResident", (q: any) => q.eq("residentId", resident._id))
+        .collect();
+    const membership = memberships.find((item: any) => item.unitId === unitId);
+    assert(membership, FORBIDDEN);
+
+    return { session, resident, membership };
 }

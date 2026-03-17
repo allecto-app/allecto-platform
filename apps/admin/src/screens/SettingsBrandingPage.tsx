@@ -11,6 +11,7 @@ import { DEFAULT_BRANDING_COLORS } from "../lib/brandingTheme";
 
 interface SettingsBrandingPageProps {
   condoId: Id<"condos">;
+  sessionToken: string;
   branding: Doc<"condos">["branding"];
   onBrandingApplied?: (branding: Doc<"condos">["branding"] | null | undefined) => void;
   onCondoUpdated?: (condo: Doc<"condos">) => void;
@@ -25,6 +26,7 @@ const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
 
 export function SettingsBrandingPage({
   condoId,
+  sessionToken,
   branding,
   onBrandingApplied,
   onCondoUpdated,
@@ -85,7 +87,7 @@ export function SettingsBrandingPage({
 
     setIsUploading(true);
     try {
-      const { uploadUrl } = await uploadUrlMutation({});
+      const { uploadUrl } = await uploadUrlMutation({ sessionToken, condoId });
       const response = await fetch(uploadUrl, {
         method: "POST",
         headers: {
@@ -142,6 +144,7 @@ export function SettingsBrandingPage({
       }
 
       const updated = (await updateBrandingMutation({
+        sessionToken,
         condoId,
         branding: payload,
       })) as Doc<"condos"> | null;

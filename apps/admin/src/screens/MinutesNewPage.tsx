@@ -45,7 +45,7 @@ export function MinutesNewPage({ onNavigate, condo, sessionToken }: MinutesNewPa
 
   const residents = useQuery(
     api.residents.list,
-    condoId ? { condoId } : "skip",
+    condoId ? { sessionToken, condoId } : "skip",
   ) as Doc<"residents">[] | undefined;
   const publishMinute = useMutation(api.minutes.publish);
   const { documents, isLoading: documentsLoading } = useDocuments({

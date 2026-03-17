@@ -1,11 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { api, Id } from "../../../../../../src/lib/convexGenerated";
 import { badRequest, convex, mapConvexError, unauthorized } from "../../../_lib/routeUtils";
+import { getAdminSessionCookie } from "../../../../../../src/lib/serverSession";
 
 export async function POST(_: Request, { params }: { params: { keyId: string } }) {
-  const sessionToken = cookies().get("allecto_admin")?.value;
+  const sessionToken = getAdminSessionCookie();
   if (!sessionToken) {
     return unauthorized("Not authenticated");
   }

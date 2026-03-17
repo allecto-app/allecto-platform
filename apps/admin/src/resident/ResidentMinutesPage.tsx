@@ -23,6 +23,7 @@ type ResidentUnitLink = {
 interface ResidentMinutesPageProps {
   condoId: Id<"condos"> | null;
   residentId: Id<"residents">;
+  sessionToken: string;
   onSelectMinute: (minute: Doc<"minutes">) => void;
   units: ResidentUnitLink[];
 }
@@ -36,13 +37,14 @@ const formatDateTime = (timestamp: number) =>
 export function ResidentMinutesPage({
   condoId,
   residentId,
+  sessionToken,
   onSelectMinute,
   units,
 }: ResidentMinutesPageProps) {
-  const minutes = useQuery(api.minutes.list, condoId ? { condoId } : "skip") as
+  const minutes = useQuery(api.minutes.list, condoId ? { sessionToken, condoId } : "skip") as
     | Doc<"minutes">[]
     | undefined;
-  const myVotes = useQuery(api.votes.getMine, { residentId }) ?? [];
+  const myVotes = useQuery(api.votes.getMine, { sessionToken, residentId }) ?? [];
 
   const minutesByStatus = useMemo(() => {
     if (!minutes) return { open: undefined, closed: undefined };

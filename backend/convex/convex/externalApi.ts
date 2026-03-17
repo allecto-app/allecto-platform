@@ -3,6 +3,7 @@ import { api } from "./_generated/api";
 import { v } from "convex/values";
 import { requireCondoRole, requirePlatformRole } from "./guards";
 import { randomToken, sha256 } from "./_secu";
+import { enforceRateLimit, recordSecurityEvent } from "./lib/security";
 
 type ExternalScope =
   | "units:read"
@@ -25,6 +26,8 @@ const ACTIVE_BILLING_STATUSES = new Set(["active", "trialing"]);
 const API_TOKEN_TTL_MS = 15 * 60 * 1000;
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 25;
+const EXTERNAL_TOKEN_RATE_LIMIT = 20;
+const EXTERNAL_TOKEN_RATE_WINDOW_MS = 15 * 60 * 1000;
 const ALL_SCOPES: ExternalScope[] = [
   "units:read",
   "units:write",
@@ -236,6 +239,12 @@ export const createApiKey = mutation({
       revokedAt: undefined,
     });
 
+    await recordSecurityEvent(ctx, "external_api_key_created", String(condoId), {
+      keyId: String(keyId),
+      scopes: normalizedScopes,
+      allowedIps: normalizedAllowedIps ?? [],
+    });
+
     return {
       keyId,
       apiKey,
@@ -313,6 +322,11 @@ export const revokeApiKey = mutation({
         .map((token: any) => ctx.db.patch(token._id, { revokedAt: now, updatedAt: now })),
     );
 
+    await recordSecurityEvent(ctx, "external_api_key_revoked", String(key.condoId), {
+      keyId: String(keyId),
+      revokedTokenCount: activeTokens.length,
+    });
+
     return true;
   },
 });
@@ -327,6 +341,23 @@ export const issueToken = mutation({
     const trimmedKey = apiKey.trim();
     const trimmedSecret = apiSecret.trim();
     assert(trimmedKey && trimmedSecret, "EXT_AUTH_INVALID_CREDENTIALS");
+    const limiter = await enforceRateLimit(ctx, {
+      scope: "external_api_issue_token",
+      key: normalizeIp(clientIp) ?? trimmedKey.slice(0, 8),
+      limit: EXTERNAL_TOKEN_RATE_LIMIT,
+      windowMs: EXTERNAL_TOKEN_RATE_WINDOW_MS,
+      blockMs: EXTERNAL_TOKEN_RATE_WINDOW_MS,
+    });
+    if (limiter.limited) {
+      await recordSecurityEvent(
+        ctx,
+        "external_api_token_rate_limited",
+        normalizeIp(clientIp) ?? "unknown",
+        undefined,
+        "warn",
+      );
+      throw new Error("EXT_AUTH_INVALID_CREDENTIALS");
+    }
 
     const keyHash = await sha256(trimmedKey);
     const keyRecord = await ctx.db
@@ -374,6 +405,12 @@ export const issueToken = mutation({
     await ctx.db.patch(keyRecord._id, {
       updatedAt: now,
       lastUsedAt: now,
+    });
+
+    await recordSecurityEvent(ctx, "external_api_token_issued", String(keyRecord.condoId), {
+      keyId: String(keyRecord._id),
+      ip: normalizedClientIp ?? null,
+      scopes: tokenScopes,
     });
 
     return {

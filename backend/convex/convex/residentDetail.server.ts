@@ -3,10 +3,15 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeEmail } from "./_secu";
+import { loadSession, requireCondoRole, requirePlatformRole } from "./guards";
 
 export const get = query({
-  args: { residentId: v.optional(v.id("residents")), email: v.optional(v.string()) },
-  handler: async (ctx, { residentId, email }) => {
+  args: {
+    sessionToken: v.optional(v.string()),
+    residentId: v.optional(v.id("residents")),
+    email: v.optional(v.string()),
+  },
+  handler: async (ctx, { sessionToken, residentId, email }) => {
     if (!residentId && !email) return null;
 
     const resident = residentId
@@ -17,6 +22,26 @@ export const get = query({
           .first();
 
     if (!resident || resident.deletedAt !== undefined) return null;
+
+    if (sessionToken) {
+      try {
+        await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
+      } catch {
+        const session = await loadSession(ctx, sessionToken);
+        if (session.type === "resident" && session.residentId) {
+          if (session.residentId !== resident._id) {
+            throw new Error("Forbidden");
+          }
+        } else {
+          await requireCondoRole(
+            ctx,
+            resident.condoId,
+            ["syndic", "manager", "council"],
+            sessionToken,
+          );
+        }
+      }
+    }
 
     const condo = await ctx.db.get(resident.condoId);
 

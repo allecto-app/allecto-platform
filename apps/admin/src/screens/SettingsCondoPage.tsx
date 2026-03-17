@@ -23,6 +23,7 @@ import { Badge } from "../components/ui/badge";
 
 interface SettingsCondoPageProps {
   condo: Doc<"condos">;
+  sessionToken: string;
   onCondoUpdated?: (condo: Doc<"condos">) => void;
 }
 
@@ -34,7 +35,7 @@ const TIMEZONE_OPTIONS = [
   { value: "America/Rio_Branco", label: "(GMT-5) Rio Branco" },
 ];
 
-export function SettingsCondoPage({ condo, onCondoUpdated }: SettingsCondoPageProps) {
+export function SettingsCondoPage({ condo, sessionToken, onCondoUpdated }: SettingsCondoPageProps) {
   const [name, setName] = useState(condo.name);
   const [timezone, setTimezone] = useState(condo.timezone ?? "America/Sao_Paulo");
   const [isSaving, setIsSaving] = useState(false);
@@ -59,6 +60,7 @@ export function SettingsCondoPage({ condo, onCondoUpdated }: SettingsCondoPagePr
     setIsSaving(true);
     try {
       const updated = (await updateSettings({
+        sessionToken,
         condoId: condo._id,
         name: name.trim(),
         timezone,
@@ -78,7 +80,7 @@ export function SettingsCondoPage({ condo, onCondoUpdated }: SettingsCondoPagePr
   const handleDisable = async () => {
     setIsDisabling(true);
     try {
-      const result = (await disableCondo({ condoId: condo._id })) as
+      const result = (await disableCondo({ sessionToken, condoId: condo._id })) as
         | { success: boolean; condo?: Doc<"condos"> | null }
         | null;
       if (result?.success) {

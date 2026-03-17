@@ -31,6 +31,7 @@ interface CreateResidentModalProps {
   onOpenChange: (open: boolean) => void;
   condoId: Id<"condos"> | null;
   condoName?: string | null;
+  sessionToken: string;
 }
 
 const roleOptions: Array<{ value: ResidentRole; label: string }> = [
@@ -70,6 +71,7 @@ export function CreateResidentModal({
   onOpenChange,
   condoId,
   condoName,
+  sessionToken,
 }: CreateResidentModalProps) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -78,7 +80,7 @@ export function CreateResidentModal({
   const createResident = useMutation(api.residents.create);
   const units = useQuery(
     api.units.listByCondo,
-    condoId ? { condoId } : "skip",
+    condoId ? { sessionToken, condoId } : "skip",
   ) as Doc<"units">[] | undefined;
 
   const availableUnits = useMemo(() => {
@@ -140,6 +142,7 @@ export function CreateResidentModal({
       const hasUnitLink = form.unitId !== NO_UNIT_VALUE;
 
       await createResident({
+        sessionToken,
         condoId,
         name: form.name.trim(),
         email: form.email.trim(),

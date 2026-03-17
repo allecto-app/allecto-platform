@@ -81,6 +81,7 @@ interface ResidentDetailPageProps {
   condoId: Id<"condos"> | null;
   residentId?: Id<"residents"> | null;
   residentFallback?: ResidentRecord | null;
+  sessionToken: string;
   onResidentLoaded?: (resident: ResidentRecord) => void;
   onResidentDeleted?: () => void;
 }
@@ -90,6 +91,7 @@ export function ResidentDetailPage({
   condoId: _condoId,
   residentId,
   residentFallback,
+  sessionToken,
   onResidentLoaded,
   onResidentDeleted,
 }: ResidentDetailPageProps) {
@@ -103,9 +105,9 @@ export function ResidentDetailPage({
   const detail = useQuery(
     api.residentDetail.get,
     residentId
-      ? { residentId }
+      ? { sessionToken, residentId }
       : residentFallback?.email
-      ? { email: residentFallback.email }
+      ? { sessionToken, email: residentFallback.email }
       : "skip",
   ) as ResidentDetailResponse | undefined;
   const resendResidentOtp = useAction(api.residentDetail.resendOtp);
@@ -122,7 +124,7 @@ export function ResidentDetailPage({
   const effectiveCondoId = resident?.condoId ?? _condoId ?? null;
   const allUnits = useQuery(
     api.units.listByCondo,
-    effectiveCondoId ? { condoId: effectiveCondoId } : "skip",
+    effectiveCondoId ? { sessionToken, condoId: effectiveCondoId } : "skip",
   ) as Doc<"units">[] | undefined;
   const isLoadingUnits = effectiveCondoId !== null && allUnits === undefined;
 
@@ -187,7 +189,7 @@ export function ResidentDetailPage({
       return;
     }
     try {
-      await resendResidentOtp({ residentId: resident.id });
+      await resendResidentOtp({ sessionToken, residentId: resident.id });
       toast.success("Convite reenviado com sucesso!");
     } catch (error) {
       console.error(error);
@@ -200,6 +202,7 @@ export function ResidentDetailPage({
     setIsUpdatingResidentStatus(true);
     try {
       const result = await updateResident({
+        sessionToken,
         residentId: resident.id,
         name: resident.name,
         email: resident.email ?? undefined,
@@ -237,7 +240,7 @@ export function ResidentDetailPage({
 
     setIsDeletingResident(true);
     try {
-      await removeResident({ residentId: resident.id });
+      await removeResident({ sessionToken, residentId: resident.id });
       toast.success("Morador excluído com sucesso");
       onResidentDeleted?.();
       onNavigate("residents");
@@ -259,7 +262,7 @@ export function ResidentDetailPage({
     }
     setPendingMembershipId(unit.membershipId);
     try {
-      await removeMembership({ membershipId: unit.membershipId });
+      await removeMembership({ sessionToken, membershipId: unit.membershipId });
       toast.success(`Unidade ${unit.code} desvinculada com sucesso`);
     } catch (error) {
       console.error("Failed to unlink unit", error);
@@ -282,6 +285,7 @@ export function ResidentDetailPage({
     setIsLinkingUnit(true);
     try {
       await addMembership({
+        sessionToken,
         residentId: resident.id,
         unitId: selectedUnitId as Id<"units">,
         role: selectedRole,

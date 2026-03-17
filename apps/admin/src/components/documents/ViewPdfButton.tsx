@@ -30,14 +30,15 @@ export function ViewPdfButton({
   const handleClick = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { url } = await getViewUrl({
+      const { viewToken } = await getViewUrl({
         docId,
         sessionToken: sessionToken ?? undefined,
         orgId: orgId ?? undefined,
       });
-      if (!url) {
-        throw new Error("URL de visualização indisponível.");
+      if (!viewToken) {
+        throw new Error("Link de visualização indisponível.");
       }
+      const url = `/api/documents/view?token=${encodeURIComponent(viewToken)}`;
       window.open(url, "_blank", "noopener,noreferrer");
       onOpened?.(url);
     } catch (error) {

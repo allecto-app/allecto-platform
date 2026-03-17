@@ -34,7 +34,7 @@ export function CommunicationsNewPage({ condo, sessionToken, onNavigate }: Commu
 
   const condoId = condo?._id ?? null;
   const orgId = condo ? String(condo._id) : null;
-  const units = useQuery(api.units.listByCondo, condoId ? { condoId } : "skip") as
+  const units = useQuery(api.units.listByCondo, condoId ? { sessionToken, condoId } : "skip") as
     | Array<{ _id: Id<"units">; block?: string | null }>
     | undefined;
 

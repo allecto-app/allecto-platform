@@ -1,8 +1,8 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { api, Id } from "../../../../src/lib/convexGenerated";
 import { badRequest, convex, isSafeText, mapConvexError, readJson, unauthorized } from "../_lib/routeUtils";
+import { getAdminSessionCookie } from "../../../../src/lib/serverSession";
 
 type CreateKeyPayload = {
   condoId?: string;
@@ -13,7 +13,7 @@ type CreateKeyPayload = {
 };
 
 export async function GET(request: Request) {
-  const sessionToken = cookies().get("allecto_admin")?.value;
+  const sessionToken = getAdminSessionCookie();
   if (!sessionToken) {
     return unauthorized("Not authenticated");
   }
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const sessionToken = cookies().get("allecto_admin")?.value;
+  const sessionToken = getAdminSessionCookie();
   if (!sessionToken) {
     return unauthorized("Not authenticated");
   }

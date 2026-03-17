@@ -187,8 +187,14 @@ export default defineSchema({
     documentId: v.id("documents"),
     orgId: v.string(),
     userId: v.string(),
-    event: v.union(v.literal("upload"), v.literal("view")),
+    event: v.union(
+      v.literal("upload"),
+      v.literal("view"),
+      v.literal("view_token_issued"),
+      v.literal("download"),
+    ),
     createdAt: v.number(),
+    metadata: v.optional(v.any()),
   })
     .index("by_document", ["documentId"])
     .index("by_org", ["orgId"])
@@ -343,11 +349,41 @@ export default defineSchema({
   securityEvents: defineTable({
     type: v.string(),
     key: v.string(),
+    severity: v.optional(v.union(v.literal("info"), v.literal("warn"), v.literal("critical"))),
     createdAt: v.number(),
     meta: v.optional(v.any()),
   })
     .index("byKey", ["key"])
     .index("byType", ["type"]),
+
+  securityRateLimits: defineTable({
+    scope: v.string(),
+    key: v.string(),
+    scopeKey: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+    blockedUntil: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("byScopeKey", ["scopeKey"])
+    .index("byScopeUpdatedAt", ["scope", "updatedAt"]),
+
+  documentViewTokens: defineTable({
+    tokenHash: v.string(),
+    documentId: v.id("documents"),
+    orgId: v.string(),
+    issuedToUserId: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+    issuedFromIp: v.optional(v.string()),
+    issuedUserAgent: v.optional(v.string()),
+    redeemedFromIp: v.optional(v.string()),
+    redeemedUserAgent: v.optional(v.string()),
+  })
+    .index("byTokenHash", ["tokenHash"])
+    .index("byDocument", ["documentId"])
+    .index("byExpiry", ["expiresAt"]),
 
   externalApiKeys: defineTable({
     condoId: v.id("condos"),

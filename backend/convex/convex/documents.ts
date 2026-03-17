@@ -2,6 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { canReadDoc, canUpload, requireActor } from "./lib/authz";
 import type { Id } from "./_generated/dataModel";
+import { randomToken, sha256 } from "./_secu";
+import { enforceRateLimit, recordSecurityEvent } from "./lib/security";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const PDF_MIME = "application/pdf";
@@ -170,8 +172,10 @@ export const getViewToken = mutation({
     docId: v.id("documents"),
     sessionToken: v.optional(v.string()),
     orgId: v.optional(v.string()),
+    clientIp: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
   },
-  handler: async (ctx, { docId, sessionToken, orgId }) => {
+  handler: async (ctx, { docId, sessionToken, orgId, clientIp, userAgent }) => {
     const actor = await requireActor(ctx, {
       sessionToken: sessionToken ?? null,
       orgIdHint: orgId ?? null,
@@ -184,25 +188,122 @@ export const getViewToken = mutation({
       throw new Error("FORBIDDEN");
     }
 
-    const fileUrl = await ctx.storage.getUrl(doc.storageId);
-    if (!fileUrl) {
-      throw new Error("FILE_URL_UNAVAILABLE");
+    const limiter = await enforceRateLimit(ctx, {
+      scope: "document_view_token",
+      key: `${actor.userId}:${docId}`,
+      limit: 30,
+      windowMs: 5 * 60 * 1000,
+      blockMs: 5 * 60 * 1000,
+    });
+    if (limiter.limited) {
+      await recordSecurityEvent(
+        ctx,
+        "document_view_token_rate_limited",
+        String(actor.userId),
+        { documentId: String(docId), orgId: actor.orgId },
+        "warn",
+      );
+      throw new Error("UNABLE_TO_PROCESS_REQUEST");
     }
 
+    const rawViewToken = `dvt_${randomToken(48)}`;
+    const tokenHash = await sha256(rawViewToken);
     const now = Date.now();
-    await ctx.db.patch(doc._id, {
-      lastViewedAt: now,
-      viewCount: doc.viewCount + 1,
+    await ctx.db.insert("documentViewTokens", {
+      tokenHash,
+      documentId: doc._id,
+      orgId: actor.orgId,
+      issuedToUserId: actor.userId,
+      createdAt: now,
+      expiresAt: now + VIEW_TTL_SECONDS * 1000,
+      issuedFromIp: clientIp?.trim() || undefined,
+      issuedUserAgent: userAgent?.slice(0, 512) || undefined,
     });
     await ctx.db.insert("documentEvents", {
       documentId: doc._id,
       orgId: actor.orgId,
       userId: actor.userId,
-      event: "view",
+      event: "view_token_issued",
       createdAt: now,
+      metadata: {
+        expiresAt: now + VIEW_TTL_SECONDS * 1000,
+        clientIp: clientIp?.trim() || null,
+      },
+    });
+    await recordSecurityEvent(ctx, "pdf_access_issued", String(actor.userId), {
+      documentId: String(doc._id),
+      orgId: actor.orgId,
+      expiresAt: now + VIEW_TTL_SECONDS * 1000,
     });
 
-    return { url: fileUrl, expiresIn: VIEW_TTL_SECONDS };
+    return { viewToken: rawViewToken, expiresIn: VIEW_TTL_SECONDS };
+  },
+});
+
+export const redeemViewToken = mutation({
+  args: {
+    viewToken: v.string(),
+    clientIp: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  },
+  handler: async (ctx, { viewToken, clientIp, userAgent }) => {
+    if (!viewToken || viewToken.length < 16) {
+      throw new Error("INVALID_OR_EXPIRED_LINK");
+    }
+    const tokenHash = await sha256(viewToken);
+    const tokenRecord = await ctx.db
+      .query("documentViewTokens")
+      .withIndex("byTokenHash", (q) => q.eq("tokenHash", tokenHash))
+      .unique();
+    if (!tokenRecord) {
+      throw new Error("INVALID_OR_EXPIRED_LINK");
+    }
+    const now = Date.now();
+    if (tokenRecord.usedAt || tokenRecord.expiresAt <= now) {
+      throw new Error("INVALID_OR_EXPIRED_LINK");
+    }
+
+    const doc = await ctx.db.get(tokenRecord.documentId);
+    if (!doc || doc.orgId !== tokenRecord.orgId) {
+      throw new Error("INVALID_OR_EXPIRED_LINK");
+    }
+
+    await ctx.db.patch(tokenRecord._id, {
+      usedAt: now,
+      redeemedFromIp: clientIp?.trim() || undefined,
+      redeemedUserAgent: userAgent?.slice(0, 512) || undefined,
+    });
+
+    await ctx.db.patch(doc._id, {
+      lastViewedAt: now,
+      viewCount: (doc.viewCount ?? 0) + 1,
+    });
+    await ctx.db.insert("documentEvents", {
+      documentId: doc._id,
+      orgId: tokenRecord.orgId,
+      userId: tokenRecord.issuedToUserId,
+      event: "download",
+      createdAt: now,
+      metadata: {
+        clientIp: clientIp?.trim() || null,
+      },
+    });
+    await recordSecurityEvent(ctx, "pdf_access_redeemed", tokenRecord.issuedToUserId, {
+      documentId: String(doc._id),
+      orgId: tokenRecord.orgId,
+    });
+
+    const fileUrl = await ctx.storage.getUrl(doc.storageId);
+    if (!fileUrl) {
+      throw new Error("FILE_URL_UNAVAILABLE");
+    }
+
+    return {
+      fileUrl,
+      title: doc.title,
+      contentType: doc.contentType,
+      size: doc.size,
+    };
   },
 });
 

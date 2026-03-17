@@ -10,6 +10,7 @@ import { api, Doc } from "../lib/convexGenerated";
 
 interface SettingsPageProps {
   condo: Doc<"condos"> | null;
+  sessionToken: string;
   canManageExternalApi?: boolean;
   onBrandingApplied?: (branding: Doc<"condos">["branding"] | null | undefined) => void;
   onCondoUpdated?: (condo: Doc<"condos">) => void;
@@ -17,6 +18,7 @@ interface SettingsPageProps {
 
 export function SettingsPage({
   condo,
+  sessionToken,
   canManageExternalApi = false,
   onBrandingApplied,
   onCondoUpdated,
@@ -25,7 +27,7 @@ export function SettingsPage({
 
   const detail = useQuery(
     api.condos.getAdmin,
-    condoId ? { condoId } : "skip",
+    condoId ? { sessionToken, condoId } : "skip",
   ) as Doc<"condos"> | null | undefined;
 
   const isLoading = condoId !== null && detail === undefined;
@@ -103,6 +105,7 @@ export function SettingsPage({
         <TabsContent value="branding">
           <SettingsBrandingPage
             condoId={currentCondo._id}
+            sessionToken={sessionToken}
             branding={currentCondo.branding}
             onBrandingApplied={onBrandingApplied}
             onCondoUpdated={(updated) => {
@@ -114,6 +117,7 @@ export function SettingsPage({
         <TabsContent value="condo">
           <SettingsCondoPage
             condo={currentCondo}
+            sessionToken={sessionToken}
             onCondoUpdated={(updated) => {
               setEditableCondo(updated);
               onCondoUpdated?.(updated);

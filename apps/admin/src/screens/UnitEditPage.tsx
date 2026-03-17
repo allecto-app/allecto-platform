@@ -49,6 +49,7 @@ interface UnitEditPageProps {
   condoId: Id<"condos"> | null;
   unitId?: Id<"units"> | null;
   unitFallback?: UnitRecord | null;
+  sessionToken: string;
   onUnitLoaded?: (unit: UnitRecord) => void;
   onUnitUpdated?: (unit: UnitRecord) => void;
   onUnitDeleted?: () => void;
@@ -71,6 +72,7 @@ export function UnitEditPage({
   condoId,
   unitId,
   unitFallback,
+  sessionToken,
   onUnitLoaded,
   onUnitUpdated,
   onUnitDeleted,
@@ -83,7 +85,7 @@ export function UnitEditPage({
 
   const detail = useQuery(
     api.units.detail,
-    unitId ? { unitId } : "skip",
+    unitId ? { sessionToken, unitId } : "skip",
   ) as UnitDetailResponse | undefined;
 
   const unitFromQuery = detail && detail !== null ? detail.unit : null;
@@ -216,6 +218,7 @@ export function UnitEditPage({
     try {
       if (isEditing && unit) {
         const updated = (await updateUnit({
+          sessionToken,
           unitId: unit.id,
           code: payload.code,
           block: payload.block,
@@ -251,6 +254,7 @@ export function UnitEditPage({
           return;
         }
         await addUnit({
+          sessionToken,
           condoId,
           code: payload.code,
           block: payload.block,
@@ -275,7 +279,7 @@ export function UnitEditPage({
     }
     setIsDeleting(true);
     try {
-      await removeUnit({ unitId: unit.id });
+      await removeUnit({ sessionToken, unitId: unit.id });
       toast.success(`Unidade ${unit.code} excluída com sucesso`);
       onUnitDeleted?.();
       onNavigate("units");

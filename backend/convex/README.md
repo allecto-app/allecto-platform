@@ -1,4 +1,9 @@
 # Convex Backend
 
-- Coloque aqui `schema.ts`, mutations, queries e scheduler.
-- Deploy: `npx convex deploy`.
+Core security/auth/rate-limit logic is documented in [docs/security.md](../../docs/security.md).
+
+## Local env
+Copy `.env.example` to `.env.local` and fill required values.
+
+## Deploy
+`npx convex deploy`

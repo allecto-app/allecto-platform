@@ -63,7 +63,7 @@ export function OnboardingPage({ onNavigate, onSelectCondo, sessionToken }: Onbo
 
     setIsUploading(true);
     try {
-      const { uploadUrl } = await generateUploadUrl({});
+      const { uploadUrl } = await generateUploadUrl({ sessionToken });
       const response = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },

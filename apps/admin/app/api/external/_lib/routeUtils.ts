@@ -1,14 +1,7 @@
 
-import { ConvexHttpClient } from "convex/browser";
 import { NextResponse } from "next/server";
 import { api } from "../../../../src/lib/convexGenerated";
-
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-if (!convexUrl) {
-  throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
-}
-
-export const convex = new ConvexHttpClient(convexUrl);
+import { createServerConvexClient } from "../../../../src/lib/serverConvex";
 
 const MAX_JSON_BYTES = 64 * 1024;
 
@@ -128,5 +121,16 @@ export function isSafeText(value: string | undefined, max = 200) {
 }
 
 export async function callIssueToken(apiKey: string, apiSecret: string, clientIp?: string) {
-  return convex.mutation(api.externalApi.issueToken, { apiKey, apiSecret, clientIp });
+  const client = createServerConvexClient();
+  return client.mutation(api.externalApi.issueToken, { apiKey, apiSecret, clientIp });
 }
+
+export function getConvexClient() {
+  return createServerConvexClient();
+}
+
+export const convex = {
+  query: (...args: any[]) => createServerConvexClient().query(args[0], args[1]),
+  mutation: (...args: any[]) => createServerConvexClient().mutation(args[0], args[1]),
+  action: (...args: any[]) => createServerConvexClient().action(args[0], args[1]),
+};

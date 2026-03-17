@@ -108,7 +108,7 @@ export function MinutesDetailPage({
     );
   }
 
-  const minute = useQuery(api.minutes.get, { minuteId });
+  const minute = useQuery(api.minutes.get, { sessionToken, minuteId });
   const minuteData = minute ?? minuteFallback ?? null;
 
   if (minute === undefined && !minuteData) {
@@ -164,11 +164,11 @@ export function MinutesDetailPage({
       : "skip"
   );
 
-  const voteSummary = useQuery(api.votes.summary, { minuteId });
-  const votes = useQuery(api.votes.listForMinute, { minuteId }) as
+  const voteSummary = useQuery(api.votes.summary, { sessionToken, minuteId });
+  const votes = useQuery(api.votes.listForMinute, { sessionToken, minuteId }) as
     | VoteWithDetails[]
     | undefined;
-  const finalReport = useQuery(api.minutes.getFinalReport, { minuteId }) as
+  const finalReport = useQuery(api.minutes.getFinalReport, { sessionToken, minuteId }) as
     | Doc<"minuteFinalReports">
     | null
     | undefined;
@@ -203,7 +203,7 @@ export function MinutesDetailPage({
     if (!minuteId) return;
     try {
       setIsClosing(true);
-      await closeMinute({ minuteId });
+      await closeMinute({ sessionToken, minuteId });
       toast.success("Ata fechada com sucesso!");
     } catch (error) {
       const message =
@@ -220,12 +220,13 @@ export function MinutesDetailPage({
     if (!finalReport?.reportDocumentId) return;
     try {
       setIsDownloadingFinalPdf(true);
-      const { url } = await getViewToken({
+      const { viewToken } = await getViewToken({
         docId: finalReport.reportDocumentId,
         sessionToken,
         orgId,
       });
-      if (!url) throw new Error("URL do PDF indisponível");
+      if (!viewToken) throw new Error("Link do PDF indisponível");
+      const url = `/api/documents/view?token=${encodeURIComponent(viewToken)}`;
 
       const response = await fetch(url);
       if (!response.ok) throw new Error("Falha ao baixar PDF");

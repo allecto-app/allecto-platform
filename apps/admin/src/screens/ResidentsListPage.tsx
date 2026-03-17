@@ -36,6 +36,7 @@ interface ResidentsListPageProps {
   onNavigate: (page: string) => void;
   condo: Doc<"condos"> | null;
   canInviteSyndic: boolean;
+  sessionToken: string;
   onSelectResident?: (resident: Doc<"residents">) => void;
 }
 
@@ -56,6 +57,7 @@ export function ResidentsListPage({
   onNavigate,
   condo,
   canInviteSyndic,
+  sessionToken,
   onSelectResident,
 }: ResidentsListPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,7 +69,7 @@ export function ResidentsListPage({
 
   const residents = useQuery(
     api.residents.list,
-    condo ? { condoId: condo._id } : "skip"
+    condo ? { sessionToken, condoId: condo._id } : "skip"
   ) as Doc<"residents">[] | undefined;
   const invites = useQuery(
     api.invites.listByCondo,
@@ -359,6 +361,7 @@ export function ResidentsListPage({
         onOpenChange={setCreateModalOpen}
         condoId={condo?._id ?? null}
         condoName={condo?.name}
+        sessionToken={sessionToken}
       />
     </div>
   );

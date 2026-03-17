@@ -1,6 +1,7 @@
 // convex/condos.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireCondoRole, requirePlatformRole } from "./guards";
 
 const DEFAULT_BRANDING = {
     primaryColor: "#042940",
@@ -82,14 +83,36 @@ async function hydrateCondo(ctx: any, condo: any | null) {
     return { ...condo, branding };
 }
 
+async function requireCondoReadAccess(ctx: any, sessionToken: string | undefined, condoId: any) {
+    if (!sessionToken) return;
+    try {
+        await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
+        return;
+    } catch {}
+    await requireCondoRole(ctx, condoId, ["syndic", "manager", "council"], sessionToken);
+}
+
+async function requireCondoWriteAccess(ctx: any, sessionToken: string | undefined, condoId: any) {
+    if (!sessionToken) return;
+    try {
+        await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
+        return;
+    } catch {}
+    await requireCondoRole(ctx, condoId, ["syndic", "manager"], sessionToken);
+}
+
 export const create = mutation({
     args: {
+        sessionToken: v.optional(v.string()),
         name: v.string(),
         subdomain: v.string(),
         branding: v.optional(BrandingInput),
         timezone: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        if (args.sessionToken) {
+            await requirePlatformRole(ctx, ["super_admin", "ops"], args.sessionToken);
+        }
         const now = Date.now();
         const dup = await ctx.db
             .query("condos")
@@ -129,24 +152,31 @@ export const getBySubdomain = query({
 });
 
 export const getAdmin = query({
-    args: { condoId: v.id("condos") },
-    handler: async (ctx, { condoId }) => {
+    args: { sessionToken: v.optional(v.string()), condoId: v.id("condos") },
+    handler: async (ctx, { sessionToken, condoId }) => {
+        await requireCondoReadAccess(ctx, sessionToken, condoId);
         const condo = await ctx.db.get(condoId);
         return hydrateCondo(ctx, condo);
     },
 });
 
 export const generateLogoUploadUrl = mutation({
-    args: {},
-    handler: async (ctx) => {
+    args: { sessionToken: v.optional(v.string()), condoId: v.optional(v.id("condos")) },
+    handler: async (ctx, { sessionToken, condoId }) => {
+        if (condoId) {
+            await requireCondoWriteAccess(ctx, sessionToken, condoId);
+        } else if (sessionToken) {
+            await requirePlatformRole(ctx, ["super_admin", "ops"], sessionToken);
+        }
         const uploadUrl = await ctx.storage.generateUploadUrl();
         return { uploadUrl };
     },
 });
 
 export const updateBranding = mutation({
-    args: { condoId: v.id("condos"), branding: BrandingInput },
-    handler: async (ctx, { condoId, branding }) => {
+    args: { sessionToken: v.optional(v.string()), condoId: v.id("condos"), branding: BrandingInput },
+    handler: async (ctx, { sessionToken, condoId, branding }) => {
+        await requireCondoWriteAccess(ctx, sessionToken, condoId);
         const condo = await ctx.db.get(condoId);
         if (!condo) throw new Error("Condo not found");
 
@@ -168,11 +198,13 @@ export const updateBranding = mutation({
 
 export const updateSettings = mutation({
     args: {
+        sessionToken: v.optional(v.string()),
         condoId: v.id("condos"),
         name: v.string(),
         timezone: v.string(),
     },
-    handler: async (ctx, { condoId, name, timezone }) => {
+    handler: async (ctx, { sessionToken, condoId, name, timezone }) => {
+        await requireCondoWriteAccess(ctx, sessionToken, condoId);
         const condo = await ctx.db.get(condoId);
         if (!condo) throw new Error("Condo not found");
         await ctx.db.patch(condoId, {
@@ -186,8 +218,9 @@ export const updateSettings = mutation({
 });
 
 export const disable = mutation({
-    args: { condoId: v.id("condos") },
-    handler: async (ctx, { condoId }) => {
+    args: { sessionToken: v.optional(v.string()), condoId: v.id("condos") },
+    handler: async (ctx, { sessionToken, condoId }) => {
+        await requireCondoWriteAccess(ctx, sessionToken, condoId);
         const condo = await ctx.db.get(condoId);
         if (!condo) throw new Error("Condo not found");
         if (condo.isActive === false) {
@@ -204,8 +237,11 @@ export const disable = mutation({
 });
 
 export const list = query({
-    args: { limit: v.optional(v.number()) },
-    handler: async (ctx, { limit }) => {
+    args: { sessionToken: v.optional(v.string()), limit: v.optional(v.number()) },
+    handler: async (ctx, { sessionToken, limit }) => {
+        if (sessionToken) {
+            await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
+        }
         const condos = await ctx.db.query("condos").take(limit ?? 500);
         return await Promise.all(condos.map((condo) => hydrateCondo(ctx, condo)));
     },

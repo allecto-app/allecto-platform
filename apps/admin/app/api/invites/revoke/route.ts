@@ -1,17 +1,9 @@
 'use server';
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { ConvexHttpClient } from "convex/browser";
 import { api, Id } from "../../../../src/lib/convexGenerated";
-
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
-
-if (!convexUrl) {
-  throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
-}
-
-const convex = new ConvexHttpClient(convexUrl);
+import { createServerConvexClient } from "../../../../src/lib/serverConvex";
+import { getAdminSessionCookie } from "../../../../src/lib/serverSession";
 
 type RevokeInvitePayload = {
   inviteId?: string;
@@ -36,15 +28,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const sessionToken = cookies().get("allecto_admin")?.value;
+  const sessionToken = getAdminSessionCookie();
   if (!sessionToken) {
     return NextResponse.json(
-      { ok: false, error: "Não autorizado" },
+      { ok: false, error: "Unable to process request" },
       { status: 401 },
     );
   }
 
   try {
+    const convex = createServerConvexClient();
     await convex.mutation(api.invites.revoke, {
       token: sessionToken,
       inviteId,
@@ -53,8 +46,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Invite revoke failed", error);
     return NextResponse.json(
-      { ok: false, error: "Não foi possível revogar o convite" },
-      { status: 400 },
+      { ok: false, error: "Unable to process request" },
+      { status: 429 },
     );
   }
 }

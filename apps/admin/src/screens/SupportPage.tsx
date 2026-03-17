@@ -26,15 +26,16 @@ import { Id, api } from "../lib/convexGenerated";
 interface SupportPageProps {
   onNavigate: (page: string) => void;
   onSelectCondo: (condoId: Id<"condos">) => void;
+  sessionToken: string;
 }
 
-export function SupportPage({ onNavigate, onSelectCondo }: SupportPageProps) {
+export function SupportPage({ onNavigate, onSelectCondo, sessionToken }: SupportPageProps) {
   const [searchInput, setSearchInput] = useState("");
   const [queryEmail, setQueryEmail] = useState<string | null>(null);
 
   const resident = useQuery(
     api.residents.findByEmail,
-    queryEmail ? { email: queryEmail } : "skip",
+    queryEmail ? { sessionToken, email: queryEmail } : "skip",
   );
   const resendOtp = useMutation(api.auth.requestResidentOtp);
 
