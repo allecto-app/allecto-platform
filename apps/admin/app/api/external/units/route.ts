@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       limit,
       page,
       clientIp,
-    });
+    }) as Record<string, unknown>;
     return NextResponse.json({ ok: true, ...units });
   } catch (error) {
     return mapConvexError(error);

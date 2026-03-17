@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       limit,
       page,
       clientIp,
-    });
+    }) as Record<string, unknown>;
     return NextResponse.json({ ok: true, ...residents });
   } catch (error) {
     return mapConvexError(error);
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await convex.mutation(api.externalApi.createResident, {
+    const result = (await convex.mutation(api.externalApi.createResident, {
       accessToken: auth.token,
       name: payload.name.trim(),
       email: payload.email?.trim() || undefined,
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       unitId: payload.unitId as Id<"units"> | undefined,
       membershipRole: payload.membershipRole,
       clientIp: parseClientIp(request),
-    });
+    })) as Record<string, unknown>;
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return mapConvexError(error);

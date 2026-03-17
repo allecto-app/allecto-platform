@@ -130,7 +130,8 @@ export function getConvexClient() {
 }
 
 export const convex = {
-  query: (...args: any[]) => createServerConvexClient().query(args[0], args[1]),
-  mutation: (...args: any[]) => createServerConvexClient().mutation(args[0], args[1]),
-  action: (...args: any[]) => createServerConvexClient().action(args[0], args[1]),
+  query: (...args: unknown[]) => createServerConvexClient().query(args[0] as never, args[1] as never),
+  mutation: (...args: unknown[]) =>
+    createServerConvexClient().mutation(args[0] as never, args[1] as never),
+  action: (...args: unknown[]) => createServerConvexClient().action(args[0] as never, args[1] as never),
 };

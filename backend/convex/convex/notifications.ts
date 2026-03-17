@@ -1,4 +1,4 @@
-import { internalAction, internalMutation, mutation, query } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 import { normalizeEmail } from "./_secu";
@@ -122,31 +122,40 @@ async function loadResidentCommunicationContext(
   ctx: any,
   communicationId: Id<"residentCommunications">,
 ): Promise<ResidentCommunicationContext | null> {
-  const communication = await ctx.db.get(communicationId);
-  if (!communication) return null;
-  const condo = await ctx.db.get(communication.condoId);
-  return {
-    communication: {
-      _id: communication._id,
-      condoId: communication.condoId,
-      title: communication.title,
-      message: communication.message ?? undefined,
-      documentId: communication.documentId ?? undefined,
-      audienceType: (communication.audienceType ?? "all") as "all" | "role" | "block",
-      targetRole: communication.targetRole ?? undefined,
-      targetBlock: communication.targetBlock ?? undefined,
-      publishedAt: communication.publishedAt,
-      status: communication.status as "published" | "archived",
-    },
-    condo: condo
-      ? {
-          _id: condo._id,
-          name: condo.name ?? "Condomínio",
-          subdomain: condo.subdomain ?? undefined,
-        }
-      : null,
-  };
+  return (await ctx.runQuery(internal.notifications.loadResidentCommunicationContextQuery, {
+    communicationId,
+  })) as ResidentCommunicationContext | null;
 }
+
+export const loadResidentCommunicationContextQuery = internalQuery({
+  args: { communicationId: v.id("residentCommunications") },
+  handler: async (ctx, { communicationId }) => {
+    const communication = await ctx.db.get(communicationId);
+    if (!communication) return null;
+    const condo = await ctx.db.get(communication.condoId);
+    return {
+      communication: {
+        _id: communication._id,
+        condoId: communication.condoId,
+        title: communication.title,
+        message: communication.message ?? undefined,
+        documentId: communication.documentId ?? undefined,
+        audienceType: (communication.audienceType ?? "all") as "all" | "role" | "block",
+        targetRole: communication.targetRole ?? undefined,
+        targetBlock: communication.targetBlock ?? undefined,
+        publishedAt: communication.publishedAt,
+        status: communication.status as "published" | "archived",
+      },
+      condo: condo
+        ? {
+            _id: condo._id,
+            name: condo.name ?? "Condomínio",
+            subdomain: condo.subdomain ?? undefined,
+          }
+        : null,
+    } satisfies ResidentCommunicationContext;
+  },
+});
 
 async function collectOwnerRecipients(ctx: any, condoId: Id<"condos">): Promise<Recipient[]> {
   const units = ((await ctx.runQuery(api.units.listByCondo, { condoId })) ?? []) as Array<{

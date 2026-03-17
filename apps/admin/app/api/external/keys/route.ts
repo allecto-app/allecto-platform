@@ -56,14 +56,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await convex.mutation(api.externalApi.createApiKey, {
+    const result = (await convex.mutation(api.externalApi.createApiKey, {
       token: sessionToken,
       condoId: payload.condoId as Id<"condos">,
       name: payload.name?.trim() || undefined,
       expiresAt: payload.expiresAt,
       scopes: payload.scopes,
       allowedIps: payload.allowedIps,
-    });
+    })) as Record<string, unknown>;
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return mapConvexError(error);
