@@ -160,6 +160,15 @@ export const loadResidentCommunicationContextQuery = internalQuery({
   },
 });
 
+export const resolveDocumentUrlQuery = internalQuery({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, { documentId }) => {
+    const document = await ctx.db.get(documentId);
+    if (!document?.storageId) return null;
+    return await ctx.storage.getUrl(document.storageId);
+  },
+});
+
 async function collectOwnerRecipients(ctx: any, condoId: Id<"condos">): Promise<Recipient[]> {
   const units = ((await ctx.runQuery(api.units.listByCondo, { condoId })) ?? []) as Array<{
     _id: Id<"units">;
@@ -570,11 +579,9 @@ export const sendResidentCommunicationEmail = internalAction({
 
     const link = buildResidentCommunicationLink(context.condo, communicationId);
     const communicationDocumentUrl = context.communication.documentId
-      ? await (async () => {
-          const document = await ctx.db.get(context.communication.documentId!);
-          if (!document?.storageId) return null;
-          return await ctx.storage.getUrl(document.storageId);
-        })()
+      ? await ctx.runQuery(internal.notifications.resolveDocumentUrlQuery, {
+          documentId: context.communication.documentId,
+        })
       : null;
     let successCount = 0;
     let errorCount = 0;
