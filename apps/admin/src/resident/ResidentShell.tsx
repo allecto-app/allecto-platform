@@ -39,7 +39,11 @@ interface ResidentShellProps {
   onUpdateAuth: (auth: AdminAuthSession | null) => void;
 }
 
-export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellProps) {
+export function ResidentShell({
+  auth,
+  onLogout,
+  onUpdateAuth,
+}: ResidentShellProps) {
   const [currentPage, setCurrentPage] = useState<ResidentPage>(() => {
     if (typeof window === "undefined") return "resident:minutes";
     const stored = window.localStorage.getItem(RESIDENT_PAGE_STORAGE_KEY);
@@ -51,15 +55,20 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
       "resident:communications",
       "resident:communication-detail",
     ];
-    return allowed.includes(stored as ResidentPage) ? (stored as ResidentPage) : "resident:minutes";
+    return allowed.includes(stored as ResidentPage)
+      ? (stored as ResidentPage)
+      : "resident:minutes";
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedMinuteId, setSelectedMinuteId] = useState<Id<"minutes"> | null>(null);
+  const [selectedMinuteId, setSelectedMinuteId] =
+    useState<Id<"minutes"> | null>(null);
   const [selectedCommunicationId, setSelectedCommunicationId] =
     useState<Id<"residentCommunications"> | null>(null);
 
-  const condo = useQuery(api.condos.getBySubdomain, { subdomain: auth.condoSubdomain }) as Doc<"condos"> | undefined;
+  const condo = useQuery(api.condos.getBySubdomain, {
+    subdomain: auth.condoSubdomain,
+  }) as Doc<"condos"> | undefined;
   const residentDetail = useQuery(api.residentDetail.get, {
     sessionToken: auth.token,
     residentId: auth.userId,
@@ -191,8 +200,12 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
                   onBack={() => handleNavigate("resident:minutes")}
                 />
               )}
-              {currentPage === "resident:unit" && <ResidentUnitPage units={units} />}
-              {currentPage === "resident:profile" && <ResidentProfilePage resident={resident} />}
+              {currentPage === "resident:unit" && (
+                <ResidentUnitPage units={units} />
+              )}
+              {currentPage === "resident:profile" && (
+                <ResidentProfilePage resident={resident} />
+              )}
               {currentPage === "resident:communications" && (
                 <ResidentCommunicationsPage
                   condoId={auth.condoId}
@@ -219,7 +232,9 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
       <div
         className={cn(
           "fixed inset-0 z-40 flex transform transition-transform duration-300 md:hidden",
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+          isMobileSidebarOpen
+            ? "translate-x-0"
+            : "-translate-x-full pointer-events-none",
         )}
         aria-hidden={!isMobileSidebarOpen}
       >
@@ -227,13 +242,15 @@ export function ResidentShell({ auth, onLogout, onUpdateAuth }: ResidentShellPro
           type="button"
           className={cn(
             "absolute inset-0 bg-black/40 transition-opacity",
-            isMobileSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
+            isMobileSidebarOpen
+              ? "opacity-100"
+              : "pointer-events-none opacity-0",
           )}
           onClick={() => setIsMobileSidebarOpen(false)}
           aria-label="Fechar menu lateral"
         />
         <div
-          className="relative h-full w-72 max-w-[85vw] shadow-xl"
+          className="relative h-full w-72 max-w-[85vw] shadow-xl bg-sidebar"
           role="dialog"
           aria-modal="true"
           aria-label="Menu de navegação"

@@ -45,7 +45,6 @@ type UserMode = "platform" | "tenant";
 
 type CondoDoc = Doc<"condos">;
 
-
 const PAGE_STORAGE_KEY = "allecto-admin-current-page";
 
 function isSessionValidForHost(
@@ -54,11 +53,17 @@ function isSessionValidForHost(
   isCondoHost: boolean,
 ) {
   if (!session) return false;
-  if (!session.token || session.token.length < 32 || session.expiresAt <= Date.now()) {
+  if (
+    !session.token ||
+    session.token.length < 32 ||
+    session.expiresAt <= Date.now()
+  ) {
     return false;
   }
   if (isCondoHost) {
-    return session.type === "resident" && session.condoSubdomain === hostSubdomain;
+    return (
+      session.type === "resident" && session.condoSubdomain === hostSubdomain
+    );
   }
   return true;
 }
@@ -84,7 +89,12 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!auth || !auth.token || auth.token.length < 32 || auth.expiresAt <= Date.now()) {
+    if (
+      !auth ||
+      !auth.token ||
+      auth.token.length < 32 ||
+      auth.expiresAt <= Date.now()
+    ) {
       return;
     }
     void syncSessionCookie(auth.token, auth.expiresAt);
@@ -102,7 +112,9 @@ export default function App() {
           if (isMounted) setAuth(null);
           return;
         }
-        const payload = (await response.json()) as { session?: AdminAuthSession | null };
+        const payload = (await response.json()) as {
+          session?: AdminAuthSession | null;
+        };
         const session = payload?.session ?? null;
         if (!isMounted) return;
         if (isSessionValidForHost(session, hostSubdomain, isCondoHost)) {
@@ -167,7 +179,11 @@ export default function App() {
 
   return (
     <>
-      <AuthenticatedShell auth={auth} onUpdateAuth={setAuth} onLogout={handleLogout} />
+      <AuthenticatedShell
+        auth={auth}
+        onUpdateAuth={setAuth}
+        onLogout={handleLogout}
+      />
       <Toaster />
     </>
   );
@@ -203,33 +219,62 @@ function AuthenticatedShell({
       auth.roles.includes("support") ||
       auth.roles.includes("ops"));
   const canManageRetention =
-    isPortalDomain && auth.type === "platform" && auth.roles.includes("super_admin");
+    isPortalDomain &&
+    auth.type === "platform" &&
+    auth.roles.includes("super_admin");
   const canManageDsar =
-    isPortalDomain && auth.type === "platform" && auth.roles.includes("super_admin");
+    isPortalDomain &&
+    auth.type === "platform" &&
+    auth.roles.includes("super_admin");
   const isResident = isResidentSession;
   const canSwitchResidentCondo = isResidentSyndic && !isCondoDomain;
 
   if (isResidentSession && !isResidentManager) {
-    return <ResidentShell auth={auth} onLogout={onLogout} onUpdateAuth={onUpdateAuth} />;
+    return (
+      <ResidentShell
+        auth={auth}
+        onLogout={onLogout}
+        onUpdateAuth={onUpdateAuth}
+      />
+    );
   }
 
-  const defaultPage = canSeePlatform ? "tenants" : isResident || isCondoDomain ? "minutes" : "dashboard";
-  const storedPage = typeof window !== "undefined" ? window.localStorage.getItem(PAGE_STORAGE_KEY) : null;
+  const defaultPage = canSeePlatform
+    ? "tenants"
+    : isResident || isCondoDomain
+      ? "minutes"
+      : "dashboard";
+  const storedPage =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(PAGE_STORAGE_KEY)
+      : null;
   const initialPage = storedPage ?? defaultPage;
   const [currentPage, setCurrentPage] = useState<string>(initialPage);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [userMode, setUserMode] = useState<UserMode>(canSeePlatform ? "platform" : "tenant");
+  const [userMode, setUserMode] = useState<UserMode>(
+    canSeePlatform ? "platform" : "tenant",
+  );
   const initialCondoId = auth.type === "resident" ? auth.condoId : null;
-  const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(initialCondoId);
-  const [selectedResidentId, setSelectedResidentId] = useState<Id<"residents"> | null>(null);
-  const [selectedResident, setSelectedResident] = useState<ResidentRecord | null>(null);
+  const [selectedCondoId, setSelectedCondoId] = useState<Id<"condos"> | null>(
+    initialCondoId,
+  );
+  const [selectedResidentId, setSelectedResidentId] =
+    useState<Id<"residents"> | null>(null);
+  const [selectedResident, setSelectedResident] =
+    useState<ResidentRecord | null>(null);
   const [residentsListVersion, setResidentsListVersion] = useState(0);
-  const [selectedCondoOverride, setSelectedCondoOverride] = useState<CondoDoc | null>(null);
-  const [selectedUnitId, setSelectedUnitId] = useState<Id<"units"> | null>(null);
+  const [selectedCondoOverride, setSelectedCondoOverride] =
+    useState<CondoDoc | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState<Id<"units"> | null>(
+    null,
+  );
   const [selectedUnit, setSelectedUnit] = useState<UnitRecord | null>(null);
-  const [selectedMinuteId, setSelectedMinuteId] = useState<Id<"minutes"> | null>(null);
-  const [selectedMinute, setSelectedMinute] = useState<Doc<"minutes"> | null>(null);
+  const [selectedMinuteId, setSelectedMinuteId] =
+    useState<Id<"minutes"> | null>(null);
+  const [selectedMinute, setSelectedMinute] = useState<Doc<"minutes"> | null>(
+    null,
+  );
   const [selectedCommunicationId, setSelectedCommunicationId] =
     useState<Id<"residentCommunications"> | null>(null);
 
@@ -239,7 +284,7 @@ function AuthenticatedShell({
   );
 
   const residentSubdomain = isResident
-    ? auth.condoSubdomain ?? hostInfo.subdomain ?? null
+    ? (auth.condoSubdomain ?? hostInfo.subdomain ?? null)
     : null;
 
   const residentCondo = useQuery(
@@ -261,7 +306,11 @@ function AuthenticatedShell({
           return residentSwitchCondos;
         }
       }
-      return residentCondo ? [residentCondo] : residentCondo === null ? [] : undefined;
+      return residentCondo
+        ? [residentCondo]
+        : residentCondo === null
+          ? []
+          : undefined;
     }
     return undefined;
   }, [
@@ -304,7 +353,12 @@ function AuthenticatedShell({
   }, [condos, selectedCondoId]);
 
   useEffect(() => {
-    if (isResident && !canSwitchResidentCondo && auth.condoId && selectedCondoId !== auth.condoId) {
+    if (
+      isResident &&
+      !canSwitchResidentCondo &&
+      auth.condoId &&
+      selectedCondoId !== auth.condoId
+    ) {
       setSelectedCondoId(auth.condoId);
     }
   }, [isResident, canSwitchResidentCondo, auth, selectedCondoId]);
@@ -332,10 +386,14 @@ function AuthenticatedShell({
   }, [baseSelectedCondo?._id, baseSelectedCondo?.updatedAt]);
 
   const selectedCondo: CondoDoc | null = useMemo(() => {
-    if (selectedCondoOverride && selectedCondoOverride._id === baseSelectedCondo?._id) {
+    if (
+      selectedCondoOverride &&
+      selectedCondoOverride._id === baseSelectedCondo?._id
+    ) {
       if (
         !baseSelectedCondo ||
-        (selectedCondoOverride.updatedAt ?? 0) >= (baseSelectedCondo.updatedAt ?? 0)
+        (selectedCondoOverride.updatedAt ?? 0) >=
+          (baseSelectedCondo.updatedAt ?? 0)
       ) {
         return selectedCondoOverride;
       }
@@ -371,7 +429,10 @@ function AuthenticatedShell({
   ]);
 
   useEffect(() => {
-    if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(currentPage)) {
+    if (
+      (!canSeePlatform || isCondoDomain) &&
+      restrictedPlatformPages.has(currentPage)
+    ) {
       setCurrentPage(isResident ? "minutes" : "dashboard");
     }
     if (currentPage === "retention" && !canManageRetention) {
@@ -380,7 +441,14 @@ function AuthenticatedShell({
     if (currentPage === "dsar" && !canManageDsar) {
       setCurrentPage("dashboard");
     }
-  }, [canSeePlatform, currentPage, isResident, isCondoDomain, canManageRetention, canManageDsar]);
+  }, [
+    canSeePlatform,
+    currentPage,
+    isResident,
+    isCondoDomain,
+    canManageRetention,
+    canManageDsar,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -388,7 +456,10 @@ function AuthenticatedShell({
   }, [currentPage]);
 
   const handleNavigate = (page: string) => {
-    if ((!canSeePlatform || isCondoDomain) && restrictedPlatformPages.has(page)) {
+    if (
+      (!canSeePlatform || isCondoDomain) &&
+      restrictedPlatformPages.has(page)
+    ) {
       return;
     }
     if (page === "retention" && !canManageRetention) {
@@ -496,8 +567,8 @@ function AuthenticatedShell({
     canSeePlatform && !isCondoDomain
       ? platformCondos === undefined
       : isResident
-      ? condos === undefined
-      : false;
+        ? condos === undefined
+        : false;
 
   if (currentPage === "design-tokens" || currentPage === "component-library") {
     return (
@@ -508,7 +579,9 @@ function AuthenticatedShell({
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
                 <span className="text-primary-foreground">A</span>
               </div>
-              <span className="text-foreground">Allecto Admin - Design System</span>
+              <span className="text-foreground">
+                Allecto Admin - Design System
+              </span>
             </div>
             <div className="flex gap-2">
               <Button
@@ -519,13 +592,18 @@ function AuthenticatedShell({
                 Design Tokens
               </Button>
               <Button
-                variant={currentPage === "component-library" ? "default" : "ghost"}
+                variant={
+                  currentPage === "component-library" ? "default" : "ghost"
+                }
                 onClick={() => setCurrentPage("component-library")}
               >
                 <Package className="mr-2 h-4 w-4" />
                 Components
               </Button>
-              <Button variant="outline" onClick={() => setCurrentPage("dashboard")}>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage("dashboard")}
+              >
                 Back to App
               </Button>
             </div>
@@ -539,11 +617,13 @@ function AuthenticatedShell({
     );
   }
 
-  const sidebarMode: UserMode = canSeePlatform && !isCondoDomain ? userMode : "tenant";
+  const sidebarMode: UserMode =
+    canSeePlatform && !isCondoDomain ? userMode : "tenant";
   const showPlatformSections = canSeePlatform && !isCondoDomain;
   const canInviteSyndic =
     (canPlatformInvite && !isCondoDomain) ||
-    (isResident && (auth.roles.includes("syndic") || auth.roles.includes("manager")));
+    (isResident &&
+      (auth.roles.includes("syndic") || auth.roles.includes("manager")));
 
   return (
     <>
@@ -605,12 +685,22 @@ function AuthenticatedShell({
                   sessionToken={auth.token}
                 />
               )}
-              {showPlatformSections && canManageDsar && currentPage === "dsar" && (
-                <DsarRequestsPage sessionToken={auth.token} condo={selectedCondo} />
-              )}
-              {showPlatformSections && canManageRetention && currentPage === "retention" && (
-                <RetentionPage sessionToken={auth.token} condo={selectedCondo} />
-              )}
+              {showPlatformSections &&
+                canManageDsar &&
+                currentPage === "dsar" && (
+                  <DsarRequestsPage
+                    sessionToken={auth.token}
+                    condo={selectedCondo}
+                  />
+                )}
+              {showPlatformSections &&
+                canManageRetention &&
+                currentPage === "retention" && (
+                  <RetentionPage
+                    sessionToken={auth.token}
+                    condo={selectedCondo}
+                  />
+                )}
 
               {currentPage === "dashboard" && (
                 <DashboardPage
@@ -761,8 +851,10 @@ function AuthenticatedShell({
                   condo={selectedCondo}
                   sessionToken={auth.token}
                   canManageExternalApi={
-                    (auth.type === "resident" && auth.roles.includes("syndic")) ||
-                    (auth.type === "platform" && auth.roles.includes("super_admin"))
+                    (auth.type === "resident" &&
+                      auth.roles.includes("syndic")) ||
+                    (auth.type === "platform" &&
+                      auth.roles.includes("super_admin"))
                   }
                   onBrandingApplied={(branding) => applyBrandingTheme(branding)}
                   onCondoUpdated={(condoDoc) => {
@@ -788,7 +880,9 @@ function AuthenticatedShell({
                   sessionToken={auth.token}
                   onNavigate={handleNavigate}
                   onSelectCommunication={(communication) => {
-                    setSelectedCommunicationId(communication._id as Id<"residentCommunications">);
+                    setSelectedCommunicationId(
+                      communication._id as Id<"residentCommunications">,
+                    );
                   }}
                 />
               )}
@@ -814,7 +908,9 @@ function AuthenticatedShell({
       <div
         className={cn(
           "fixed inset-0 z-40 flex transform transition-transform duration-300 md:hidden",
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+          isMobileSidebarOpen
+            ? "translate-x-0"
+            : "-translate-x-full pointer-events-none",
         )}
         aria-hidden={!isMobileSidebarOpen}
       >
@@ -822,13 +918,15 @@ function AuthenticatedShell({
           type="button"
           className={cn(
             "absolute inset-0 bg-black/40 transition-opacity",
-            isMobileSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
+            isMobileSidebarOpen
+              ? "opacity-100"
+              : "pointer-events-none opacity-0",
           )}
           onClick={closeMobileSidebar}
           aria-label="Fechar menu lateral"
         />
         <div
-          className="relative h-full w-72 max-w-[85vw] shadow-xl"
+          className="relative h-full w-72 max-w-[85vw] shadow-xl bg-sidebar"
           role="dialog"
           aria-modal="true"
           aria-label="Menu de navegação"

@@ -163,7 +163,7 @@ export function Sidebar({
     <div
       className={cn(
         "relative h-screen border-r border-border md:bg-sidebar transition-all duration-300",
-        collapsed ? "w-16" : "w-64",
+        collapsed ? "w-16" : "md:w-64 w-72",
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
