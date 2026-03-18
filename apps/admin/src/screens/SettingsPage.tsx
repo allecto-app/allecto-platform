@@ -12,16 +12,20 @@ interface SettingsPageProps {
   condo: Doc<"condos"> | null;
   sessionToken: string;
   canManageExternalApi?: boolean;
+  canDeleteCondo?: boolean;
   onBrandingApplied?: (branding: Doc<"condos">["branding"] | null | undefined) => void;
   onCondoUpdated?: (condo: Doc<"condos">) => void;
+  onCondoDeleted?: () => void;
 }
 
 export function SettingsPage({
   condo,
   sessionToken,
   canManageExternalApi = false,
+  canDeleteCondo = false,
   onBrandingApplied,
   onCondoUpdated,
+  onCondoDeleted,
 }: SettingsPageProps) {
   const condoId = condo?._id ?? null;
 
@@ -118,10 +122,12 @@ export function SettingsPage({
           <SettingsCondoPage
             condo={currentCondo}
             sessionToken={sessionToken}
+            canDeleteCondo={canDeleteCondo}
             onCondoUpdated={(updated) => {
               setEditableCondo(updated);
               onCondoUpdated?.(updated);
             }}
+            onCondoDeleted={onCondoDeleted}
           />
         </TabsContent>
         {canManageExternalApi ? (

@@ -856,10 +856,19 @@ function AuthenticatedShell({
                     (auth.type === "platform" &&
                       auth.roles.includes("super_admin"))
                   }
+                  canDeleteCondo={
+                    auth.type === "platform" &&
+                    auth.roles.includes("super_admin")
+                  }
                   onBrandingApplied={(branding) => applyBrandingTheme(branding)}
                   onCondoUpdated={(condoDoc) => {
                     setSelectedCondoOverride(condoDoc);
                     applyBrandingTheme(condoDoc.branding);
+                  }}
+                  onCondoDeleted={() => {
+                    setSelectedCondoId(null);
+                    setSelectedCondoOverride(null);
+                    handleNavigate("tenants");
                   }}
                 />
               )}

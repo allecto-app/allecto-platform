@@ -3,7 +3,7 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeEmail } from "./_secu";
-import { loadSession, requireCondoRole, requirePlatformRole } from "./guards";
+import { loadSession } from "./guards";
 
 export const get = query({
   args: {
@@ -24,22 +24,32 @@ export const get = query({
     if (!resident || resident.deletedAt !== undefined) return null;
 
     if (sessionToken) {
-      try {
-        await requirePlatformRole(ctx, ["super_admin", "ops", "support"], sessionToken);
-      } catch {
-        const session = await loadSession(ctx, sessionToken);
-        if (session.type === "resident" && session.residentId) {
-          if (session.residentId !== resident._id) {
-            throw new Error("Forbidden");
-          }
-        } else {
-          await requireCondoRole(
-            ctx,
-            resident.condoId,
-            ["syndic", "manager", "council"],
-            sessionToken,
-          );
+      const session = await loadSession(ctx, sessionToken);
+
+      if (session.type === "platform" && session.platformUserId) {
+        const user = await ctx.db.get(session.platformUserId);
+        const allowed = user?.roles?.some((role: string) =>
+          ["super_admin", "ops", "support"].includes(role),
+        );
+        if (!allowed) {
+          throw new Error("Forbidden");
         }
+      } else if (session.type === "resident" && session.residentId) {
+        const requester = await ctx.db.get(session.residentId);
+        if (!requester || requester.deletedAt !== undefined) {
+          throw new Error("Forbidden");
+        }
+
+        const canManageCondoResident =
+          requester.condoId === resident.condoId &&
+          ["syndic", "manager", "council"].includes(requester.role);
+        const isSelf = requester._id === resident._id;
+
+        if (!canManageCondoResident && !isSelf) {
+          throw new Error("Forbidden");
+        }
+      } else {
+        throw new Error("Forbidden");
       }
     }
 

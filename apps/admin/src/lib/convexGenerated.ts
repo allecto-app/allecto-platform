@@ -39,6 +39,7 @@ type AugmentedApi = typeof baseApi & {
     updateSettings: MutationRef;
     generateLogoUploadUrl: MutationRef;
     disable: MutationRef;
+    deleteHard: MutationRef;
   };
   residents: {
     list: QueryRef;
@@ -74,6 +75,7 @@ type AugmentedApi = typeof baseApi & {
   };
   units: {
     listByCondo: QueryRef;
+    listByCondoWithResidentCounts: QueryRef;
     detail: QueryRef;
     upsert: MutationRef;
     update: MutationRef;

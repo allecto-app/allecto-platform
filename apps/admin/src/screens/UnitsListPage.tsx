@@ -21,20 +21,22 @@ interface UnitsListPageProps {
   onSelectUnit?: (unit: Doc<"units">) => void;
 }
 
+type UnitListItem = Doc<"units"> & { residentsCount?: number };
+
 export function UnitsListPage({ onNavigate, condo, sessionToken, onSelectUnit }: UnitsListPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [blockFilter, setBlockFilter] = useState("all");
   const [floorFilter, setFloorFilter] = useState("all");
 
   const units = useQuery(
-    api.units.listByCondo,
+    api.units.listByCondoWithResidentCounts,
     condo ? { sessionToken, condoId: condo._id } : "skip",
-  ) as Doc<"units">[] | undefined;
+  ) as UnitListItem[] | undefined;
 
   const blocks = useMemo(() => {
     if (!units) return [] as string[];
     const values = new Set<string>();
-    for (const unit of units as Doc<"units">[]) {
+    for (const unit of units as UnitListItem[]) {
       if (unit.block) values.add(unit.block);
     }
     return Array.from(values).sort();
@@ -43,7 +45,7 @@ export function UnitsListPage({ onNavigate, condo, sessionToken, onSelectUnit }:
   const floors = useMemo(() => {
     if (!units) return [] as string[];
     const values = new Set<string>();
-    for (const unit of units as Doc<"units">[]) {
+    for (const unit of units as UnitListItem[]) {
       if (unit.floor) values.add(unit.floor);
     }
     return Array.from(values).sort();
@@ -51,7 +53,7 @@ export function UnitsListPage({ onNavigate, condo, sessionToken, onSelectUnit }:
 
   const filteredUnits = useMemo(() => {
     if (!units) return [];
-    return units.filter((unit: Doc<"units">) => {
+    return units.filter((unit: UnitListItem) => {
       const matchesSearch = unit.code.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesBlock = blockFilter === "all" || unit.block === blockFilter;
       const matchesFloor = floorFilter === "all" || unit.floor === floorFilter;
@@ -171,7 +173,7 @@ export function UnitsListPage({ onNavigate, condo, sessionToken, onSelectUnit }:
                       {unit.floor ?? "--"}
                     </TableCell>
                     <TableCell>
-                      <span className="text-muted-foreground">--</span>
+                      <span className="text-muted-foreground">{unit.residentsCount ?? 0}</span>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

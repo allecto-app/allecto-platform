@@ -24,7 +24,9 @@ import { Badge } from "../components/ui/badge";
 interface SettingsCondoPageProps {
   condo: Doc<"condos">;
   sessionToken: string;
+  canDeleteCondo?: boolean;
   onCondoUpdated?: (condo: Doc<"condos">) => void;
+  onCondoDeleted?: () => void;
 }
 
 const TIMEZONE_OPTIONS = [
@@ -35,14 +37,22 @@ const TIMEZONE_OPTIONS = [
   { value: "America/Rio_Branco", label: "(GMT-5) Rio Branco" },
 ];
 
-export function SettingsCondoPage({ condo, sessionToken, onCondoUpdated }: SettingsCondoPageProps) {
+export function SettingsCondoPage({
+  condo,
+  sessionToken,
+  canDeleteCondo = false,
+  onCondoUpdated,
+  onCondoDeleted,
+}: SettingsCondoPageProps) {
   const [name, setName] = useState(condo.name);
   const [timezone, setTimezone] = useState(condo.timezone ?? "America/Sao_Paulo");
   const [isSaving, setIsSaving] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const updateSettings = useMutation(api.condos.updateSettings);
   const disableCondo = useMutation(api.condos.disable);
+  const deleteCondo = useMutation(api.condos.deleteHard);
 
   useEffect(() => {
     setName(condo.name);
@@ -96,6 +106,26 @@ export function SettingsCondoPage({ condo, sessionToken, onCondoUpdated }: Setti
       toast.error("Não foi possível desabilitar o condomínio");
     } finally {
       setIsDisabling(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = (await deleteCondo({ sessionToken, condoId: condo._id })) as
+        | { success: boolean }
+        | null;
+      if (result?.success) {
+        toast.success("Condomínio excluído permanentemente");
+        onCondoDeleted?.();
+      } else {
+        toast.error("Não foi possível excluir o condomínio");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir o condomínio");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -192,6 +222,35 @@ export function SettingsCondoPage({ condo, sessionToken, onCondoUpdated }: Setti
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          {canDeleteCondo ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={isActive || isDeleting} className="mt-3">
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  {isDeleting ? "Excluindo..." : "Excluir Condomínio (Hard Delete)"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir condomínio permanentemente?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Essa ação remove o condomínio e todos os dados relacionados (unidades, moradores, atas e
+                    registros associados). Esta ação é irreversível.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? "Excluindo..." : "Sim, excluir permanentemente"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
         </CardContent>
       </Card>
     </div>

@@ -347,3 +347,37 @@ export const listByCondo = query({
     return units.filter((unit) => unit.deletedAt === undefined);
   },
 });
+
+export const listByCondoWithResidentCounts = query({
+  args: { sessionToken: v.optional(v.string()), condoId: v.id("condos"), limit: v.optional(v.number()) },
+  handler: async (ctx, { sessionToken, condoId, limit }) => {
+    await requireUnitReadAccess(ctx, sessionToken, condoId);
+
+    const units = await ctx.db
+      .query("units")
+      .withIndex("byCondo", (q) => q.eq("condoId", condoId))
+      .take(limit ?? 500);
+    const activeUnits = units.filter((unit) => unit.deletedAt === undefined);
+
+    const items = await Promise.all(
+      activeUnits.map(async (unit) => {
+        const memberships = await ctx.db
+          .query("memberships")
+          .withIndex("byUnit", (q) => q.eq("unitId", unit._id))
+          .collect();
+
+        const residents = await Promise.all(memberships.map((membership) => ctx.db.get(membership.residentId)));
+        const activeResidents = residents.filter(
+          (resident) => resident && resident.deletedAt === undefined,
+        );
+
+        return {
+          ...unit,
+          residentsCount: activeResidents.length,
+        };
+      }),
+    );
+
+    return items;
+  },
+});

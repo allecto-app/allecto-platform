@@ -97,7 +97,7 @@ function BulkUploadDialog({
   const [rows, setRows] = useState<BulkCsvRow[]>([]);
   const [localErrors, setLocalErrors] = useState<BulkCsvError[]>([]);
   const [serverResult, setServerResult] = useState<BulkUploadResponse | null>(
-    null
+    null,
   );
 
   const hasValidPayload = rows.length > 0 && localErrors.length === 0;
@@ -144,7 +144,7 @@ function BulkUploadDialog({
         toast.error(
           error instanceof Error
             ? error.message
-            : "Não foi possível processar o arquivo selecionado."
+            : "Não foi possível processar o arquivo selecionado.",
         );
         setRows([]);
         setLocalErrors([
@@ -158,7 +158,7 @@ function BulkUploadDialog({
         setIsParsing(false);
       }
     },
-    []
+    [],
   );
 
   const handleSubmit = useCallback(async () => {
@@ -182,7 +182,7 @@ function BulkUploadDialog({
       const errorCount = result.errors.length;
       if (errorCount > 0) {
         toast.warning(
-          `Importação concluída com ${errorCount} linha(s) com erro.`
+          `Importação concluída com ${errorCount} linha(s) com erro.`,
         );
       } else {
         toast.success("Importação concluída com sucesso!");
@@ -192,7 +192,7 @@ function BulkUploadDialog({
       toast.error(
         error instanceof Error
           ? error.message
-          : "Não foi possível concluir a importação."
+          : "Não foi possível concluir a importação.",
       );
     } finally {
       setIsSubmitting(false);
@@ -206,7 +206,7 @@ function BulkUploadDialog({
         resetState();
       }
     },
-    [onOpenChange, resetState]
+    [onOpenChange, resetState],
   );
 
   const renderRowSummary = (row: BulkCsvRow) => {
@@ -333,7 +333,7 @@ function BulkUploadDialog({
                   {stats.membershipCount === 1 ? "" : "s"}
                 </Badge>
               </div>
-              <ScrollArea className="max-h-64 rounded-md border">
+              <ScrollArea className="max-h-64 rounded-md border overflow-scroll">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -357,7 +357,7 @@ function BulkUploadDialog({
           )}
 
           {serverResult && (
-            <Alert>
+            <Alert className="overflow-scroll">
               <CheckCircle2 className="text-emerald-500" />
               <AlertTitle>Resumo da importação</AlertTitle>
               <AlertDescription>
