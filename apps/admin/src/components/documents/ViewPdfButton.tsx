@@ -32,7 +32,7 @@ export function ViewPdfButton({
     try {
       setIsLoading(true);
       // Safari on iOS blocks window.open when it happens after an await.
-      openedWindow = window.open("", "_blank", "noopener,noreferrer");
+      openedWindow = window.open("about:blank", "_blank");
       const { viewToken } = await getViewUrl({
         docId,
         sessionToken: sessionToken ?? undefined,
@@ -43,10 +43,15 @@ export function ViewPdfButton({
       }
       const url = `/api/documents/view?token=${encodeURIComponent(viewToken)}`;
       if (openedWindow) {
+        try {
+          openedWindow.opener = null;
+        } catch {
+          // best effort
+        }
         openedWindow.location.href = url;
         openedWindow.focus();
       } else {
-        window.location.assign(url);
+        throw new Error("Não foi possível abrir uma nova aba no navegador.");
       }
       onOpened?.(url);
     } catch (error) {
