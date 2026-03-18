@@ -9,10 +9,12 @@ interface EmptyStateProps {
   primaryAction?: {
     label: string;
     onClick: () => void;
+    disabled?: boolean;
   };
   secondaryAction?: {
     label: string;
     onClick: () => void;
+    disabled?: boolean;
   };
 }
 
@@ -32,12 +34,16 @@ export function EmptyState({
       <p className="mb-6 text-muted-foreground max-w-md">{description}</p>
       <div className="flex items-center gap-2">
         {secondaryAction && (
-          <Button variant="outline" onClick={secondaryAction.onClick}>
+          <Button
+            variant="outline"
+            onClick={secondaryAction.onClick}
+            disabled={secondaryAction.disabled}
+          >
             {secondaryAction.label}
           </Button>
         )}
         {primaryAction && (
-          <Button onClick={primaryAction.onClick}>
+          <Button onClick={primaryAction.onClick} disabled={primaryAction.disabled}>
             {primaryAction.label}
           </Button>
         )}

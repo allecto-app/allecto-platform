@@ -70,6 +70,7 @@ export function MinutesListPage({
     blockReason,
     remainingLabel,
   } = useUsageSummary(condoId);
+  const isCreateMinuteDisabled = !!condoId && (usageLoading || !!blockReason);
 
   const filteredMinutes = useMemo(() => {
     if (!minutes) return [];
@@ -104,32 +105,34 @@ export function MinutesListPage({
     }
   };
 
+  const handleCreateMinute = () => {
+    if (!condoId) {
+      onNavigate("minutes-new");
+      return;
+    }
+    if (usageLoading) {
+      toast.info("Verificando limites de uso...");
+      return;
+    }
+    try {
+      assertCanCreateAssembly(usageSummary);
+    } catch (error) {
+      const reason = error as AssemblyBlockReason;
+      const message = reason?.message ?? "Limite de uso atingido.";
+      toast.error(message);
+      return;
+    }
+    onNavigate("minutes-new");
+  };
+
   return (
     <div>
       <PageHeader
         title="Atas"
         primaryAction={{
           label: "Nova Ata",
-          onClick: () => {
-            if (!condoId) {
-              onNavigate("minutes-new");
-              return;
-            }
-            if (usageLoading) {
-              toast.info("Verificando limites de uso...");
-              return;
-            }
-            try {
-              assertCanCreateAssembly(usageSummary);
-            } catch (error) {
-              const reason = error as AssemblyBlockReason;
-              const message = reason?.message ?? "Limite de uso atingido.";
-              toast.error(message);
-              return;
-            }
-            onNavigate("minutes-new");
-          },
-          disabled: !!condoId && usageLoading,
+          onClick: handleCreateMinute,
+          disabled: isCreateMinuteDisabled,
         }}
         description={
           condoId
@@ -174,7 +177,8 @@ export function MinutesListPage({
           description="Não há atas correspondentes aos filtros selecionados. Crie uma nova ata para começar."
           primaryAction={{
             label: "Nova Ata",
-            onClick: () => onNavigate("minutes-new"),
+            onClick: handleCreateMinute,
+            disabled: isCreateMinuteDisabled,
           }}
         />
       ) : (
