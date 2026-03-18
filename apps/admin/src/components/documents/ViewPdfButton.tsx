@@ -28,8 +28,11 @@ export function ViewPdfButton({
   const [isLoading, setIsLoading] = useState(false);
 
   const handleClick = useCallback(async () => {
+    let openedWindow: Window | null = null;
     try {
       setIsLoading(true);
+      // Safari on iOS blocks window.open when it happens after an await.
+      openedWindow = window.open("", "_blank", "noopener,noreferrer");
       const { viewToken } = await getViewUrl({
         docId,
         sessionToken: sessionToken ?? undefined,
@@ -39,9 +42,17 @@ export function ViewPdfButton({
         throw new Error("Link de visualização indisponível.");
       }
       const url = `/api/documents/view?token=${encodeURIComponent(viewToken)}`;
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (openedWindow) {
+        openedWindow.location.href = url;
+        openedWindow.focus();
+      } else {
+        window.location.assign(url);
+      }
       onOpened?.(url);
     } catch (error) {
+      if (openedWindow && !openedWindow.closed) {
+        openedWindow.close();
+      }
       const message =
         error instanceof Error
           ? error.message

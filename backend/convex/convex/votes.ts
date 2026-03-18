@@ -11,7 +11,7 @@ async function requireVoteReadAccess(ctx: any, sessionToken: string | undefined,
     await requirePlatformRole(ctx, ["super_admin", "support", "ops"], sessionToken);
     return;
   } catch {
-    await requireCondoRole(ctx, condoId, ["syndic", "manager", "council"], sessionToken);
+    await requireCondoRole(ctx, condoId, ["syndic", "manager", "council", "resident"], sessionToken);
   }
 }
 
