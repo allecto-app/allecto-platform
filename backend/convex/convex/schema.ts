@@ -68,6 +68,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("byCondo", ["condoId"])
+    .index("byCondoRole", ["condoId", "role"])
     .index("byCondoEmail", ["condoId", "email"])
     .index("byEmail", ["email"]),
 

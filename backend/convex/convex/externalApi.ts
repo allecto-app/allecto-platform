@@ -88,22 +88,9 @@ async function assertProPlan(ctx: any, condoId: any) {
   const condo = await ctx.db.get(condoId);
   assert(condo, "EXT_NOT_FOUND_CONDO");
 
-  const subscriptions = await ctx.db
-    .query("subscriptions")
-    .withIndex("byTenant", (q: any) => q.eq("tenantId", condoId))
-    .collect();
-
-  subscriptions.sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
-  const current = subscriptions[0] ?? null;
-  const now = Date.now();
-
-  const status = (current?.status ?? condo.billingStatus ?? "").toLowerCase();
-  const periodEnd = current?.currentPeriodEnd ?? 0;
-  const isWithinPeriod = periodEnd === 0 || periodEnd >= now - 60_000;
-  const isActive = ACTIVE_BILLING_STATUSES.has(status) && isWithinPeriod;
-
-  const tier = normalizeTier(current?.tierKey ?? condo.billingTier ?? null);
-  assert(isActive && tier === "pro", "EXT_FORBIDDEN_PRO_REQUIRED");
+  const condoStatus = String(condo.billingStatus ?? "").toLowerCase();
+  const condoTier = normalizeTier(condo.billingTier ?? null);
+  assert(ACTIVE_BILLING_STATUSES.has(condoStatus) && condoTier === "pro", "EXT_FORBIDDEN_PRO_REQUIRED");
 
   return condo;
 }
@@ -208,14 +195,13 @@ export const createApiKey = mutation({
     }
 
     if (!ownerResidentId) {
-      const condoResidents = await ctx.db
+      const syndics = await ctx.db
         .query("residents")
-        .withIndex("byCondo", (q: any) => q.eq("condoId", condoId))
-        .collect();
+        .withIndex("byCondoRole", (q: any) => q.eq("condoId", condoId).eq("role", "syndic"))
+        .take(20);
       ownerResidentId =
-        condoResidents.find(
+        syndics.find(
           (resident: any) =>
-            resident.role === "syndic" &&
             resident.isActive === true &&
             resident.deletedAt === undefined,
         )?._id ?? null;
