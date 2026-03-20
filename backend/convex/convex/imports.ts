@@ -3,9 +3,18 @@ import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeEmail } from "./_secu";
 import type { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 const residentRoles = ["resident", "syndic", "manager", "council"] as const;
 const membershipRoles = ["owner", "tenant"] as const;
+const RESIDENT_WELCOME_TEMPLATE_ID = process.env.RESEND_TEMPLATE_RESIDENT_WELCOME ?? "";
+const RESIDENT_WELCOME_SYNDIC_TEMPLATE_ID =
+  process.env.RESEND_TEMPLATE_RESIDENT_WELCOME_SYNDIC ?? "";
+
+type CondoEmailContext = {
+  name: string;
+  subdomain: string;
+};
 
 interface Summary {
   unitsCreated: number;
@@ -49,6 +58,15 @@ export const bulkUpload = mutation({
     ),
   },
   handler: async (ctx, { condoId, rows }) => {
+    const condo = await ctx.db.get(condoId);
+    if (!condo) {
+      throw new Error("Condomínio não encontrado");
+    }
+    const condoEmailContext: CondoEmailContext = {
+      name: condo.name,
+      subdomain: condo.subdomain,
+    };
+
     const summary: Summary = {
       unitsCreated: 0,
       unitsUpdated: 0,
@@ -71,7 +89,14 @@ export const bulkUpload = mutation({
           ? await upsertUnit(ctx, condoId, row.unit, timestamp, summary)
           : null;
         const residentId = row.resident
-          ? await upsertResident(ctx, condoId, row.resident, timestamp, summary)
+          ? await upsertResident(
+              ctx,
+              condoId,
+              row.resident,
+              timestamp,
+              summary,
+              condoEmailContext,
+            )
           : null;
 
         if (row.resident?.membershipRole && !unitId) {
@@ -155,6 +180,7 @@ async function upsertResident(
   },
   timestamp: number,
   summary: Summary,
+  condo: CondoEmailContext,
 ) {
   const trimmedName = resident.name.trim();
   if (!trimmedName) {
@@ -209,6 +235,97 @@ async function upsertResident(
     updatedAt: timestamp,
   });
   summary.residentsCreated += 1;
+
+  if (normalizedEmail) {
+    const displayName = trimmedName || "Morador";
+    const firstName = displayName.split(" ")[0] ?? displayName;
+    const condoDisplay = condo.name || "seu condomínio";
+    const condoUrl = condo.subdomain
+      ? `https://${condo.subdomain}.allecto.app`
+      : "https://portal.allecto.app";
+
+    const subject =
+      role === "syndic"
+        ? "Você foi cadastrado como síndico no Allecto"
+        : `Bem-vindo ao Allecto - ${condoDisplay}`;
+
+    const templateId =
+      role === "syndic"
+        ? RESIDENT_WELCOME_SYNDIC_TEMPLATE_ID || RESIDENT_WELCOME_TEMPLATE_ID
+        : RESIDENT_WELCOME_TEMPLATE_ID;
+
+    const roleLabel =
+      role === "syndic"
+        ? "síndico"
+        : role === "manager"
+          ? "gestor"
+          : role === "council"
+            ? "conselheiro"
+            : "morador";
+
+    const roleMessage =
+      role === "syndic"
+        ? "Você poderá acessar o painel administrativo do condomínio para gerir reuniões, votações e comunicados."
+        : role === "manager"
+          ? "Você poderá apoiar a gestão condominial e acompanhar as rotinas administrativas no Allecto."
+          : role === "council"
+            ? "Você poderá acompanhar assembleias, votações e comunicados como membro do conselho."
+            : "Você poderá acompanhar assembleias, votações e comunicados do seu condomínio.";
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+        <p>Olá ${firstName},</p>
+        <p>Você foi cadastrado no <strong>${condoDisplay}</strong> na plataforma Allecto.</p>
+        <p>${roleMessage}</p>
+        <p>Acesse pelo link abaixo usando o email <strong>${normalizedEmail}</strong> para receber seu código de acesso:</p>
+        <p><a href="${condoUrl}" style="color: #2563eb;">${condoUrl}</a></p>
+        <p>Qualquer dúvida, fale com o síndico ou nossa equipe de suporte.</p>
+        <p>Equipe Allecto</p>
+      </div>
+    `.trim();
+
+    const text = [
+      `Olá ${firstName},`,
+      "",
+      `Você foi cadastrado no ${condoDisplay} na plataforma Allecto.`,
+      roleMessage,
+      "",
+      `Acesse pelo link ${condoUrl} usando o email ${normalizedEmail} para receber seu código de acesso.`,
+      "",
+      "Qualquer dúvida, fale com o síndico ou nossa equipe de suporte.",
+      "",
+      "Equipe Allecto",
+    ].join("\n");
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.email.send,
+      templateId
+        ? {
+            to: normalizedEmail,
+            subject,
+            template: {
+              id: templateId,
+              variables: {
+                USER_NAME: firstName,
+                FULL_NAME: displayName,
+                CONDO_NAME: condoDisplay,
+                CONDO_URL: condoUrl,
+                USER_EMAIL: normalizedEmail,
+                ROLE_LABEL: roleLabel,
+                ROLE_MESSAGE: roleMessage,
+              },
+            },
+          }
+        : {
+            to: normalizedEmail,
+            subject,
+            html,
+            text,
+          },
+    );
+  }
+
   return newId;
 }
 
