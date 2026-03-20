@@ -231,6 +231,7 @@ export default defineSchema({
     consumedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
+    .index("byCondo", ["condoId"])
     .index("byCondoEmail", ["condoId", "email"])
     .index("byCondoPhone", ["condoId", "phone"]),
 

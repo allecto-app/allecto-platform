@@ -49,6 +49,7 @@ export function SettingsCondoPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
 
   const updateSettings = useMutation(api.condos.updateSettings);
   const disableCondo = useMutation(api.condos.disable);
@@ -57,7 +58,8 @@ export function SettingsCondoPage({
   useEffect(() => {
     setName(condo.name);
     setTimezone(condo.timezone ?? "America/Sao_Paulo");
-  }, [condo.name, condo.timezone]);
+    setIsDeleteInProgress(false);
+  }, [condo._id, condo.name, condo.timezone]);
 
   const handleCopy = () => {
     const url = `${condo.subdomain}.allecto.app`;
@@ -113,11 +115,16 @@ export function SettingsCondoPage({
     setIsDeleting(true);
     try {
       const result = (await deleteCondo({ sessionToken, condoId: condo._id })) as
-        | { success: boolean }
+        | { success: boolean; completed?: boolean }
         | null;
       if (result?.success) {
-        toast.success("Condomínio excluído permanentemente");
-        onCondoDeleted?.();
+        if (result.completed === false) {
+          setIsDeleteInProgress(true);
+          toast.success("Exclusão iniciada. O condomínio será removido em instantes.");
+        } else {
+          toast.success("Condomínio excluído permanentemente");
+          onCondoDeleted?.();
+        }
       } else {
         toast.error("Não foi possível excluir o condomínio");
       }
@@ -196,6 +203,11 @@ export function SettingsCondoPage({
           <CardDescription>Ações irreversíveis que afetam todo o condomínio.</CardDescription>
         </CardHeader>
         <CardContent>
+          {isDeleteInProgress ? (
+            <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              Exclusão em andamento. Aguarde alguns instantes antes de atualizar a página.
+            </div>
+          ) : null}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" disabled={!isActive || isDisabling}>
@@ -225,9 +237,17 @@ export function SettingsCondoPage({
           {canDeleteCondo ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={isActive || isDeleting} className="mt-3">
+                <Button
+                  variant="destructive"
+                  disabled={isActive || isDeleting || isDeleteInProgress}
+                  className="mt-3"
+                >
                   <AlertTriangle className="mr-2 h-4 w-4" />
-                  {isDeleting ? "Excluindo..." : "Excluir Condomínio (Hard Delete)"}
+                  {isDeleting
+                    ? "Excluindo..."
+                    : isDeleteInProgress
+                      ? "Exclusão em andamento"
+                      : "Excluir Condomínio (Hard Delete)"}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -242,7 +262,7 @@ export function SettingsCondoPage({
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDelete}
-                    disabled={isDeleting}
+                    disabled={isDeleting || isDeleteInProgress}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     {isDeleting ? "Excluindo..." : "Sim, excluir permanentemente"}

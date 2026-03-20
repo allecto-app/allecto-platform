@@ -30,7 +30,7 @@ export function UnitsListPage({ onNavigate, condo, sessionToken, onSelectUnit }:
 
   const units = useQuery(
     api.units.listByCondoWithResidentCounts,
-    condo ? { sessionToken, condoId: condo._id } : "skip",
+    condo && sessionToken ? { sessionToken, condoId: condo._id } : "skip",
   ) as UnitListItem[] | undefined;
 
   const blocks = useMemo(() => {
@@ -61,7 +61,7 @@ export function UnitsListPage({ onNavigate, condo, sessionToken, onSelectUnit }:
     });
   }, [units, searchTerm, blockFilter, floorFilter]);
 
-  const isLoading = !!condo && !units;
+  const isLoading = !!condo && !!sessionToken && !units;
 
   return (
     <div>
