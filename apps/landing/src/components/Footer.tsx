@@ -67,6 +67,16 @@ export function Footer() {
               </li>
               <li>
                 <a
+                  href="https://blog.allecto.app/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Blog
+                </a>
+              </li>
+              <li>
+                <a
                   href="/politica-de-privacidade"
                   className="hover:text-white transition-colors"
                 >
@@ -75,21 +85,11 @@ export function Footer() {
               </li>
             </ul>
           </div>
-
-          {/* <div>
-            <h3 className="text-white mb-4">Empresa</h3>
-            <ul className="space-y-2">
-              <li><a href="#" className="hover:text-white transition-colors">Sobre nós</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Carreiras</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Contato</a></li>
-            </ul>
-          </div> */}
         </div>
 
         <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-gray-500 text-sm">
-            © 2025 Allecto App. Todos os direitos reservados.
+            © 2026 Allecto App. Todos os direitos reservados.
           </p>
           <div className="flex items-center gap-4">
             <a
