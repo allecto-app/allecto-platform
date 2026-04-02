@@ -102,6 +102,8 @@ export function Footer() {
             </a>
           </div>
         </div>
+
+        <img src="https://tracker.metricool.com/c3po.jpg?hash=149e1e1b64775df0b04e51030c8adba1" />
       </div>
     </footer>
   );
