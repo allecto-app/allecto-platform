@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Assembleia condominial online</title><desc id="desc">Participantes conectados ao síndico, com indicadores de voz, debate e voto.</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#062f46"/><stop offset="1" stop-color="#3157a4"/></linearGradient></defs>
+  <rect width="1200" height="630" rx="32" fill="url(#bg)"/><circle cx="1080" cy="100" r="180" fill="#c8f31d" opacity=".16"/>
+  <text x="72" y="92" fill="#c8f31d" font-family="Arial,sans-serif" font-size="28" font-weight="700">ALLECTO • GOVERNANÇA</text>
+  <text x="72" y="165" fill="white" font-family="Arial,sans-serif" font-size="52" font-weight="700">Assembleia online</text><text x="72" y="220" fill="#d9e7ee" font-family="Arial,sans-serif" font-size="28">acesso, voz, debate e voto</text>
+  <rect x="70" y="280" width="650" height="270" rx="24" fill="#fff" opacity=".97"/><rect x="95" y="310" width="290" height="205" rx="16" fill="#e8f1f7"/><circle cx="240" cy="375" r="38" fill="#3157a4"/><path d="M170 480c8-55 132-55 140 0" fill="#3157a4"/>
+  <g fill="#3157a4"><circle cx="470" cy="365" r="28"/><circle cx="585" cy="365" r="28"/></g><g fill="#d7e4ed"><rect x="425" y="410" width="90" height="70" rx="14"/><rect x="540" y="410" width="90" height="70" rx="14"/></g>
+  <g transform="translate(790 285)"><rect width="330" height="265" rx="24" fill="#071e2e"/><text x="34" y="62" fill="white" font-family="Arial" font-size="25">Pauta em debate</text><rect x="34" y="94" width="262" height="14" rx="7" fill="#7f9eb0"/><rect x="34" y="128" width="208" height="14" rx="7" fill="#7f9eb0"/><rect x="34" y="185" width="125" height="48" rx="24" fill="#c8f31d"/><text x="62" y="217" fill="#062f46" font-family="Arial" font-size="22" font-weight="700">VOTAR</text></g>
+</svg>

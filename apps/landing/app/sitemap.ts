@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { BLOG_ARTICLES, BLOG_ORIGIN } from "../src/blog/content";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -21,6 +22,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://blog.allecto.app/pt/gestao-de-documentos", changeFrequency: "monthly", priority: 0.7 },
     { url: "https://blog.allecto.app/pt/governanca-condominial", changeFrequency: "monthly", priority: 0.6 },
     { url: "https://blog.allecto.app/pt/seguranca-e-criptografia", changeFrequency: "monthly", priority: 0.6 },
-    { url: "https://blog.allecto.app/pt/gestao-de-documentos/modelo-politica-gestao-retencao-documentos-condominio-templates-checklist-compliance", lastModified: "2026-08-30", changeFrequency: "yearly", priority: 0.8 },
+    ...BLOG_ARTICLES.map((article) => ({ url: `${BLOG_ORIGIN}${article.canonicalPath}`, lastModified: article.modifiedAt, changeFrequency: "yearly" as const, priority: 0.8 })),
   ];
 }
