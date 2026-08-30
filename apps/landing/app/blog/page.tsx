@@ -47,7 +47,7 @@ export default function BlogPage() {
             <h2 className="text-2xl font-semibold text-gray-900">Explore por tema</h2>
             <div className="mt-8 grid gap-5 md:grid-cols-3">{BLOG_CATEGORIES.map((category) => <Link key={category.slug} href={`/pt/${category.slug}`} className="rounded-2xl border bg-white p-6 hover:border-primary/40"><h3 className="text-xl font-semibold text-gray-900">{category.name}</h3><p className="mt-3 text-sm leading-6 text-gray-600">{category.description}</p></Link>)}</div>
             <h2 className="mt-16 text-2xl font-semibold text-gray-900">Conteúdos recentes</h2>
-            <div className="mt-8">{BLOG_ARTICLES.map((article) => { const category = BLOG_CATEGORIES.find(({ slug }) => slug === article.categorySlug)!; return <ArticleCard key={article.slug} article={article} category={category} />; })}</div>
+            <div className="mt-8 grid gap-[30px]">{BLOG_ARTICLES.map((article) => { const category = BLOG_CATEGORIES.find(({ slug }) => slug === article.categorySlug)!; return <ArticleCard key={article.slug} article={article} category={category} />; })}</div>
             <div className="mt-12 text-center"><Button asChild>
               <Link href="https://www.allecto.app/#precos">
                 Conhecer os planos da Allecto
