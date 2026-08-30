@@ -24,6 +24,7 @@
   "include": [
     "src",
     "app",
+    "tests",
     "middleware.ts",
     "next-env.d.ts",
     ".next/types/**/*.ts"
