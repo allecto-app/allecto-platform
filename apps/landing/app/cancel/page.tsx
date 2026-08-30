@@ -1,8 +1,12 @@
-'use client';
-
 import Link from "next/link";
+import type { Metadata } from "next";
 import { XCircle } from "lucide-react";
 import { Button } from "../../src/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "Checkout cancelado | Allecto",
+  robots: { index: false, follow: false },
+};
 
 export default function CancelPage() {
   return (

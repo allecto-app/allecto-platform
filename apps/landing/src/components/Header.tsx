@@ -75,8 +75,8 @@ export function Header() {
             >
               Login
             </a>
-            <Button className="bg-primary hover:bg-accent text-primary-foreground">
-              <a href="#precos">Começar agora</a>
+            <Button className="bg-primary hover:bg-accent text-primary-foreground" asChild>
+              <Link href="/#precos">Começar agora</Link>
             </Button>
             <Button
               variant="ghost"
@@ -98,34 +98,34 @@ export function Header() {
       {isMobileOpen && (
         <div className="md:hidden border-t border-gray-200 bg-white">
           <nav className="flex flex-col gap-4 px-4 py-6 text-gray-600">
-            <a
-              href="#recursos"
+            <Link
+              href="/#recursos"
               onClick={handleNavigate}
               className="hover:text-gray-900 transition-colors"
             >
               Recursos
-            </a>
-            <a
-              href="#precos"
+            </Link>
+            <Link
+              href="/#precos"
               onClick={handleNavigate}
               className="hover:text-gray-900 transition-colors"
             >
               Preços
-            </a>
-            <a
-              href="#faq"
+            </Link>
+            <Link
+              href="/#faq"
               onClick={handleNavigate}
               className="hover:text-gray-900 transition-colors"
             >
               FAQ
-            </a>
-            <a
-              href="#contato"
+            </Link>
+            <Link
+              href="/#contato"
               onClick={handleNavigate}
               className="hover:text-gray-900 transition-colors"
             >
               Contato
-            </a>
+            </Link>
             <a
               href="https://portal.allecto.app"
               target="_blank"
@@ -140,7 +140,7 @@ export function Header() {
               onClick={handleNavigate}
               asChild
             >
-              <a href="#precos">Começar agora</a>
+              <Link href="/#precos">Começar agora</Link>
             </Button>
           </nav>
         </div>

@@ -11,14 +11,15 @@ import {
 } from "../src/lib/cookieConsent";
 
 export const metadata: Metadata = {
-  title: "Allecto App — Assembleias e votação online seguras",
+  metadataBase: new URL("https://www.allecto.app"),
+  title: "Assembleia Condominial Online e Votação Segura | Allecto",
   description:
-    "Simplifique assembleias do seu condomínio: convites, PDFs com acesso restrito e votação segura em tempo real. Agende uma demonstração do Allecto App.",
+    "Realize assembleias condominiais online com convocações, quórum, votação, fração ideal, atas e relatórios. Avulso por R$249 ou planos a partir de R$149/mês.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Allecto App — Assembleias e votação online seguras",
+    title: "Assembleia Condominial Online e Votação Segura | Allecto",
     description:
-      "Crie assembleias, envie convites e vote com segurança. Resultados em tempo real. Agende uma demo.",
+      "Realize assembleias condominiais online com convocações, quórum, votação, fração ideal, atas e relatórios. Avulso por R$249 ou planos a partir de R$149/mês.",
     url: "https://www.allecto.app/",
     siteName: "Allecto App",
     images: [
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
         url: "/images/og/landing-1200x630.png",
         width: 1200,
         height: 630,
-        alt: "Allecto App — assembleias e votação online",
+        alt: "Allecto — assembleia condominial online e votação segura",
       },
     ],
     locale: "pt_BR",
@@ -34,9 +35,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Allecto App — Assembleias e votação online seguras",
+    title: "Assembleia Condominial Online e Votação Segura | Allecto",
     description:
-      "Convites, PDFs com acesso restrito e votação segura em tempo real. Agende uma demonstração.",
+      "Convocações, quórum, votação, atas e relatórios para assembleias condominiais online.",
     images: ["/images/og/landing-1200x630.png"],
   },
 };

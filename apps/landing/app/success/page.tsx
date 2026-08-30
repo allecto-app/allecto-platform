@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   description:
     "Obrigado! Seu pagamento do Allecto App foi confirmado. Enviamos um e-mail com os próximos passos para criar sua primeira assembleia.",
   alternates: { canonical: "/success" },
+  robots: { index: false, follow: false },
   openGraph: {
     title: "Assinatura confirmada — Allecto App",
     description:

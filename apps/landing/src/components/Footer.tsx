@@ -37,33 +37,33 @@ export function Footer() {
             <h3 className="text-white mb-4">Produto</h3>
             <ul className="space-y-2">
               <li>
-                <a
-                  href="#recursos"
+                <Link
+                  href="/#recursos"
                   className="hover:text-white transition-colors"
                 >
                   Recursos
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#precos"
+                <Link
+                  href="/#precos"
                   className="hover:text-white transition-colors"
                 >
                   Preços
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#faq" className="hover:text-white transition-colors">
+                <Link href="/#faq" className="hover:text-white transition-colors">
                   Segurança
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#contato"
+                <Link
+                  href="/#contato"
                   className="hover:text-white transition-colors"
                 >
                   Demonstração
-                </a>
+                </Link>
               </li>
               <li>
                 <a

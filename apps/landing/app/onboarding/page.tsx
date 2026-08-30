@@ -6,12 +6,13 @@ export const metadata: Metadata = {
   title: "Allecto App — Finalize sua assinatura com segurança",
   description:
     "Conclua sua assinatura do Allecto App com segurança. Pagamento protegido, resumo do plano e suporte para ativar sua primeira assembleia.",
-  alternates: { canonical: "/checkout" },
+  alternates: { canonical: "/onboarding" },
+  robots: { index: false, follow: false },
   openGraph: {
     title: "Allecto App — Finalize sua assinatura com segurança",
     description:
       "Pagamento seguro, resumo do plano e suporte para ativar sua primeira assembleia.",
-    url: "https://www.allecto.app/pnboarding",
+    url: "https://www.allecto.app/onboarding",
     siteName: "Allecto App",
     images: [
       {

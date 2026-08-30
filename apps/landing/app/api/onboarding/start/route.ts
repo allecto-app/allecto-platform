@@ -57,6 +57,8 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Runtime string references are required because this app does not import Convex-generated bindings.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (convex as any).mutation("onboarding:startTenantSignup", {
       tierKey,
       condoName,
