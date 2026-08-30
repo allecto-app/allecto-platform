@@ -9,8 +9,10 @@ const PRICE_TO_TIER = new Map(
   (
     [
       ["PRICE_ID_ESSENCIAL_MONTHLY", "essencial"],
-      ["PRICE_ID_PLUS_MONTHLY", "plus"],
-      ["PRICE_ID_PRO_MONTHLY", "pro"],
+      ["PRICE_ID_GESTAO_MONTHLY", "gestao"],
+      ["PRICE_ID_ADMINISTRADORA_MONTHLY", "administradora"],
+      ["PRICE_ID_PLUS_MONTHLY", "gestao"],
+      ["PRICE_ID_PRO_MONTHLY", "administradora"],
     ] as const
   ).flatMap(([envKey, tier]) => {
     const value = process.env[envKey];
@@ -32,11 +34,16 @@ export const entitlements = query({
       .withIndex("byTenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
 
+    const oneTimeEntitlements = await ctx.db.query("assemblyEntitlements")
+      .withIndex("byTenant", (q: any) => q.eq("tenantId", tenantId)).collect();
+    const availableOneTime = oneTimeEntitlements.find((item: any) => item.status === "available");
+
     if (subscriptions.length === 0) {
       return {
-        active: false,
-        tierKey: null,
+        active: Boolean(availableOneTime),
+        tierKey: availableOneTime ? "avulso" : null,
         subscription: null,
+        assemblyEntitlementId: availableOneTime?._id ?? null,
         inDunning: false,
       };
     }
@@ -54,10 +61,7 @@ export const entitlements = query({
     const resolvedTier = resolveTierKey(current.priceId);
     const recordTier = normalizeTierKey(current.tierKey);
     const tenantTier = normalizeTierKey(tenant?.billingTier);
-    const tierKey = (resolvedTier ?? recordTier ?? tenantTier ?? "essencial") as
-      | "essencial"
-      | "plus"
-      | "pro";
+    const tierKey = resolvedTier ?? recordTier ?? tenantTier ?? "essencial";
     const inDunning = DUNNING_STATUSES.has(normalizedStatus);
 
     return {
@@ -68,6 +72,7 @@ export const entitlements = query({
         priceId: current.priceId,
         productId: current.productId,
         currentPeriodStart: current.currentPeriodStart,
+        billingCycleAnchor: current.billingCycleAnchor ?? current.currentPeriodStart,
         currentPeriodEnd: current.currentPeriodEnd,
         cancelAt: current.cancelAt ?? null,
         cancelAtPeriodEnd: Boolean(current.cancelAtPeriodEnd),
@@ -76,6 +81,7 @@ export const entitlements = query({
         latestInvoiceStatus: current.latestInvoiceStatus ?? null,
         updatedAt: current.updatedAt,
       },
+      assemblyEntitlementId: null,
       inDunning,
     };
   },

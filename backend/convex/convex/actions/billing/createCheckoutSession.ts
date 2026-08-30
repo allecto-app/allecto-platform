@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { api } from "../../_generated/api";
 import { getStripeClient } from "../../stripe/client";
 import { normalizeEmail } from "../../_secu";
-import { ensureAbsoluteUrl, getPriceIdFromEnv, tierKeyValidator } from "./helpers";
+import { checkoutModeForTier, ensureAbsoluteUrl, getPriceIdFromEnv, tierKeyValidator } from "./helpers";
 
 const billingApi = api.billing as any;
 
@@ -42,6 +42,8 @@ export const createCheckoutSession = action({
     const cancelUrl = ensureAbsoluteUrl("cancelUrl", args.cancelUrl);
 
     const priceId = getPriceIdFromEnv(tierKey);
+    const checkoutMode = checkoutModeForTier(tierKey);
+    const isOneTime = checkoutMode === "payment";
     const stripe = getStripeClient();
     let customerId = existingRecord?.stripeCustomerId ?? null;
 
@@ -78,7 +80,7 @@ export const createCheckoutSession = action({
 
     const session = await stripe.checkout.sessions.create(
       {
-        mode: "subscription",
+        mode: checkoutMode,
         customer: customerId,
         success_url: successUrl,
         cancel_url: cancelUrl,
@@ -88,12 +90,11 @@ export const createCheckoutSession = action({
           tenantId: tenantId.toString(),
           tierKey,
         },
-        subscription_data: {
-          metadata: {
-            tenantId: tenantId.toString(),
-            tierKey,
+        ...(isOneTime ? {} : {
+          subscription_data: {
+            metadata: { tenantId: tenantId.toString(), tierKey },
           },
-        },
+        }),
         line_items: [
           {
             price: priceId,

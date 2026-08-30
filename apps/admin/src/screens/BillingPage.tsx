@@ -88,6 +88,7 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
   }, [data?.subscription?.status]);
 
   const nextRenewal = formatDate(data?.subscription?.currentPeriodEnd ?? null);
+  const hasSubscription = Boolean(data?.subscription);
 
   const handleCheckout = async (tierKey: Billing.BillingTierKey) => {
     if (!tenantId) return;
@@ -171,8 +172,8 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Assinatura"
-        description="Gerencie o plano do condomínio, atualize a forma de pagamento e visualize o status da assinatura."
+        title="Plano e pagamentos"
+        description="Gerencie o plano do condomínio, pagamentos e limites de uso."
       />
 
       {inDunning && (
@@ -211,10 +212,7 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
                 {currentPlan?.name ?? "—"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {currentPlan
-                  ? Billing.formatPriceBRL(currentPlan.priceCents)
-                  : "—"}{" "}
-                / mês
+                {currentPlan?.priceLabel ?? "—"}
               </p>
             </div>
             {statusBadge && (
@@ -233,13 +231,13 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
             <div className="rounded-lg border border-border p-4">
               <p className="text-sm text-muted-foreground">Próxima renovação</p>
               <p className="text-base font-medium text-foreground">
-                {nextRenewal}
+                {hasSubscription ? nextRenewal : "Não se aplica"}
               </p>
             </div>
             <div className="rounded-lg border border-border p-4">
               <p className="text-sm text-muted-foreground">Status</p>
               <p className="text-base font-medium capitalize text-foreground">
-                {statusBadge?.label ?? "Sem assinatura"}
+                {statusBadge?.label ?? (isActive ? "Ativo" : "Sem plano ativo")}
               </p>
             </div>
           </div>
@@ -277,11 +275,12 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
                 <DialogHeader>
                   <DialogTitle>Escolha um plano</DialogTitle>
                   <DialogDescription>
-                    Selecionar um novo plano irá redirecionar você para o
-                    checkout seguro da Stripe.
+                    {hasSubscription
+                      ? "Planos recorrentes são alterados com segurança pelo portal da Stripe. Compras avulsas usam checkout de pagamento único."
+                      : "A contratação será concluída no checkout seguro da Stripe."}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {planList.map((plan) => (
                     <PlanCard
                       key={plan.tierKey}
@@ -289,26 +288,38 @@ export function BillingPage({ condo, sessionToken }: BillingPageProps) {
                       isCurrent={plan.tierKey === data?.tierKey}
                       isActive={isActive}
                       loading={redirectingTier === plan.tierKey}
-                      onSelect={() => handleCheckout(plan.tierKey)}
+                      onSelect={() => {
+                        if (!plan.purchasable) {
+                          window.location.assign(`https://allecto.app/?offer=${plan.tierKey}#contato`);
+                          return;
+                        }
+                        if (hasSubscription && plan.billingType === "subscription") {
+                          void handlePortal();
+                          return;
+                        }
+                        void handleCheckout(plan.tierKey);
+                      }}
                     />
                   ))}
                 </div>
               </DialogContent>
             </Dialog>
-            <Button
-              variant="outline"
-              onClick={handlePortal}
-              disabled={isPortalLoading}
-            >
-              {isPortalLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Redirecionando...
-                </>
-              ) : (
-                "Gerenciar pagamento / Cancelamento"
-              )}
-            </Button>
+            {hasSubscription && (
+              <Button
+                variant="outline"
+                onClick={handlePortal}
+                disabled={isPortalLoading}
+              >
+                {isPortalLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecionando...
+                  </>
+                ) : (
+                  "Gerenciar assinatura e pagamento"
+                )}
+              </Button>
+            )}
             {isTrial && (
               <Badge variant="secondary" className="self-center">
                 Você está em período de teste

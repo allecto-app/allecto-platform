@@ -1,65 +1,25 @@
-export type TierKey = "essencial" | "plus" | "pro";
-
-export type MonthlyAssembliesLimit = number | "unlimited";
+export type TierKey = "avulso" | "essencial" | "gestao" | "administradora";
 
 export interface TierLimits {
   tierKey: TierKey;
-  monthlyAssembliesLimit: MonthlyAssembliesLimit;
-  unitMin?: number;
-  unitMax?: number;
+  assembliesPerYear: number;
+  unitMax: number;
+  condominiums: number;
+  storageGb: number | null;
+  assemblyDurationDays?: number;
 }
 
-export interface UnitsValidationResult {
-  ok: boolean;
-  reason?: "below_min" | "above_max";
-}
+const LIMITS: Record<TierKey, TierLimits> = {
+  avulso: { tierKey: "avulso", assembliesPerYear: 1, unitMax: 100, condominiums: 1, storageGb: null, assemblyDurationDays: 15 },
+  essencial: { tierKey: "essencial", assembliesPerYear: 6, unitMax: 100, condominiums: 1, storageGb: 5 },
+  gestao: { tierKey: "gestao", assembliesPerYear: 18, unitMax: 300, condominiums: 1, storageGb: 20 },
+  administradora: { tierKey: "administradora", assembliesPerYear: 60, unitMax: 1000, condominiums: 5, storageGb: 100 },
+};
 
-export function resolveLimits(tierKey: TierKey): TierLimits {
-  if (tierKey === "essencial") {
-    return {
-      tierKey,
-      monthlyAssembliesLimit: 2,
-      unitMax: 99,
-    };
-  }
+export function resolveLimits(tierKey: TierKey): TierLimits { return LIMITS[tierKey]; }
 
-  if (tierKey === "plus") {
-    return {
-      tierKey,
-      monthlyAssembliesLimit: 5,
-      unitMin: 100,
-      unitMax: 300,
-    };
-  }
-
-  return {
-    tierKey: "pro",
-    monthlyAssembliesLimit: "unlimited",
-    unitMin: 301,
-  };
-}
-
-export function validateUnitsAgainstTier(
-  unitsCount: number,
-  tierKey: TierKey
-): UnitsValidationResult {
-  const limits = resolveLimits(tierKey);
-
-  if (
-    tierKey === "pro" &&
-    typeof limits.unitMin === "number" &&
-    unitsCount < limits.unitMin
-  ) {
-    return { ok: true };
-  }
-
-  if (typeof limits.unitMin === "number" && unitsCount < limits.unitMin) {
-    return { ok: false, reason: "below_min" };
-  }
-
-  if (typeof limits.unitMax === "number" && unitsCount > limits.unitMax) {
-    return { ok: false, reason: "above_max" };
-  }
-
-  return { ok: true };
+export function validateUnitsAgainstTier(unitsCount: number, tierKey: TierKey) {
+  return unitsCount > LIMITS[tierKey].unitMax
+    ? { ok: false as const, reason: "above_max" as const }
+    : { ok: true as const };
 }

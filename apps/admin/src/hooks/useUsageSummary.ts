@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api, Id } from "../lib/convexGenerated";
 
-export type TierKey = "essencial" | "plus" | "pro";
+export type TierKey = "avulso" | "essencial" | "gestao" | "administradora";
 
 type BaseUsageSummary = {
   usage: {
-    monthKey: string;
+    cycleKey: string;
     assembliesCount: number;
   };
   unitsCount: number;
@@ -26,11 +26,13 @@ type ActiveSummary = BaseUsageSummary & {
   tierKey: TierKey;
   limits: {
     tierKey: TierKey;
-    monthlyAssembliesLimit: number | "unlimited";
-    unitMin?: number;
-    unitMax?: number;
+    assembliesPerYear: number;
+    unitMax: number;
+    condominiums: number;
+    storageGb: number | null;
+    assemblyDurationDays?: number;
   };
-  remaining: number | "unlimited";
+  remaining: number;
   unitsOk: boolean;
 };
 
@@ -49,20 +51,20 @@ export type AssemblyBlockReason = {
 const SUBSCRIPTION_REQUIRED_MESSAGE =
   "Sua assinatura não está ativa. Ative um plano para continuar.";
 
-const UNIT_CAP_MESSAGES: Record<Exclude<TierKey, "pro">, string> = {
-  essencial:
-    "Seu plano Essencial permite até 99 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Plus.",
-  plus: "Seu plano Plus permite 100–300 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Pró.",
+const UNIT_CAP_MESSAGES: Record<TierKey, string> = {
+  avulso: "A oferta Avulso permite até 100 unidades. Seu condomínio possui {{units}}.",
+  essencial: "Seu plano Essencial permite até 100 unidades. Seu condomínio possui {{units}}. Faça upgrade para Gestão.",
+  gestao: "Seu plano Gestão permite até 300 unidades. Seu condomínio possui {{units}}.",
+  administradora: "Seu plano Administradora permite até 1.000 unidades. Seu cadastro possui {{units}}.",
 };
 
-const UNIT_CAP_BELOW_MIN_MESSAGES: Partial<Record<TierKey, string>> = {
-  plus: "Seu plano Plus cobre entre 100 e 300 unidades. Seu condomínio possui {{units}}. Ajuste para o plano Essencial ou atualize seu cadastro.",
-};
+const UNIT_CAP_BELOW_MIN_MESSAGES: Partial<Record<TierKey, string>> = {};
 
 const ASSEMBLY_QUOTA_MESSAGES: Partial<Record<TierKey, string>> = {
-  essencial:
-    "Você atingiu o limite de 2 assembleias neste mês. Faça upgrade para o plano Plus.",
-  plus: "Você atingiu o limite de 5 assembleias neste mês. Faça upgrade para o plano Pró.",
+  avulso: "A assembleia avulsa contratada já foi utilizada.",
+  essencial: "Você atingiu o limite de 6 assembleias neste ciclo anual. Faça upgrade para Gestão.",
+  gestao: "Você atingiu o limite de 18 assembleias neste ciclo anual.",
+  administradora: "Você atingiu o limite de 60 assembleias neste ciclo anual.",
 };
 
 export function useUsageSummary(tenantId: Id<"condos"> | null) {
@@ -115,7 +117,7 @@ function resolveBlockReason(
     const template =
       (summary.unitValidationReason === "below_min"
         ? UNIT_CAP_BELOW_MIN_MESSAGES[summary.tierKey]
-        : UNIT_CAP_MESSAGES[summary.tierKey as Exclude<TierKey, "pro">]) ??
+        : UNIT_CAP_MESSAGES[summary.tierKey]) ??
       "Limite de unidades excedido. Ajuste seu plano.";
 
     return {
@@ -129,10 +131,10 @@ function resolveBlockReason(
     };
   }
 
-  if (summary.remaining !== "unlimited" && summary.remaining <= 0) {
+  if (summary.remaining <= 0) {
     const message =
       ASSEMBLY_QUOTA_MESSAGES[summary.tierKey] ??
-      "Você atingiu o limite de assembleias neste mês.";
+      "Você atingiu o limite de assembleias neste ciclo anual.";
     return {
       code: "assembly_quota_exceeded",
       message,
@@ -154,13 +156,9 @@ function buildRemainingLabel(summary: UsageSummary | null) {
     return `${planLabel} · ${summary.unitsCount} unidades cadastradas`;
   }
 
-  if (summary.remaining === "unlimited") {
-    return `${planLabel} · Assembleias ilimitadas neste mês`;
-  }
-
   const count = summary.remaining;
   const suffix = count === 1 ? "assembleia restante" : "assembleias restantes";
-  return `${planLabel} · ${count} ${suffix} neste mês`;
+  return `${planLabel} · ${count} ${suffix} neste ciclo anual`;
 }
 
 function capitalize(value: string) {

@@ -20,11 +20,12 @@ type SignupPayload = {
   adminPhone?: unknown;
 };
 
-const TIER_MAP: Record<string, "essencial" | "plus" | "pro"> = {
+const TIER_MAP: Record<string, "avulso" | "essencial" | "gestao" | "administradora"> = {
+  avulso: "avulso",
   essencial: "essencial",
   start: "essencial",
-  plus: "plus",
-  pro: "pro",
+  gestao: "gestao",
+  administradora: "administradora",
 };
 
 function coerceString(value: unknown): string {

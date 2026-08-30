@@ -14,8 +14,16 @@ type PlanCardProps = {
 };
 
 export function PlanCard({ plan, isCurrent, isActive, loading, onSelect }: PlanCardProps) {
-  const priceLabel = Billing.formatPriceBRL(plan.priceCents);
-  const actionLabel = isCurrent ? "Plano atual" : isActive ? "Mudar para este plano" : "Assinar";
+  const priceLabel = plan.priceLabel;
+  const actionLabel = isCurrent
+    ? "Plano atual"
+    : !plan.purchasable
+      ? "Falar com vendas"
+      : plan.billingType === "one_time"
+        ? plan.ctaLabel
+        : isActive
+          ? "Mudar para este plano"
+          : plan.ctaLabel;
 
   return (
     <Card
@@ -37,7 +45,7 @@ export function PlanCard({ plan, isCurrent, isActive, loading, onSelect }: PlanC
         <CardTitle className="text-2xl font-semibold text-foreground">{plan.name}</CardTitle>
         <div className="mt-4 flex flex-col items-center gap-1">
           <span className="text-4xl font-bold text-foreground">{priceLabel}</span>
-          <span className="text-sm text-muted-foreground">por mês</span>
+          <span className="text-sm text-muted-foreground">{plan.billingType === "one_time" ? "pagamento único" : "plano mensal"}</span>
         </div>
       </CardHeader>
 

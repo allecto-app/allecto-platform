@@ -232,7 +232,7 @@ type DocByTable = {
     timezone?: string;
     isActive?: boolean;
     disabledAt?: number;
-    billingTier?: "essencial" | "plus" | "pro";
+    billingTier?: "avulso" | "essencial" | "gestao" | "administradora" | "plus" | "pro";
     billingStatus?:
       | "pending_checkout"
       | "active"
@@ -428,7 +428,7 @@ type DocByTable = {
   };
   onboardingSessions: DefaultDoc<"onboardingSessions"> & {
     tenantId: Id<"condos">;
-    tierKey: "essencial" | "plus" | "pro";
+    tierKey: "avulso" | "essencial" | "gestao" | "administradora";
     email: string;
     tokenHash: string;
     status: "pending" | "checkout_started" | "completed" | "expired";

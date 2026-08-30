@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { Billing } from "@allecto-app/contracts";
 import { Card, CardContent, CardHeader } from "./ui/card";
@@ -8,161 +7,45 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Check } from "lucide-react";
 
-type TierKey = "essencial" | "plus" | "pro";
+type Offer = (typeof Billing.COMMERCIAL_OFFERS)[number];
 
-const PUBLIC_TIER_MAP: Record<TierKey, string> = {
-  essencial: "start",
-  plus: "plus",
-  pro: "pro",
-};
-
-type PlanOption = {
-  tierKey: TierKey;
-  name: string;
-  priceCents: number;
-  features: string[];
-  badge?: string;
-};
-
-const FALLBACK_PLANS: PlanOption[] = [
-  {
-    tierKey: "essencial",
-    name: "Essencial",
-    priceCents: 28900,
-    features: [
-      "Até 99 unidades",
-      "2 assembleias/mês",
-      "5 GB documentos",
-      "Suporte e-mail (48h)",
-    ],
-  },
-  {
-    tierKey: "plus",
-    name: "Plus",
-    priceCents: 74900,
-    badge: "Mais Popular",
-    features: [
-      "Entre 100 e 300 unidades",
-      "Assembleias ilimitadas",
-      "20 GB documentos",
-      "Relatórios avançados",
-      "Suporte 24h",
-    ],
-  },
-  {
-    tierKey: "pro",
-    name: "Pró",
-    priceCents: 109900,
-    features: [
-      "Para + de 300 unidades",
-      "Assembleias ilimitadas",
-      "200 GB documentos",
-      "Auditoria e exportações",
-      "Suporte prioritário (8h)",
-    ],
-  },
-];
-
-function formatPriceBRL(cents: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-  }).format(cents / 100);
+function OfferCard({ offer, horizontal = false }: { offer: Offer; horizontal?: boolean }) {
+  const salesLed = !offer.purchasable;
+  const href = salesLed ? `/?offer=${offer.key}#contato` : `/onboarding?plan=${offer.key}`;
+  return (
+    <Card className={`relative border-2 ${offer.highlighted ? "border-primary shadow-xl" : "border-gray-200"}`}>
+      {offer.badge && <Badge className="absolute -top-3 left-6 bg-secondary text-secondary-foreground">{offer.badge}</Badge>}
+      <div className={horizontal ? "grid gap-4 md:grid-cols-[1fr_2fr_auto] md:items-center" : ""}>
+        <CardHeader className="pt-8">
+          <h3 className="text-2xl font-semibold text-gray-900">{offer.name}</h3>
+          <p className="mt-2 text-sm text-gray-600">{offer.description}</p>
+          <p className="mt-4 text-3xl font-bold text-gray-900">{offer.priceLabel}</p>
+        </CardHeader>
+        <CardContent className="pt-2 md:pt-6">
+          <ul className={`grid gap-2 text-sm text-gray-700 ${horizontal ? "sm:grid-cols-2" : ""}`}>
+            {offer.features.map((feature) => <li key={feature} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary" /><span>{feature}</span></li>)}
+          </ul>
+        </CardContent>
+        <CardContent className="pb-8 md:pt-8">
+          <Button asChild size="lg" variant={offer.highlighted ? "default" : "outline"} className="w-full whitespace-nowrap">
+            <Link href={href}>{offer.ctaLabel}</Link>
+          </Button>
+        </CardContent>
+      </div>
+    </Card>
+  );
 }
 
 export function Pricing() {
-  const plans = useMemo<PlanOption[]>(() => {
-    const fromContracts = Billing?.BILLING_PLANS;
-    if (Array.isArray(fromContracts) && fromContracts.length > 0) {
-      return fromContracts.map((plan) => ({
-        tierKey: plan.tierKey as TierKey,
-        name: plan.name,
-        priceCents: plan.priceCents,
-        features: [...plan.features],
-        badge: plan.badge,
-      }));
-    }
-    return FALLBACK_PLANS;
-  }, []);
+  const offers = Billing.COMMERCIAL_OFFERS;
+  const selfServiceOffers = offers.filter((offer) => offer.key !== "enterprise");
+  const enterprise = offers.find((offer) => offer.key === "enterprise")!;
 
-  const priceFormatter = Billing?.formatPriceBRL ?? formatPriceBRL;
-
-  return (
-    <section className="bg-gray-50 py-24" id="precos">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-16 text-center">
-          <h2 className="mb-4 text-3xl tracking-tight text-gray-900 md:text-4xl">
-            Planos transparentes
-          </h2>
-          <p className="mx-auto max-w-2xl text-xl text-gray-600">
-            Escolha o plano ideal para o tamanho do seu condomínio
-          </p>
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-3">
-          {plans.map((plan) => {
-            const price = priceFormatter(plan.priceCents);
-            const checkoutTier = PUBLIC_TIER_MAP[plan.tierKey];
-            const onboardingHref = `/onboarding?plan=${checkoutTier}`;
-
-            return (
-              <Card
-                key={plan.tierKey}
-                className={`relative border-2 transition-all duration-300 ${
-                  plan.badge
-                    ? "border-primary shadow-2xl"
-                    : "border-gray-200 hover:border-primary/40"
-                }`}
-              >
-                {plan.badge && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-secondary px-4 py-1 text-secondary-foreground shadow">
-                      {plan.badge}
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader className="pt-10 text-center">
-                  <h3 className="text-2xl font-semibold text-gray-900">
-                    {plan.name}
-                  </h3>
-                  <div className="mt-4 space-y-1">
-                    <div className="text-4xl font-bold text-gray-900">
-                      {price}
-                    </div>
-                    <div className="text-sm text-gray-500">por mês</div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6 pb-10">
-                  <ul className="space-y-3 text-left">
-                    {plan.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-start gap-3 text-gray-700"
-                      >
-                        <Check className="mt-1 h-5 w-5 flex-shrink-0 text-secondary" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${
-                      plan.badge
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-secondary"
-                        : "bg-white text-gray-900 hover:bg-gray-50 hover:text-secondary"
-                    }`}
-                    variant={plan.badge ? "default" : "outline"}
-                    size="lg"
-                    asChild
-                  >
-                    <Link href={onboardingHref}>Assinar agora</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
+  return <section className="bg-gray-50 py-24" id="precos">
+    <div className="mx-auto max-w-7xl space-y-14 px-4 sm:px-6 lg:px-8">
+      <div className="text-center"><h2 className="text-3xl tracking-tight text-gray-900 md:text-4xl">Planos transparentes</h2><p className="mx-auto mt-4 max-w-2xl text-xl text-gray-600">Escolha entre uma assembleia avulsa, planos recorrentes ou uma solução personalizada.</p></div>
+      <div><h3 className="mb-6 text-xl font-semibold text-gray-900">Escolha seu plano</h3><div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">{selfServiceOffers.map((offer) => <OfferCard key={offer.key} offer={offer} />)}</div></div>
+      <div><h3 className="mb-6 text-xl font-semibold text-gray-900">Solução personalizada</h3><OfferCard offer={enterprise} horizontal /></div>
+    </div>
+  </section>;
 }

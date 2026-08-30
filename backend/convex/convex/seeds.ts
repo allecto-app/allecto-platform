@@ -189,12 +189,12 @@ export const demo = mutation({
             updatedAt: now,
         });
 
-        // 6) Active subscription (Pro plan)
+        // 6) Active subscription (Administradora plan)
         await ctx.db.insert("subscriptions", {
             tenantId: condoId,
             stripeSubscriptionId: "sub_demo_pro",
             productId: "prod_demo_pro",
-            priceId: process.env.PRICE_ID_PRO_MONTHLY ?? "price_demo_pro",
+            priceId: process.env.PRICE_ID_ADMINISTRADORA_MONTHLY ?? "price_demo_administradora",
             status: "active",
             currentPeriodStart: now - 5 * 24 * 3600 * 1000,
             currentPeriodEnd: now + 25 * 24 * 3600 * 1000,
@@ -207,7 +207,7 @@ export const demo = mutation({
         });
 
         await ctx.db.patch(condoId, {
-            billingTier: "pro",
+            billingTier: "administradora",
             billingStatus: "active",
             updatedAt: now,
         });

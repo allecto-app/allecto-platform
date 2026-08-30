@@ -13,15 +13,16 @@ if (!convexUrl) {
 const convex = new ConvexHttpClient(convexUrl);
 
 const RAW_TIER_MAP = {
+  avulso: "avulso",
   start: "essencial",
   essencial: "essencial",
-  plus: "plus",
-  pro: "pro",
+  gestao: "gestao",
+  administradora: "administradora",
 } as const;
 
-const TIER_MAP: Record<string, "essencial" | "plus" | "pro"> = Object.fromEntries(
+const TIER_MAP: Record<string, "avulso" | "essencial" | "gestao" | "administradora"> = Object.fromEntries(
   Object.entries(RAW_TIER_MAP).map(([key, value]) => [key.toLowerCase(), value]),
-) as Record<string, "essencial" | "plus" | "pro">;
+) as Record<string, "avulso" | "essencial" | "gestao" | "administradora">;
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

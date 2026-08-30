@@ -5,26 +5,41 @@ import type { Id } from "../../_generated/dataModel";
 import { requireCondoRole, requirePlatformRole } from "../../guards";
 import { sha256 } from "../../_secu";
 
-export type TierKey = "essencial" | "plus" | "pro";
+export type TierKey = "avulso" | "essencial" | "gestao" | "administradora";
+export type LegacyTierKey = "plus" | "pro";
+export type PersistedTierKey = TierKey | LegacyTierKey;
 
-export const tierKeyValues = ["essencial", "plus", "pro"] as const;
+export const LEGACY_TIER_ALIASES: Record<LegacyTierKey, TierKey> = {
+  plus: "gestao",
+  pro: "administradora",
+};
+
+export const tierKeyValues = ["avulso", "essencial", "gestao", "administradora"] as const;
 export const tierKeyValidator = v.union(
+  v.literal("avulso"),
   v.literal("essencial"),
-  v.literal("plus"),
-  v.literal("pro"),
+  v.literal("gestao"),
+  v.literal("administradora"),
 );
 
 export const PRICE_ENV_KEYS: Record<TierKey, string> = {
+  avulso: "PRICE_ID_AVULSO_ONE_TIME",
   essencial: "PRICE_ID_ESSENCIAL_MONTHLY",
+  gestao: "PRICE_ID_GESTAO_MONTHLY",
+  administradora: "PRICE_ID_ADMINISTRADORA_MONTHLY",
+};
+
+const LEGACY_PRICE_ENV_KEYS: Record<LegacyTierKey, string> = {
   plus: "PRICE_ID_PLUS_MONTHLY",
   pro: "PRICE_ID_PRO_MONTHLY",
 };
 
 const PRICE_VALUE_TO_TIER = new Map<string, TierKey>(
-  Object.entries(PRICE_ENV_KEYS)
+  [...Object.entries(PRICE_ENV_KEYS), ...Object.entries(LEGACY_PRICE_ENV_KEYS)]
     .map(([tier, envKey]) => {
       const value = process.env[envKey];
-      return value ? ([value, tier as TierKey] as const) : null;
+      const normalizedTier = tier === "plus" || tier === "pro" ? LEGACY_TIER_ALIASES[tier] : tier;
+      return value ? ([value, normalizedTier as TierKey] as const) : null;
     })
     .filter(Boolean) as Array<[string, TierKey]>,
 );
@@ -39,6 +54,10 @@ export function getPriceIdFromEnv(tierKey: TierKey): string {
     throw new Error(`Missing required environment variable ${envKey}`);
   }
   return value;
+}
+
+export function checkoutModeForTier(tierKey: TierKey): "payment" | "subscription" {
+  return tierKey === "avulso" ? "payment" : "subscription";
 }
 
 export function ensureAbsoluteUrl(label: string, value: string) {
@@ -162,6 +181,9 @@ export function tierFromPriceId(priceId: string | null | undefined): TierKey | n
 export function normalizeTierKey(value: string | null | undefined): TierKey | null {
   if (!value) return null;
   const normalized = value.toLowerCase().trim();
+  if (normalized === "plus" || normalized === "pro") {
+    return LEGACY_TIER_ALIASES[normalized];
+  }
   return (tierKeyValues as readonly string[]).includes(normalized) ? (normalized as TierKey) : null;
 }
 

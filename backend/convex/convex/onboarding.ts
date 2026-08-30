@@ -2,7 +2,7 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { normalizeEmail, randomToken, sha256 } from "./_secu";
 
-const PLAN_KEYS = ["essencial", "plus", "pro"] as const;
+const PLAN_KEYS = ["avulso", "essencial", "gestao", "administradora"] as const;
 type TierKey = (typeof PLAN_KEYS)[number];
 
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -16,7 +16,7 @@ const DEFAULT_BRANDING = {
 
 export const startTenantSignup = mutation({
   args: {
-    tierKey: v.union(v.literal("essencial"), v.literal("plus"), v.literal("pro")),
+    tierKey: v.union(v.literal("avulso"), v.literal("essencial"), v.literal("gestao"), v.literal("administradora")),
     condoName: v.string(),
     subdomain: v.string(),
     adminName: v.string(),

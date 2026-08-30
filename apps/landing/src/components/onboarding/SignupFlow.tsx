@@ -14,53 +14,26 @@ import Link from "next/link";
 import { Footer } from "../Footer";
 import { CookieConsentBanner } from "../CookieConsentBanner";
 
-type TierKey = "essencial" | "plus" | "pro";
+type TierKey = Billing.BillingTierKey;
 
 const PUBLIC_TIER_MAP: Record<TierKey, string> = {
-  essencial: "start",
-  plus: "plus",
-  pro: "pro",
+  avulso: "avulso",
+  essencial: "essencial",
+  gestao: "gestao",
+  administradora: "administradora",
 };
 
 type PlanOption = {
   tierKey: TierKey;
   name: string;
   priceCents: number;
+  priceLabel?: string;
+  billingType?: "one_time" | "subscription" | "custom";
   features: string[];
   badge?: string;
 };
 
-const FALLBACK_PLANS: PlanOption[] = [
-  {
-    tierKey: "essencial",
-    name: "Essencial",
-    priceCents: 28900,
-    features: ["2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
-  },
-  {
-    tierKey: "plus",
-    name: "Plus",
-    priceCents: 74900,
-    badge: "Mais Popular",
-    features: [
-      "Assembleias ilimitadas",
-      "20 GB documentos",
-      "Relatórios avançados",
-      "Suporte 24h",
-    ],
-  },
-  {
-    tierKey: "pro",
-    name: "Pró",
-    priceCents: 109900,
-    features: [
-      "Assembleias/Enquetes ilimitadas",
-      "200 GB documentos",
-      "Auditoria e exportações",
-      "Suporte prioritário (8h)",
-    ],
-  },
-];
+const FALLBACK_PLANS: PlanOption[] = [];
 
 function formatPriceBRL(cents: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -105,12 +78,14 @@ const INITIAL_FORM: SignupFormState = {
 export function SignupFlow() {
   const searchParams = useSearchParams();
   const plans = useMemo<PlanOption[]>(() => {
-    const fromContracts = Billing?.BILLING_PLANS;
+    const fromContracts = Billing?.BILLING_PLANS.filter((plan) => plan.purchasable);
     if (Array.isArray(fromContracts) && fromContracts.length > 0) {
       return fromContracts.map((plan) => ({
         tierKey: plan.tierKey as TierKey,
         name: plan.name,
-        priceCents: plan.priceCents,
+        priceCents: plan.priceInCents ?? 0,
+        priceLabel: plan.priceLabel,
+        billingType: plan.billingType,
         features: [...plan.features],
         badge: plan.badge,
       }));
@@ -217,7 +192,7 @@ export function SignupFlow() {
   };
 
   const selectedPlanSummary = selectedPlan ?? plans[0];
-  const planPrice = priceFormatter(selectedPlanSummary.priceCents);
+  const planPrice = selectedPlanSummary.priceLabel ?? priceFormatter(selectedPlanSummary.priceCents);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary via-accent to-primary font-inter">
@@ -254,7 +229,7 @@ export function SignupFlow() {
                       <h3 className="text-2xl font-semibold text-gray-900">
                         {plan.name}
                       </h3>
-                      <p className="text-sm text-gray-500">{price} / mês</p>
+                      <p className="text-sm text-gray-500">{plan.priceLabel ?? price}</p>
                     </div>
                     <Button
                       variant={isActive ? "default" : "outline"}
@@ -292,7 +267,7 @@ export function SignupFlow() {
               </h2>
               <p className="text-sm text-gray-600">
                 {selectedPlan
-                  ? `Plano selecionado: ${selectedPlan.name} (${planPrice}/mês)`
+                  ? `Plano selecionado: ${selectedPlan.name} (${planPrice})`
                   : "Selecione um plano para continuar"}
               </p>
             </CardHeader>
@@ -367,7 +342,7 @@ export function SignupFlow() {
                       Processando...
                     </span>
                   ) : (
-                    `Continuar para pagamento (${planPrice}/mês)`
+                    `Continuar para pagamento (${planPrice})`
                   )}
                 </Button>
               </form>

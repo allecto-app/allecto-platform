@@ -1,42 +1,47 @@
 /* eslint-disable no-console */
 import Stripe from "stripe";
 
-type TierKey = "essencial" | "plus" | "pro";
+type TierKey = "avulso" | "essencial" | "gestao" | "administradora";
 
 type PlanConfig = {
   tierKey: TierKey;
   name: string;
   unitAmount: number;
   features: string[];
+  mode: "payment" | "subscription";
 };
 
 const PLANS: PlanConfig[] = [
+  { tierKey: "avulso", name: "Allecto - Avulso", unitAmount: 24900, mode: "payment", features: ["1 assembleia de até 15 dias", "Até 100 unidades", "Suporte por e-mail"] },
   {
     tierKey: "essencial",
     name: "Allecto - Essencial",
-    unitAmount: 28900,
-    features: ["2 assembleias/mês", "5 GB documentos", "Suporte e-mail (48h)"],
+    unitAmount: 14900,
+    mode: "subscription",
+    features: ["6 assembleias/ano", "5 GB documentos", "Suporte em até 1 dia útil"],
   },
   {
-    tierKey: "plus",
-    name: "Allecto - Plus",
-    unitAmount: 74900,
+    tierKey: "gestao",
+    name: "Allecto - Gestão",
+    unitAmount: 29900,
+    mode: "subscription",
     features: [
-      "Assembleias ilimitadas",
+      "18 assembleias/ano",
       "20 GB documentos",
       "Relatórios avançados",
-      "Suporte 24h",
+      "Suporte prioritário",
     ],
   },
   {
-    tierKey: "pro",
-    name: "Allecto - Pró",
-    unitAmount: 109900,
+    tierKey: "administradora",
+    name: "Allecto - Administradora",
+    unitAmount: 69900,
+    mode: "subscription",
     features: [
-      "Assembleias/Enquetes ilimitadas",
-      "200 GB documentos",
-      "Auditoria e exportações",
-      "Suporte prioritário (8h)",
+      "60 assembleias/ano",
+      "100 GB documentos",
+      "Painel multicondomínio",
+      "Suporte prioritário",
     ],
   },
 ];
@@ -110,7 +115,8 @@ async function ensureProduct(stripe: Stripe, plan: PlanConfig) {
 async function findActivePrice(
   stripe: Stripe,
   productId: string,
-  unitAmount: number
+  unitAmount: number,
+  mode: PlanConfig["mode"],
 ) {
   let startingAfter: string | undefined;
   while (true) {
@@ -124,7 +130,7 @@ async function findActivePrice(
         price.active === true &&
         price.currency === "brl" &&
         price.unit_amount === unitAmount &&
-        price.recurring?.interval === "month"
+        (mode === "payment" ? !price.recurring : price.recurring?.interval === "month")
       );
     });
     if (match) {
@@ -142,7 +148,7 @@ async function ensurePrice(
   productId: string,
   plan: PlanConfig
 ) {
-  const existing = await findActivePrice(stripe, productId, plan.unitAmount);
+  const existing = await findActivePrice(stripe, productId, plan.unitAmount, plan.mode);
   if (existing) {
     if (existing.metadata?.tierKey !== plan.tierKey) {
       await stripe.prices.update(existing.id, {
@@ -156,7 +162,7 @@ async function ensurePrice(
     product: productId,
     currency: "brl",
     unit_amount: plan.unitAmount,
-    recurring: { interval: "month" },
+    ...(plan.mode === "subscription" ? { recurring: { interval: "month" as const } } : {}),
     tax_behavior: "unspecified",
     metadata: { tierKey: plan.tierKey },
   });
@@ -170,9 +176,10 @@ async function main() {
   });
 
   const priceEnvLines: Record<TierKey, string> = {
+    avulso: "",
     essencial: "",
-    plus: "",
-    pro: "",
+    gestao: "",
+    administradora: "",
   };
 
   for (const plan of PLANS) {
@@ -185,9 +192,10 @@ async function main() {
   }
 
   console.log("\nSet the following environment variables:");
+  console.log(`PRICE_ID_AVULSO_ONE_TIME=${priceEnvLines.avulso}`);
   console.log(`PRICE_ID_ESSENCIAL_MONTHLY=${priceEnvLines.essencial}`);
-  console.log(`PRICE_ID_PLUS_MONTHLY=${priceEnvLines.plus}`);
-  console.log(`PRICE_ID_PRO_MONTHLY=${priceEnvLines.pro}`);
+  console.log(`PRICE_ID_GESTAO_MONTHLY=${priceEnvLines.gestao}`);
+  console.log(`PRICE_ID_ADMINISTRADORA_MONTHLY=${priceEnvLines.administradora}`);
 }
 
 main().catch((error) => {

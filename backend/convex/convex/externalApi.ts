@@ -39,12 +39,12 @@ const ALL_SCOPES: ExternalScope[] = [
   "minutes:result:read",
 ];
 
-function normalizeTier(value: string | null | undefined): "essencial" | "plus" | "pro" | null {
+function normalizeTier(value: string | null | undefined): "avulso" | "essencial" | "gestao" | "administradora" | null {
   if (!value) return null;
   const normalized = value.toLowerCase().trim();
-  if (normalized === "essencial" || normalized === "plus" || normalized === "pro") {
-    return normalized;
-  }
+  if (normalized === "plus") return "gestao";
+  if (normalized === "pro") return "administradora";
+  if (["avulso", "essencial", "gestao", "administradora"].includes(normalized)) return normalized as "avulso" | "essencial" | "gestao" | "administradora";
   return null;
 }
 
@@ -90,7 +90,7 @@ async function assertProPlan(ctx: any, condoId: any) {
 
   const condoStatus = String(condo.billingStatus ?? "").toLowerCase();
   const condoTier = normalizeTier(condo.billingTier ?? null);
-  assert(ACTIVE_BILLING_STATUSES.has(condoStatus) && condoTier === "pro", "EXT_FORBIDDEN_PRO_REQUIRED");
+  assert(ACTIVE_BILLING_STATUSES.has(condoStatus) && condoTier === "administradora", "EXT_FORBIDDEN_ADMINISTRADORA_REQUIRED");
 
   return condo;
 }

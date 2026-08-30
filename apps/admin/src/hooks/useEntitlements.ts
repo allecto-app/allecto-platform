@@ -12,6 +12,7 @@ export type EntitlementsResult = {
     productId: string;
     currentPeriodStart: number;
     currentPeriodEnd: number;
+    billingCycleAnchor: number;
     cancelAt: number | null;
     cancelAtPeriodEnd: boolean;
     trialEnd: number | null;
@@ -19,6 +20,7 @@ export type EntitlementsResult = {
     latestInvoiceStatus: string | null;
     updatedAt: number;
   } | null;
+  assemblyEntitlementId: Id<"assemblyEntitlements"> | null;
   inDunning: boolean;
 };
 
@@ -32,7 +34,8 @@ export function useEntitlements(tenantId: Id<"condos"> | null | undefined) {
 
   const currentPlan = useMemo(() => {
     if (!result?.tierKey) return null;
-    const normalized = result.tierKey.toLowerCase().trim() as Billing.BillingTierKey;
+    const normalized = Billing.normalizeBillingTierKey(result.tierKey);
+    if (!normalized) return null;
     return Billing.BILLING_PLAN_BY_TIER.get(normalized) ?? null;
   }, [result?.tierKey]);
 

@@ -472,6 +472,9 @@ export const publish = mutation({
         }
 
         const usageGate = await ensureCanCreateAssembly(ctx, a.condoId);
+        if (usageGate.tierKey === "avulso" && a.closesAt > now + 15 * 24 * 60 * 60 * 1000) {
+            throw new Error("A assembleia avulsa pode durar no máximo 15 dias.");
+        }
 
         const minuteId = await ctx.db.insert("minutes", {
             condoId: a.condoId,
@@ -514,6 +517,14 @@ export const publish = mutation({
         });
 
         await incrementAssemblyUsage(ctx, a.condoId, usageGate.bucketKey);
+        if (usageGate.assemblyEntitlementId) {
+            await ctx.db.patch(usageGate.assemblyEntitlementId, {
+                status: "consumed",
+                assemblyId: minuteId,
+                consumedAt: now,
+                updatedAt: now,
+            });
+        }
 
         await recordAdminAuditEvent(ctx, {
             action: "minute.published",

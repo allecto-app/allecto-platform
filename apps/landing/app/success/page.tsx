@@ -6,12 +6,12 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Assinatura confirmada — Allecto App",
   description:
-    "Obrigado! Sua assinatura do Allecto App foi confirmada. Enviamos um e-mail com os próximos passos para criar sua primeira assembleia.",
+    "Obrigado! Seu pagamento do Allecto App foi confirmado. Enviamos um e-mail com os próximos passos para criar sua primeira assembleia.",
   alternates: { canonical: "/success" },
   openGraph: {
     title: "Assinatura confirmada — Allecto App",
     description:
-      "Assinatura confirmada com sucesso. Veja os próximos passos e acesso ao painel.",
+      "Pagamento confirmado com sucesso. Veja os próximos passos e acesso ao painel.",
     url: "https://www.allecto.app/success",
     siteName: "Allecto App",
     images: [
@@ -46,7 +46,7 @@ export default function SuccessPage() {
         </h1>
         <p className="mt-3 text-sm text-gray-600">
           Em instantes você receberá um email da Stripe confirmando a
-          assinatura. O acesso completo será liberado após a confirmação
+          contratação. O acesso completo será liberado após a confirmação
           automática do pagamento.
         </p>
         <Button asChild className="mt-6 w-full">

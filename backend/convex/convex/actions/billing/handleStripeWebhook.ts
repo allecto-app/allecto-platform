@@ -7,7 +7,7 @@ import type { Id } from "../../_generated/dataModel";
 import { api, internal } from "../../_generated/api";
 import { getStripeClient } from "../../stripe/client";
 import { normalizeEmail } from "../../_secu";
-import { normalizeTierKey } from "./helpers";
+import { normalizeTierKey, type TierKey } from "./helpers";
 
 const RELEVANT_EVENTS = new Set([
   "checkout.session.completed",
@@ -47,12 +47,12 @@ function extractPriceInfo(subscription: Stripe.Subscription) {
   const price = item?.price;
   const priceId = typeof price === "string" ? price : price?.id;
   let productId: string | undefined;
-  let tierKey: "essencial" | "plus" | "pro" | undefined;
+  let tierKey: TierKey | undefined;
   if (price && typeof price !== "string") {
     productId = typeof price.product === "string" ? price.product : price.product?.id;
     if (price.metadata && typeof price.metadata.tierKey === "string") {
       const normalized = normalizeTierKey(price.metadata.tierKey);
-      if (normalized) {
+      if (normalized && normalized !== "avulso") {
         tierKey = normalized;
       }
     }
@@ -133,6 +133,17 @@ async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout
     typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
   const customerId =
     typeof session.customer === "string" ? session.customer : session.customer?.id;
+
+  if (session.mode === "payment" && session.payment_status === "paid" && session.metadata?.tierKey === "avulso") {
+    const tenantId = (session.metadata.tenantId ?? session.client_reference_id) as Id<"condos"> | null;
+    if (!tenantId) throw new Error("AVULSO_TENANT_NOT_FOUND");
+    await ctx.runMutation(api.billing.grantAssemblyEntitlement, {
+      tenantId,
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
+    });
+    return;
+  }
 
   if (!subscriptionId || !customerId) {
     return;

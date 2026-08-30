@@ -20,7 +20,7 @@ const faqs = [
   {
     question: "Que tipo de suporte vocês oferecem?",
     answer:
-      "Oferecemos suporte por e-mail para todos os planos, com tempo de resposta de até 48 horas. Planos Plus e Pró incluem suporte prioritário e, no caso do plano Pró, um gerente de conta dedicado com treinamento personalizado.",
+      "O Avulso inclui suporte por e-mail, o Essencial tem meta de resposta de até 1 dia útil e os planos Gestão e Administradora incluem suporte prioritário. SLA dedicado e suporte durante assembleias são opções Enterprise.",
   },
 ];
 

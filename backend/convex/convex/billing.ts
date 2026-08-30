@@ -5,6 +5,7 @@ import {
   tierKeyValidator,
   resolveBillingContext as resolveBillingContextHelper,
   markOnboardingSessionStatus,
+  markPendingOnboardingCompleted,
   updateTenantBillingState,
   normalizeTierKey,
 } from "./actions/billing/helpers";
@@ -164,7 +165,7 @@ export const upsertStripeSubscriptionRecord = mutation({
       trialEnd: v.optional(v.number()),
       latestInvoiceId: v.optional(v.string()),
       latestInvoiceStatus: v.optional(v.string()),
-      tierKey: v.optional(v.union(v.literal("essencial"), v.literal("plus"), v.literal("pro"))),
+      tierKey: v.optional(v.union(v.literal("essencial"), v.literal("gestao"), v.literal("administradora"), v.literal("plus"), v.literal("pro"))),
     }),
     statusOverride: v.optional(subscriptionStatusValidator),
   },
@@ -185,6 +186,7 @@ export const upsertStripeSubscriptionRecord = mutation({
       priceId: payload.priceId,
       status,
       currentPeriodStart: payload.currentPeriodStart,
+      billingCycleAnchor: existing?.billingCycleAnchor ?? payload.currentPeriodStart,
       currentPeriodEnd: payload.currentPeriodEnd,
       cancelAt: payload.cancelAt,
       cancelAtPeriodEnd: payload.cancelAtPeriodEnd,
@@ -206,5 +208,23 @@ export const upsertStripeSubscriptionRecord = mutation({
 
     const tierHint = normalizeTierKey(payload.tierKey ?? existing?.tierKey ?? null);
     await updateTenantBillingState(ctx, args.tenantId, status, payload.priceId, tierHint);
+  },
+});
+
+export const grantAssemblyEntitlement = mutation({
+  args: {
+    tenantId: v.id("condos"),
+    stripeCheckoutSessionId: v.string(),
+    stripePaymentIntentId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.query("assemblyEntitlements")
+      .withIndex("byCheckoutSession", (q) => q.eq("stripeCheckoutSessionId", args.stripeCheckoutSessionId)).first();
+    if (existing) return existing._id;
+    const now = Date.now();
+    const id = await ctx.db.insert("assemblyEntitlements", { ...args, status: "available", purchasedAt: now, updatedAt: now });
+    await ctx.db.patch(args.tenantId, { billingTier: "avulso", billingStatus: "active", updatedAt: now });
+    await markPendingOnboardingCompleted(ctx, args.tenantId);
+    return id;
   },
 });

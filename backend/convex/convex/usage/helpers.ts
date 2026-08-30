@@ -1,7 +1,6 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { api } from "../_generated/api";
-import { getMonthlyBucket } from "../../../../packages/shared/date/period";
 import {
   resolveLimits,
   validateUnitsAgainstTier,
@@ -16,20 +15,18 @@ const SUBSCRIPTION_REQUIRED_MESSAGE =
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
-const UNIT_CAP_MESSAGES: Record<Exclude<TierKey, "pro">, string> = {
-  essencial:
-    "Seu plano Essencial permite até 99 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Plus.",
-  plus: "Seu plano Plus permite 100–300 unidades. Seu condomínio possui {{units}}. Faça upgrade para o plano Pró.",
-};
-
-const UNIT_CAP_BELOW_MIN_MESSAGES: Partial<Record<TierKey, string>> = {
-  plus: "Seu plano Plus cobre entre 100 e 300 unidades. Seu condomínio possui {{units}}. Faça downgrade para o plano Essencial ou ajuste seu cadastro.",
+const UNIT_CAP_MESSAGES: Record<TierKey, string> = {
+  avulso: "A oferta Avulso permite até 100 unidades. Seu condomínio possui {{units}}.",
+  essencial: "O plano Essencial permite até 100 unidades. Seu condomínio possui {{units}}. Faça upgrade para Gestão.",
+  gestao: "O plano Gestão permite até 300 unidades. Seu condomínio possui {{units}}. Fale conosco sobre o plano Administradora.",
+  administradora: "O plano Administradora permite até 1.000 unidades. Seu cadastro possui {{units}}. Fale com vendas.",
 };
 
 const ASSEMBLY_QUOTA_MESSAGES: Partial<Record<TierKey, string>> = {
-  essencial:
-    "Você atingiu o limite de 2 assembleias neste mês. Faça upgrade para o plano Plus.",
-  plus: "Você atingiu o limite de 5 assembleias neste mês. Faça upgrade para o plano Pró.",
+  avulso: "A assembleia avulsa contratada já foi utilizada.",
+  essencial: "Você atingiu o limite de 6 assembleias neste ciclo anual. Faça upgrade para Gestão.",
+  gestao: "Você atingiu o limite de 18 assembleias neste ciclo anual.",
+  administradora: "Você atingiu o limite de 60 assembleias neste ciclo anual.",
 };
 
 type ReadCtx = QueryCtx | MutationCtx;
@@ -42,6 +39,7 @@ export interface UsageGateResult {
   bucketKey: string;
   remaining: number | "unlimited";
   unitsCount: number;
+  assemblyEntitlementId?: Id<"assemblyEntitlements">;
 }
 
 export async function getAssemblyUsage(
@@ -96,6 +94,27 @@ export async function incrementAssemblyUsage(
   return 1;
 }
 
+export function getAnnualBillingBucket(billingCycleAnchor?: number | null) {
+  const anchor = new Date(billingCycleAnchor ?? Date.now());
+  const now = new Date();
+  let cycleStart = Date.UTC(
+    now.getUTCFullYear(),
+    anchor.getUTCMonth(),
+    anchor.getUTCDate(),
+  );
+  if (cycleStart > now.getTime()) {
+    cycleStart = Date.UTC(
+      now.getUTCFullYear() - 1,
+      anchor.getUTCMonth(),
+      anchor.getUTCDate(),
+    );
+  }
+  return {
+    key: `billing-year:${new Date(cycleStart).toISOString().slice(0, 10)}`,
+    cycleStart,
+  };
+}
+
 export async function ensureCanCreateAssembly(
   ctx: MutationCtx,
   tenantId: Id<"condos">
@@ -117,9 +136,6 @@ export async function ensureCanCreateAssembly(
   const tierKey = entitlements.tierKey as TierKey;
   const limits = resolveLimits(tierKey);
 
-  const tenant = await ctx.db.get(tenantId);
-  const timezone = tenant?.timezone ?? DEFAULT_USAGE_TIMEZONE;
-
   const units = await ctx.db
     .query("units")
     .withIndex("byCondo", (q) => q.eq("condoId", tenantId))
@@ -128,30 +144,16 @@ export async function ensureCanCreateAssembly(
 
   const validation = validateUnitsAgainstTier(unitsCount, tierKey);
   if (!validation.ok) {
-    if (tierKey === "pro" && validation.reason === "below_min") {
-      // Pro plan is effectively unlimited; ignore low unit counts.
-    } else {
-      throw new Error(
-        formatUnitCapMessage(tierKey, unitsCount, validation.reason)
-      );
-    }
+    throw new Error(formatUnitCapMessage(tierKey, unitsCount, validation.reason));
   }
 
-  const { key: bucketKey } = getMonthlyBucket(Date.now(), timezone);
-
-  if (limits.monthlyAssembliesLimit === "unlimited") {
-    return {
-      allowed: true,
-      tierKey,
-      bucketKey,
-      remaining: "unlimited",
-      unitsCount,
-    };
-  }
+  const { key: bucketKey } = getAnnualBillingBucket(
+    entitlements.subscription?.billingCycleAnchor,
+  );
 
   const usage = await getAssemblyUsage(ctx, tenantId, bucketKey);
 
-  if (usage.count >= limits.monthlyAssembliesLimit) {
+  if (usage.count >= limits.assembliesPerYear) {
     throw new Error(formatAssemblyQuotaMessage(tierKey));
   }
 
@@ -159,8 +161,9 @@ export async function ensureCanCreateAssembly(
     allowed: true,
     tierKey,
     bucketKey,
-    remaining: Math.max(0, limits.monthlyAssembliesLimit - usage.count),
+    remaining: Math.max(0, limits.assembliesPerYear - usage.count),
     unitsCount,
+    assemblyEntitlementId: entitlements.assemblyEntitlementId ?? undefined,
   };
 }
 
@@ -170,9 +173,7 @@ function formatUnitCapMessage(
   reason?: UnitsValidationReason
 ) {
   const template =
-    reason === "below_min"
-      ? UNIT_CAP_BELOW_MIN_MESSAGES[tierKey]
-      : UNIT_CAP_MESSAGES[tierKey as Exclude<TierKey, "pro">];
+    UNIT_CAP_MESSAGES[tierKey];
 
   if (!template) {
     return "Limite de unidades excedido. Ajuste seu plano.";

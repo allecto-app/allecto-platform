@@ -2,9 +2,8 @@ import { query } from "../../_generated/server";
 import type { QueryCtx } from "../../_generated/server";
 import { v } from "convex/values";
 import { api } from "../../_generated/api";
-import { getMonthlyBucket } from "../../../../../packages/shared/date/period";
 import { resolveLimits, validateUnitsAgainstTier, type TierKey } from "../../billing/limits";
-import { DEFAULT_USAGE_TIMEZONE, getAssemblyUsage } from "../../usage/helpers";
+import { getAnnualBillingBucket, getAssemblyUsage } from "../../usage/helpers";
 import type { Id } from "../../_generated/dataModel";
 
 const billingApi = api.billing as any;
@@ -12,9 +11,6 @@ const billingApi = api.billing as any;
 export const getUsageSummary = query({
   args: { tenantId: v.id("condos") },
   handler: async (ctx, { tenantId }) => {
-    const tenant = await ctx.db.get(tenantId);
-    const timezone = tenant?.timezone ?? DEFAULT_USAGE_TIMEZONE;
-
     const entitlements = await ctx.runQuery(billingApi.entitlements, {
       tenantId,
     });
@@ -31,7 +27,7 @@ export const getUsageSummary = query({
         tierKey: null,
         limits: null,
         usage: {
-          monthKey: getMonthlyBucket(Date.now(), timezone).key,
+          cycleKey: getAnnualBillingBucket().key,
           assembliesCount: 0,
         },
         remaining: null,
@@ -44,22 +40,22 @@ export const getUsageSummary = query({
     const tierKey = entitlements.tierKey as TierKey;
     const limits = resolveLimits(tierKey);
 
-    const { key: monthKey } = getMonthlyBucket(Date.now(), timezone);
-    const usage = await getAssemblyUsage(ctx, tenantId, monthKey);
+    const { key: cycleKey } = getAnnualBillingBucket(
+      entitlements.subscription?.billingCycleAnchor,
+    );
+    const usage = await getAssemblyUsage(ctx, tenantId, cycleKey);
     const unitsCount = await getUnitsCount(ctx, tenantId);
     const unitValidation = validateUnitsAgainstTier(unitsCount, tierKey);
 
     const remaining =
-      limits.monthlyAssembliesLimit === "unlimited"
-        ? "unlimited"
-        : Math.max(0, limits.monthlyAssembliesLimit - usage.count);
+      Math.max(0, limits.assembliesPerYear - usage.count);
 
     return {
       active: true,
       tierKey,
       limits,
       usage: {
-        monthKey,
+        cycleKey,
         assembliesCount: usage.count,
       },
       remaining,

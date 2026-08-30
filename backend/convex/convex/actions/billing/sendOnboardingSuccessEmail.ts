@@ -11,15 +11,17 @@ import { normalizeTierKey } from "./helpers";
 import { api } from "../../_generated/api";
 
 const PLAN_LABELS: Record<string, string> = {
+  avulso: "Avulso",
   essencial: "Essencial",
-  plus: "Plus",
-  pro: "Pró",
+  gestao: "Gestão",
+  administradora: "Administradora",
 };
 
 const PLAN_LIMITS: Record<string, string> = {
-  essencial: "2 assembleias/mês, 5 GB documentos",
-  plus: "Assembleias ilimitadas, 20 GB documentos",
-  pro: "Assembleias/Enquetes ilimitadas, 200 GB documentos",
+  avulso: "1 assembleia de até 15 dias, até 100 unidades",
+  essencial: "6 assembleias/ano, 5 GB para documentos",
+  gestao: "18 assembleias/ano, 20 GB para documentos",
+  administradora: "60 assembleias/ano, 100 GB para documentos",
 };
 
 const PORTAL_BASE_URL =

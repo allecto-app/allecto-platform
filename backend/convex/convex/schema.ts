@@ -20,7 +20,7 @@ export default defineSchema({
     isActive: v.optional(v.boolean()),
     disabledAt: v.optional(v.number()),
     billingTier: v.optional(
-      v.union(v.literal("essencial"), v.literal("plus"), v.literal("pro")),
+      v.union(v.literal("avulso"), v.literal("essencial"), v.literal("gestao"), v.literal("administradora"), v.literal("plus"), v.literal("pro")),
     ),
     billingStatus: v.optional(
       v.union(
@@ -262,9 +262,10 @@ export default defineSchema({
       v.literal("incomplete_expired")
     ),
     tierKey: v.optional(
-      v.union(v.literal("essencial"), v.literal("plus"), v.literal("pro"))
+      v.union(v.literal("essencial"), v.literal("gestao"), v.literal("administradora"), v.literal("plus"), v.literal("pro"))
     ),
     currentPeriodStart: v.number(),
+    billingCycleAnchor: v.optional(v.number()),
     currentPeriodEnd: v.number(),
     cancelAt: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
@@ -280,9 +281,10 @@ export default defineSchema({
   onboardingSessions: defineTable({
     tenantId: v.id("condos"),
     tierKey: v.union(
+      v.literal("avulso"),
       v.literal("essencial"),
-      v.literal("plus"),
-      v.literal("pro"),
+      v.literal("gestao"),
+      v.literal("administradora"),
     ),
     email: v.string(),
     tokenHash: v.string(),
@@ -301,6 +303,20 @@ export default defineSchema({
   })
     .index("byTokenHash", ["tokenHash"])
     .index("byTenant", ["tenantId"]),
+
+  assemblyEntitlements: defineTable({
+    tenantId: v.id("condos"),
+    stripeCheckoutSessionId: v.string(),
+    stripePaymentIntentId: v.optional(v.string()),
+    status: v.union(v.literal("available"), v.literal("consumed"), v.literal("refunded")),
+    assemblyId: v.optional(v.id("minutes")),
+    purchasedAt: v.number(),
+    consumedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("byTenant", ["tenantId"])
+    .index("byCheckoutSession", ["stripeCheckoutSessionId"]),
 
   platformUsers: defineTable({
     email: v.string(),
