@@ -1,6 +1,7 @@
-import { query, mutation } from "./_generated/server";
+import { internalMutation, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import {
   tierKeyValidator,
   resolveBillingContext as resolveBillingContextHelper,
@@ -25,6 +26,7 @@ export { createPortalSession } from "./actions/billing/createPortalSession";
 export { entitlements } from "./queries/billing/entitlements";
 export { handleStripeWebhook } from "./actions/billing/handleStripeWebhook";
 export { sendOnboardingSuccessEmail } from "./actions/billing/sendOnboardingSuccessEmail";
+export { sendAvulsoOnboardingSuccessEmail } from "./actions/billing/sendOnboardingSuccessEmail";
 export { refreshTenantUsage } from "./actions/billing/refreshTenantUsage";
 
 export const resolveBillingContext = query({
@@ -211,7 +213,7 @@ export const upsertStripeSubscriptionRecord = mutation({
   },
 });
 
-export const grantAssemblyEntitlement = mutation({
+export const grantAssemblyEntitlement = internalMutation({
   args: {
     tenantId: v.id("condos"),
     stripeCheckoutSessionId: v.string(),
@@ -225,6 +227,10 @@ export const grantAssemblyEntitlement = mutation({
     const id = await ctx.db.insert("assemblyEntitlements", { ...args, status: "available", purchasedAt: now, updatedAt: now });
     await ctx.db.patch(args.tenantId, { billingTier: "avulso", billingStatus: "active", updatedAt: now });
     await markPendingOnboardingCompleted(ctx, args.tenantId);
+    await ctx.scheduler.runAfter(0, internal.billing.sendAvulsoOnboardingSuccessEmail, {
+      tenantId: args.tenantId,
+      checkoutSessionId: args.stripeCheckoutSessionId,
+    });
     return id;
   },
 });

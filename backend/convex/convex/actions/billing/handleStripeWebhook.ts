@@ -137,7 +137,7 @@ async function handleCheckoutSessionCompleted(ctx: any, session: Stripe.Checkout
   if (session.mode === "payment" && session.payment_status === "paid" && session.metadata?.tierKey === "avulso") {
     const tenantId = (session.metadata.tenantId ?? session.client_reference_id) as Id<"condos"> | null;
     if (!tenantId) throw new Error("AVULSO_TENANT_NOT_FOUND");
-    await ctx.runMutation(api.billing.grantAssemblyEntitlement, {
+    await ctx.runMutation(internal.billing.grantAssemblyEntitlement, {
       tenantId,
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,

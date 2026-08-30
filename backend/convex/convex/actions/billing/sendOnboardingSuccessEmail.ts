@@ -289,3 +289,123 @@ Suporte: ${SUPPORT_EMAIL} | ${SUPPORT_PHONE}`;
     });
   },
 });
+
+export const sendAvulsoOnboardingSuccessEmail = internalAction({
+  args: {
+    tenantId: v.id("condos"),
+    checkoutSessionId: v.string(),
+  },
+  handler: async (ctx: any, args) => {
+    const tenant = (await ctx.runQuery(api.billing.getTenantIfExists, {
+      tenantId: args.tenantId,
+    })) as TenantRecord | null;
+    if (!tenant) {
+      console.warn("[billing.email.avulso] Tenant not found", args.tenantId);
+      return;
+    }
+
+    const resident = await fetchLatestResident(ctx, args.tenantId);
+    const residentEmail = resident?.email
+      ? normalizeEmail(resident.email)
+      : null;
+    const stripe = getStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(
+      args.checkoutSessionId,
+      { expand: ["customer", "line_items.data.price.product"] },
+    );
+
+    if (
+      session.mode !== "payment" ||
+      session.payment_status !== "paid" ||
+      session.metadata?.tierKey !== "avulso"
+    ) {
+      console.warn(
+        "[billing.email.avulso] Checkout is not a paid Avulso session",
+        args.checkoutSessionId,
+      );
+      return;
+    }
+
+    const customerEmail =
+      session.customer_details?.email ??
+      resolveCustomerEmail(session.customer) ??
+      residentEmail;
+    if (!customerEmail) {
+      console.warn(
+        "[billing.email.avulso] No customer email found for tenant",
+        args.tenantId,
+      );
+      return;
+    }
+
+    const price = session.line_items?.data[0]?.price ?? null;
+    const amount = session.amount_total ??
+      (price && typeof price !== "string" ? price.unit_amount : null);
+    const loginHost = tenant.subdomain
+      ? `https://${tenant.subdomain}.allecto.app`
+      : PORTAL_BASE_URL;
+    const tenantDisplayName = tenant.branding?.displayName ?? tenant.name;
+    const adminName = resident?.name ?? "Administrador";
+    const adminEmail = residentEmail ?? customerEmail;
+    const priceFormatted = formatBRL(amount);
+    const planLimits = PLAN_LIMITS.avulso;
+    const subject = "Bem-vindo(a) à Allecto! Sua assembleia Avulso foi liberada ✅";
+
+    const html = `
+      <p>Olá ${adminName},</p>
+      <p>Seu pagamento foi confirmado e sua assembleia <strong>Avulso</strong> já está disponível. 🎉</p>
+      <p>
+        Acesse agora o portal da Allecto para começar:<br/>
+        <a href="${loginHost}">${loginHost}</a><br/>
+        (use seu e-mail <strong>${customerEmail}</strong> para entrar)
+      </p>
+      <p><strong>Resumo do pagamento:</strong><br/>
+        • Oferta: Avulso<br/>
+        • Valor: ${priceFormatted}<br/>
+        • Tipo: pagamento único, sem renovação automática
+      </p>
+      <p><strong>Dados da sua conta:</strong><br/>
+        • Condomínio/Empresa: ${tenantDisplayName}<br/>
+        • Administrador(a): ${adminName} (${adminEmail})<br/>
+        • Limites: ${planLimits}
+      </p>
+      <p>A contratação será utilizada quando a assembleia for publicada. Rascunhos não consomem o direito de uso.</p>
+      <p>Se não reconhece esta cobrança, fale com nosso suporte.</p>
+      <p>Abraços,<br/>Equipe Allecto<br/>Suporte: ${SUPPORT_EMAIL} | ${SUPPORT_PHONE}</p>
+    `;
+
+    const text = `Olá ${adminName},
+
+Seu pagamento foi confirmado e sua assembleia Avulso já está disponível. 🎉
+
+Acesse agora o portal da Allecto para começar:
+${loginHost}
+(use seu e-mail ${customerEmail} para entrar)
+
+Resumo do pagamento:
+• Oferta: Avulso
+• Valor: ${priceFormatted}
+• Tipo: pagamento único, sem renovação automática
+
+Dados da sua conta:
+• Condomínio/Empresa: ${tenantDisplayName}
+• Administrador(a): ${adminName} (${adminEmail})
+• Limites: ${planLimits}
+
+A contratação será utilizada quando a assembleia for publicada. Rascunhos não consomem o direito de uso.
+
+Se não reconhece esta cobrança, fale com nosso suporte.
+
+Abraços,
+Equipe Allecto
+Suporte: ${SUPPORT_EMAIL} | ${SUPPORT_PHONE}`;
+
+    await sendEmail({
+      to: normalizeEmail(customerEmail),
+      subject,
+      html,
+      text,
+      from: DEFAULT_FROM,
+    });
+  },
+});
