@@ -21,7 +21,7 @@ function OfferCard({ offer, horizontal = false }: { offer: Offer; horizontal?: b
           <p className="mt-2 text-sm text-gray-600">{offer.description}</p>
           <p className="mt-4 text-3xl font-bold text-gray-900">{offer.priceLabel}</p>
         </CardHeader>
-        <CardContent className="pt-2 md:pt-6">
+        <CardContent className={horizontal ? "py-6 md:py-8" : "pt-2"}>
           <ul className={`grid gap-2 text-sm text-gray-700 ${horizontal ? "sm:grid-cols-2" : ""}`}>
             {offer.features.map((feature) => <li key={feature} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary" /><span>{feature}</span></li>)}
           </ul>

@@ -61,6 +61,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             });
           `}
         </Script>
+        {allowAnalytics ? (
+          <Script id="consent-mode-update" strategy="beforeInteractive">
+            {`
+              gtag('consent', 'update', {
+                analytics_storage: 'granted'
+              });
+            `}
+          </Script>
+        ) : null}
       </head>
       <body>
         {allowAnalytics ? <GoogleTagManager gtmId="GTM-PRXXLQHV" /> : null}
