@@ -3,15 +3,22 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Billing } from "@allecto-app/contracts";
 import { describe, expect, it } from "vitest";
+import FaqPage, { metadata as faqMetadata } from "../app/faq/page";
+import sitemap from "../app/sitemap";
 import {
   buildFaqJsonLd,
   FAQ_CATEGORIES,
   FAQ_ITEMS,
+  HOME_FAQ_ITEMS,
 } from "../src/content/faq";
 
 const landingRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const faqSource = readFileSync(
   join(landingRoot, "src/components/FAQ.tsx"),
+  "utf8",
+);
+const faqPageSource = readFileSync(
+  join(landingRoot, "app/faq/page.tsx"),
   "utf8",
 );
 
@@ -43,6 +50,27 @@ describe("landing FAQ", () => {
     );
   });
 
+  it("shows only three high-intent questions on the homepage", () => {
+    expect(HOME_FAQ_ITEMS.map(({ id }) => id)).toEqual([
+      "o-que-e-allecto",
+      "assembleia-avulsa",
+      "acesso-sem-aplicativo",
+    ]);
+    expect(buildFaqJsonLd(HOME_FAQ_ITEMS).mainEntity).toHaveLength(3);
+    expect(faqSource).toContain('href="/faq"');
+  });
+
+  it("publishes the complete FAQ as a canonical, single-column page", () => {
+    expect(FaqPage()).toBeTruthy();
+    expect(faqMetadata.alternates?.canonical).toBe("/faq");
+    expect(sitemap().map(({ url }) => url)).toContain(
+      "https://www.allecto.app/faq",
+    );
+    expect(faqPageSource).not.toMatch(/grid-cols-[2-9]/);
+    expect(faqPageSource).toContain('className="space-y-12"');
+    expect(faqPageSource).toContain("FAQ_CATEGORIES.map");
+  });
+
   it("derives current commercial names, prices and limits from billing contracts", () => {
     const copy = FAQ_ITEMS.map(({ question, answer }) => `${question} ${answer}`).join(" ");
     for (const plan of Billing.COMMERCIAL_OFFERS) expect(copy).toContain(plan.name);
@@ -65,6 +93,7 @@ describe("landing FAQ", () => {
     expect(faqSource).toContain("AccordionTrigger");
     expect(faqSource).toContain("AccordionContent");
     expect(faqSource).toContain("focus-visible:ring-2");
-    expect(faqSource).toContain('aria-labelledby={`faq-${category.id}`}');
+    expect(faqPageSource).toContain('aria-labelledby={`faq-${category.id}`}');
+    expect(faqSource).toContain("last:border-b");
   });
 });

@@ -48,7 +48,7 @@ export function Header() {
               Preços
             </Link>
             <Link
-              href={`${LANDING_ORIGIN}/#faq`}
+              href={`${LANDING_ORIGIN}/faq`}
               className="text-gray-600 hover:text-gray-900 transition-colors"
             >
               FAQ
@@ -114,7 +114,7 @@ export function Header() {
               Preços
             </Link>
             <Link
-              href={`${LANDING_ORIGIN}/#faq`}
+              href={`${LANDING_ORIGIN}/faq`}
               onClick={handleNavigate}
               className="hover:text-gray-900 transition-colors"
             >

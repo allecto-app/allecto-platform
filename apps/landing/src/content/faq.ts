@@ -129,14 +129,14 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
     category: "planos",
     question: "Posso realizar somente uma assembleia, sem assinatura?",
     answer: `Sim. O plano ${avulso.name} custa ${avulso.priceLabel}, sem assinatura, e cobre uma assembleia de até ${avulso.limits.assemblyDurationDays} dias para um condomínio com até ${avulso.limits.units} unidades. A contratação é um pagamento único. Para uma operação recorrente, os planos mensais oferecem mais assembleias anuais e limites maiores.`,
-    link: { label: "Comparar os planos", href: "#precos" },
+    link: { label: "Comparar os planos", href: "/#precos" },
   },
   {
     id: "diferenca-planos",
     category: "planos",
     question: "Qual é a diferença entre os planos da Allecto?",
     answer: `O ${essencial.name} (${essencial.priceLabel}) atende um condomínio com até ${essencial.limits.units} unidades e ${essencial.limits.assembliesPerYear} assembleias por ano. O ${gestao.name} (${gestao.priceLabel}) amplia esses limites para ${gestao.limits.units} unidades e ${gestao.limits.assembliesPerYear} assembleias. O ${administradora.name} (${administradora.priceLabel}) atende até ${administradora.limits.condominiums} condomínios, ${formatLimit(administradora.limits.units, "unidades do Administradora")} unidades e ${administradora.limits.assembliesPerYear} assembleias por ano. O Enterprise é definido com a equipe comercial.`,
-    link: { label: "Ver preços e limites", href: "#precos" },
+    link: { label: "Ver preços e limites", href: "/#precos" },
   },
   {
     id: "seguranca-e-privacidade",
@@ -154,7 +154,7 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
     category: "administradoras",
     question: "A Allecto atende administradoras e múltiplos condomínios?",
     answer: `Sim. Os dados são separados por condomínio e a área administrativa permite alternar entre os condomínios aos quais a equipe tem acesso. O plano ${administradora.name} prevê uma operação de até ${administradora.limits.condominiums} condomínios e ${formatLimit(administradora.limits.units, "unidades do Administradora")} unidades, com usuários e permissões por equipe. Necessidades acima desses limites devem ser avaliadas no Enterprise.`,
-    link: { label: "Conhecer o plano Administradora", href: "#precos" },
+    link: { label: "Conhecer o plano Administradora", href: "/#precos" },
   },
   {
     id: "canais-de-suporte",
@@ -162,9 +162,21 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
     question: "Que tipo de suporte está incluído?",
     answer:
       "O Avulso inclui suporte por e-mail. O Essencial tem meta de resposta de até um dia útil, enquanto Gestão e Administradora incluem suporte prioritário. Para operações que precisam de SLA dedicado, gerente de conta ou acompanhamento durante assembleias, a opção Enterprise é definida com a equipe comercial conforme o projeto.",
-    link: { label: "Falar com a equipe", href: "#contato" },
+    link: { label: "Falar com a equipe", href: "/#contato" },
   },
 ];
+
+const HOME_FAQ_IDS = [
+  "o-que-e-allecto",
+  "assembleia-avulsa",
+  "acesso-sem-aplicativo",
+] as const;
+
+export const HOME_FAQ_ITEMS: readonly FaqItem[] = HOME_FAQ_IDS.map((id) => {
+  const item = FAQ_ITEMS.find((candidate) => candidate.id === id);
+  if (!item) throw new Error(`FAQ da página inicial não encontrada: ${id}`);
+  return item;
+});
 
 export function buildFaqJsonLd(items: readonly FaqItem[] = FAQ_ITEMS) {
   return {

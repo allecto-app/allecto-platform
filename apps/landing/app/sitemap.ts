@@ -19,6 +19,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
     {
+      url: "https://www.allecto.app/faq",
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
       url: "https://portal.allecto.app/",
       changeFrequency: "monthly",
       priority: 0.5,
