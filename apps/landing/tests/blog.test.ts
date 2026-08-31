@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
+import { middleware } from "../middleware";
 import sitemap from "../app/sitemap";
 import CategoryPage, { generateMetadata as generateCategoryMetadata } from "../app/pt/[category]/page";
 import NewArticlePage, { generateMetadata as generateArticleMetadata } from "../app/pt/[category]/[article]/page";
@@ -104,8 +106,21 @@ describe("restored blog content", () => {
 
   it("does not introduce broken article links or legacy plan names", () => {
     const knownPaths = new Set([...BLOG_ARTICLES.map(({ canonicalPath }) => canonicalPath), ...BLOG_CATEGORIES.map(({ slug }) => `/pt/${slug}`)]);
-    const linkedPaths = [...articleContentsSource.matchAll(/href="(\/pt\/[^"]+)"/g)].map((match) => match[1]);
-    for (const linkedPath of linkedPaths) expect(knownPaths.has(linkedPath)).toBe(true);
+    for (const content of Object.values(ARTICLE_CONTENTS)) {
+      for (const linkedPath of content.related) expect(knownPaths.has(linkedPath)).toBe(true);
+    }
+    expect(articleContentsSource).not.toMatch(/href="\/pt\//);
     expect(articleContentsSource).not.toMatch(/\b(?:Plus|Pro)\b/);
+  });
+
+  it("enforces the blog subdomain for public blog routes", () => {
+    const articlePath = newArticles[0].canonicalPath;
+    const articleResponse = middleware(new NextRequest(`https://www.allecto.app${articlePath}?utm_source=test`));
+    expect(articleResponse.status).toBe(308);
+    expect(articleResponse.headers.get("location")).toBe(`https://blog.allecto.app${articlePath}?utm_source=test`);
+
+    const blogResponse = middleware(new NextRequest("https://www.allecto.app/blog"));
+    expect(blogResponse.status).toBe(308);
+    expect(blogResponse.headers.get("location")).toBe("https://blog.allecto.app/");
   });
 });

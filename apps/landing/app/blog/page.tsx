@@ -4,7 +4,7 @@ import { Footer } from "../../src/components/Footer";
 import { Header } from "../../src/components/Header";
 import { Button } from "../../src/components/ui/button";
 import { ArticleCard } from "../../src/blog/BlogUi";
-import { BLOG_ARTICLES, BLOG_CATEGORIES } from "../../src/blog/content";
+import { BLOG_ARTICLES, BLOG_CATEGORIES, BLOG_ORIGIN } from "../../src/blog/content";
 
 export const metadata: Metadata = {
   title: "Conteúdos sobre Assembleias Condominiais | Allecto",
@@ -45,7 +45,7 @@ export default function BlogPage() {
         <section className="bg-gray-50 py-20">
           <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <h2 className="text-2xl font-semibold text-gray-900">Explore por tema</h2>
-            <div className="mt-8 grid gap-5 md:grid-cols-3">{BLOG_CATEGORIES.map((category) => <Link key={category.slug} href={`/pt/${category.slug}`} className="rounded-2xl border bg-white p-6 hover:border-primary/40"><h3 className="text-xl font-semibold text-gray-900">{category.name}</h3><p className="mt-3 text-sm leading-6 text-gray-600">{category.description}</p></Link>)}</div>
+            <div className="mt-8 grid gap-5 md:grid-cols-3">{BLOG_CATEGORIES.map((category) => <Link key={category.slug} href={`${BLOG_ORIGIN}/pt/${category.slug}`} className="rounded-2xl border bg-white p-6 hover:border-primary/40"><h3 className="text-xl font-semibold text-gray-900">{category.name}</h3><p className="mt-3 text-sm leading-6 text-gray-600">{category.description}</p></Link>)}</div>
             <h2 className="mt-16 text-2xl font-semibold text-gray-900">Conteúdos recentes</h2>
             <div className="mt-8 grid gap-[30px]">{BLOG_ARTICLES.map((article) => { const category = BLOG_CATEGORIES.find(({ slug }) => slug === article.categorySlug)!; return <ArticleCard key={article.slug} article={article} category={category} />; })}</div>
             <div className="mt-12 text-center"><Button asChild>

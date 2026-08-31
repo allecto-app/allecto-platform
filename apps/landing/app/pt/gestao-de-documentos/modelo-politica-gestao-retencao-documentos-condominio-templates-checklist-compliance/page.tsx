@@ -131,7 +131,7 @@ export default function DocumentPolicyArticlePage() {
       <Faq q="Qual é a diferença entre backup e arquivo?">Backup recupera dados após falha e costuma manter cópias técnicas rotativas. Arquivo preserva documentos selecionados com contexto, classificação, acesso e prazo. Um não substitui o outro.</Faq>
       <Faq q="Documentos relacionados a processos podem ser eliminados?">Não enquanto estiverem sujeitos a legal hold. Preserve o conjunto relacionado até liberação formal baseada na situação concreta e na orientação profissional.</Faq>
       <Faq q="A política precisa ser aprovada em assembleia?">A instância de aprovação depende da convenção, do conteúdo, das competências do síndico e do impacto das regras. Registre a decisão e valide a forma adequada com assessoria jurídica.</Faq>
-      <p className="mt-12">Continue pela categoria <Link href="/pt/gestao-de-documentos">Gestão de Documentos</Link>, consulte conteúdos de <Link href="/pt/governanca-condominial">Governança Condominial</Link> e <Link href="/pt/seguranca-e-criptografia">Segurança e proteção de dados</Link>, ou leia a <Link href="https://www.allecto.app/politica-de-privacidade">Política de Privacidade da Allecto</Link>.</p>
+      <p className="mt-12">Continue pela categoria <Link href={`${BLOG_ORIGIN}/pt/gestao-de-documentos`}>Gestão de Documentos</Link>, consulte conteúdos de <Link href={`${BLOG_ORIGIN}/pt/governanca-condominial`}>Governança Condominial</Link> e <Link href={`${BLOG_ORIGIN}/pt/seguranca-e-criptografia`}>Segurança e proteção de dados</Link>, ou leia a <Link href="https://www.allecto.app/politica-de-privacidade">Política de Privacidade da Allecto</Link>.</p>
     </div></article>
   </main><Footer /></div>;
 }

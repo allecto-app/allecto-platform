@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { ArticleContent } from "./ArticlePage";
+import { BLOG_ORIGIN } from "./content";
 
 const CIVIL_CODE = "https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm";
 const LAW_14309 = "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2022/lei/l14309.htm";
@@ -8,6 +9,7 @@ const LGPD = "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l1370
 const ANPD_AGENTS = "https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-para-definicoes-dos-agentes-de-tratamento-de-dados-pessoais-e-do-encarregado";
 const ANPD_SECURITY = "https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-publica-guia-de-seguranca-para-agentes-de-tratamento-de-pequeno-porte";
 const ANPD_INCIDENTS = "https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-aprova-o-regulamento-de-comunicacao-de-incidente-de-seguranca";
+const blogHref = (path: string) => `${BLOG_ORIGIN}${path}`;
 
 function Checklist({ items }: { items: string[] }) { return <ul className="my-6 list-none space-y-2 pl-0">{items.map((item) => <li key={item} className="flex items-start gap-3 rounded-lg border bg-gray-50 px-4 py-3"><span aria-hidden="true" className="mt-1 inline-block h-4 w-4 shrink-0 rounded-[3px] border border-gray-500 bg-white" /><span>{item}</span></li>)}</ul>; }
 function DataTable({ headers, rows }: { headers: string[]; rows: string[][] }) { return <div className="my-8 overflow-x-auto"><table className="min-w-[720px] border-collapse text-sm"><thead><tr>{headers.map((heading) => <th key={heading} className="border bg-gray-100 p-3 text-left">{heading}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={`${row[0]}-${index}`}>{row.map((cell, cellIndex) => <td key={`${cell}-${cellIndex}`} className="border p-3 align-top">{cell}</td>)}</tr>)}</tbody></table></div>; }
@@ -27,7 +29,7 @@ export const onlineAssemblyContent: ArticleContent = {
   ctaLabel: "Realizar uma assembleia por R$ 249",
   body: <>
     <p>Assembleia online válida não é sinônimo de simplesmente abrir uma chamada de vídeo. A validade é sustentada por um processo: convocação regular, informação antecipada sobre como participar, identificação compatível com o risco, exercício efetivo dos direitos políticos do condômino, apuração conforme a regra aplicável e registros capazes de explicar o que ocorreu. Se uma dessas partes falha, a deliberação pode ser questionada mesmo quando a tecnologia funcionou.</p>
-    <p>Antes de escolher a ferramenta, leia a convenção e o regimento, classifique cada item da pauta e defina quem poderá votar e com qual peso. Essa preparação conecta este guia aos conteúdos sobre <Link href="/pt/governanca-condominial/quorum-assembleia-condominio">quórum</Link> e <Link href="/pt/governanca-condominial/votacao-por-fracao-ideal-condominio">fração ideal</Link>.</p>
+    <p>Antes de escolher a ferramenta, leia a convenção e o regimento, classifique cada item da pauta e defina quem poderá votar e com qual peso. Essa preparação conecta este guia aos conteúdos sobre <Link href={blogHref("/pt/governanca-condominial/quorum-assembleia-condominio")}>quórum</Link> e <Link href={blogHref("/pt/governanca-condominial/votacao-por-fracao-ideal-condominio")}>fração ideal</Link>.</p>
 
     <h2 id="legislacao">O que a legislação permite</h2>
     <p>A Lei nº 14.309/2022 inseriu no Código Civil regras expressas para convocação, realização e deliberação eletrônicas em condomínios edilícios. O artigo 1.354-A admite o meio eletrônico desde que a convenção não o proíba e sejam preservados os direitos de voz, debate e voto. A norma não dispensa as demais exigências: todos os condôminos devem ser convocados, a pauta precisa ser respeitada e cada deliberação continua sujeita ao quórum legal ou convencional correspondente.</p>
@@ -69,7 +71,7 @@ export const onlineAssemblyContent: ArticleContent = {
     <h2 id="quorum">Quórum e peso dos votos</h2>
     <p>Existem perguntas diferentes: há pessoas suficientes para instalar ou deliberar? Quem está apto? Qual é a base — presentes, total de condôminos, unidades ou frações? Qual é o peso de cada voto? A resposta muda conforme a matéria, a chamada, a lei e a convenção. Por isso, não use um percentual único para toda a pauta.</p>
     <p>O Código Civil prevê, como regra geral para primeira convocação quando não há quórum especial, maioria dos votos dos presentes que representem ao menos metade das frações ideais. Em segunda convocação, a regra geral é maioria dos presentes, ressalvados quóruns especiais. Os votos são proporcionais às frações ideais, salvo disposição diversa da convenção. Essas regras devem ser aplicadas ao caso concreto.</p>
-    <p>Prepare uma ficha por item com base, exigência, aptos, peso e fórmula. Registre entradas e saídas antes de abrir a votação. Para um tratamento completo, consulte o <Link href="/pt/governanca-condominial/quorum-assembleia-condominio">guia de quórum</Link>.</p>
+    <p>Prepare uma ficha por item com base, exigência, aptos, peso e fórmula. Registre entradas e saídas antes de abrir a votação. Para um tratamento completo, consulte o <Link href={blogHref("/pt/governanca-condominial/quorum-assembleia-condominio")}>guia de quórum</Link>.</p>
 
     <h2 id="ata">Ata e registros eletrônicos</h2>
     <p>A ata deve reconstruir o essencial: convocação, data, modalidade, chamadas, mesa, presença, ocorrências técnicas relevantes, propostas, resultados e encerramento. Para cada votação, informe a formulação submetida, base de cálculo, votos favoráveis, contrários, abstenções e conclusão. Se houver fração ideal, registre os totais ponderados.</p>
@@ -128,7 +130,7 @@ export const quorumContent: ArticleContent = {
 
     <h2 id="unidade-fracao">Unidade ou fração ideal</h2>
     <p>“Uma unidade, um voto” não é uma regra universal. O parágrafo único do artigo 1.352 estabelece proporcionalidade às frações ideais no solo e nas partes comuns, salvo disposição diversa da convenção. Assim, a primeira fonte do peso é a matrícula/convenção e a segunda é a regra convencional aplicável.</p>
-    <p>Unidade é o imóvel autônomo; fração ideal é sua participação percentual ou decimal no terreno e nas partes comuns. Duas unidades podem ter pesos iguais ou diferentes. Vagas autônomas, lojas, unidades agrupadas e alterações de áreas exigem cuidado cadastral. Leia o guia específico de <Link href="/pt/governanca-condominial/votacao-por-fracao-ideal-condominio">votação por fração ideal</Link> para os cálculos.</p>
+    <p>Unidade é o imóvel autônomo; fração ideal é sua participação percentual ou decimal no terreno e nas partes comuns. Duas unidades podem ter pesos iguais ou diferentes. Vagas autônomas, lojas, unidades agrupadas e alterações de áreas exigem cuidado cadastral. Leia o guia específico de <Link href={blogHref("/pt/governanca-condominial/votacao-por-fracao-ideal-condominio")}>votação por fração ideal</Link> para os cálculos.</p>
 
     <h2 id="base-calculo">Como determinar a base de cálculo</h2>
     <p>Escreva a regra como uma frase antes de criar a fórmula: “aprovação por maioria dos votos dos condôminos presentes, ponderados pela fração ideal” é diferente de “aprovação por dois terços dos votos de todos os condôminos”. Identifique numerador, denominador e critério de peso.</p>
@@ -163,7 +165,7 @@ export const quorumContent: ArticleContent = {
     <p>A tabela é um roteiro de investigação, não uma tabela de percentuais. Registre a fonte usada e a data da validação. Se a proposta muda durante o debate, confirme se continua dentro da pauta e se mantém a mesma regra.</p>
 
     <h2 id="movimentacao">Entradas e saídas durante a reunião</h2>
-    <p>Uma pessoa que entrou depois da instalação pode estar presente para a votação seguinte. Outra que saiu não deveria compor automaticamente a base de presentes daquele item. Em reunião online ou <Link href="/pt/governanca-condominial/assembleia-hibrida-condominio">híbrida</Link>, quedas breves de conexão exigem regra proporcional e transparente.</p>
+    <p>Uma pessoa que entrou depois da instalação pode estar presente para a votação seguinte. Outra que saiu não deveria compor automaticamente a base de presentes daquele item. Em reunião online ou <Link href={blogHref("/pt/governanca-condominial/assembleia-hibrida-condominio")}>híbrida</Link>, quedas breves de conexão exigem regra proporcional e transparente.</p>
     <p>Registre entrada, saída, retorno e troca de representante. Antes de abrir cada votação, anuncie o total apto e a base ponderada. Se a mudança altera a possibilidade de deliberar, a presidência deve reconhecer isso antes de coletar votos.</p>
     <p>A lista operacional detalhada pode ser restrita; a ata deve conter informação suficiente para justificar o cálculo sem divulgar dados além do necessário.</p>
 
@@ -280,7 +282,7 @@ export const fractionContent: ArticleContent = {
 
     <h2 id="quorum-resultado">Diferença entre quórum e resultado</h2>
     <p>Quórum mede se o conjunto exigido está presente ou apoiou a matéria; resultado distribui os votos coletados. Uma proposta pode vencer entre presentes e ainda não alcançar um patamar sobre o total. Pode também haver presença suficiente, mas empate na deliberação.</p>
-    <p>Relatórios devem separar: fração total do condomínio, fração apta, fração presente, fração que votou, favorável, contrária e abstenção. Consulte o <Link href="/pt/governanca-condominial/quorum-assembleia-condominio">guia de quórum</Link> para selecionar denominadores.</p>
+    <p>Relatórios devem separar: fração total do condomínio, fração apta, fração presente, fração que votou, favorável, contrária e abstenção. Consulte o <Link href={blogHref("/pt/governanca-condominial/quorum-assembleia-condominio")}>guia de quórum</Link> para selecionar denominadores.</p>
 
     <h2 id="auditoria">Conferência e auditoria</h2>
     <p>Uma conferência reproduz o resultado a partir das mesmas entradas. Exporte ou preserve cadastro usado, presenças, procurações, escolhas, precisão e fórmula. Restrinja detalhes individuais quando houver voto secreto e exponha apenas o necessário para verificar totais.</p>
@@ -329,7 +331,7 @@ export const hybridContent: ArticleContent = {
     <h2 id="previsao-legal">Previsão legal</h2>
     <p>A Lei nº 14.309/2022 incluiu o artigo 1.354-A no Código Civil, admitindo convocação, realização e deliberação eletrônicas quando a convenção não proíbe e os direitos de voz, debate e voto são preservados. A modalidade híbrida combina o meio eletrônico com o presencial e deve atender às mesmas salvaguardas.</p>
     <p>A convocação de todos os condôminos, a pauta, a aptidão e os quóruns continuam indispensáveis. A tecnologia não substitui a convenção. Confira também normas complementares aprovadas no regimento e eventuais exigências locais relacionadas ao espaço físico.</p>
-    <p>Leia primeiro o guia sobre quando uma <Link href="/pt/governanca-condominial/assembleia-condominial-online-e-valida">assembleia online pode ser válida</Link>. Em pautas controversas ou convenções ambíguas, obtenha orientação jurídica antes de definir o formato.</p>
+    <p>Leia primeiro o guia sobre quando uma <Link href={blogHref("/pt/governanca-condominial/assembleia-condominial-online-e-valida")}>assembleia online pode ser válida</Link>. Em pautas controversas ou convenções ambíguas, obtenha orientação jurídica antes de definir o formato.</p>
 
     <h2 id="quando-usar">Quando utilizar o formato</h2>
     <p>O híbrido é útil quando há condôminos que valorizam a reunião física e outros que não podem se deslocar. Pode ampliar acesso em condomínios com proprietários residentes em outras cidades, pessoas com mobilidade reduzida ou agendas diversas. Também pode aproveitar infraestrutura já conhecida sem restringir a participação remota.</p>
@@ -374,7 +376,7 @@ export const hybridContent: ArticleContent = {
 
     <h2 id="quorum">Sincronização do quórum</h2>
     <p>Quórum deve ser calculado sobre a união deduplicada dos canais. Entradas e saídas precisam chegar à fonte oficial. Se uma pessoa remota perde conexão por segundos, aplique a regra de tolerância anunciada; se abandona a reunião, atualize antes do próximo item.</p>
-    <p>Congele uma fotografia para cada votação: unidades representadas, aptas, pesos e representantes. Não altere retroativamente sem registrar correção. O <Link href="/pt/governanca-condominial/quorum-assembleia-condominio">guia de quórum</Link> explica bases e cálculos.</p>
+    <p>Congele uma fotografia para cada votação: unidades representadas, aptas, pesos e representantes. Não altere retroativamente sem registrar correção. O <Link href={blogHref("/pt/governanca-condominial/quorum-assembleia-condominio")}>guia de quórum</Link> explica bases e cálculos.</p>
 
     <h2 id="secreta">Votação secreta</h2>
     <p>Segredo do voto e verificabilidade precisam ser equilibrados. A mesa pode precisar comprovar que uma unidade apta votou uma única vez sem expor sua escolha. Defina quem acessa registros individualizados e o que aparece no relatório.</p>
@@ -392,7 +394,7 @@ export const hybridContent: ArticleContent = {
 
     <h2 id="ata">Ata e registros finais</h2>
     <p>A ata informa modalidade híbrida, canais, convocação, mesa, presença consolidada, quórum por item, propostas, resultados, abstenções e ocorrências técnicas relevantes. Não precisa narrar cada clique, mas deve permitir compreender se os direitos foram preservados.</p>
-    <p>Guarde edital, documentos apresentados, lista versionada, procurações, memória de cálculo e relatórios com acesso e retenção definidos. Gravação integral não é substituto da ata e deve ser avaliada à luz da necessidade e da <Link href="/pt/seguranca-e-criptografia/lgpd-para-condominios">LGPD</Link>.</p>
+    <p>Guarde edital, documentos apresentados, lista versionada, procurações, memória de cálculo e relatórios com acesso e retenção definidos. Gravação integral não é substituto da ata e deve ser avaliada à luz da necessidade e da <Link href={blogHref("/pt/seguranca-e-criptografia/lgpd-para-condominios")}>LGPD</Link>.</p>
     <h3>Roteiro minuto a minuto</h3>
     <p>Noventa minutos antes, equipe técnica liga equipamentos e verifica contingência. Sessenta minutos antes, abre credenciamento presencial e remoto. Quinze minutos antes, reconcilia procurações e duplicidades. Na chamada, a presidência recebe o total consolidado, anuncia a base e registra se pode instalar.</p>
     <p>Em cada item, a secretaria apresenta documentos, o moderador unifica falas, a presidência formula a proposta e o operador congela a presença. A votação abre pelo mesmo período nos dois canais. Após o encerramento, a equipe confere totais antes do anúncio. Entre itens, processa entradas e saídas.</p>
@@ -515,7 +517,7 @@ export const lgpdContent: ArticleContent = {
     <h2 id="assembleias">Dados de assembleias e votações</h2>
     <p>Editais, listas, procurações, chats, votos, atas e relatórios contêm dados pessoais. Separe transparência condominial de exposição pública. A ata deve registrar decisões sem reproduzir documentos de identidade, contatos ou detalhes desnecessários de conflitos.</p>
     <p>Em votação aberta, informe o que será visível. Em votação secreta, restrinja associação entre pessoa e escolha conforme o desenho adotado. Dados de aptidão financeira devem ficar com equipe autorizada, mesmo quando influenciam voto.</p>
-    <p>Gravação não deve ser padrão sem avaliação. Defina finalidade, informação aos participantes, acesso, prazo e descarte. Consulte o guia sobre <Link href="/pt/governanca-condominial/assembleia-hibrida-condominio">assembleia híbrida</Link> para integrar privacidade ao procedimento.</p>
+    <p>Gravação não deve ser padrão sem avaliação. Defina finalidade, informação aos participantes, acesso, prazo e descarte. Consulte o guia sobre <Link href={blogHref("/pt/governanca-condominial/assembleia-hibrida-condominio")}>assembleia híbrida</Link> para integrar privacidade ao procedimento.</p>
 
     <h2 id="titulares">Direitos dos titulares</h2>
     <p>O artigo 18 prevê direitos como confirmação de tratamento, acesso, correção, informação sobre compartilhamento e outras providências nas condições legais. Nem todo pedido implica entrega irrestrita ou eliminação imediata: direitos de terceiros, obrigações e exercício regular de direitos precisam ser considerados.</p>
@@ -524,7 +526,7 @@ export const lgpdContent: ArticleContent = {
 
     <h2 id="retencao">Retenção e descarte</h2>
     <p>Guardar tudo “por segurança” contraria a minimização e amplia o impacto de incidentes. Apagar tudo após a troca de síndico destrói memória e pode prejudicar obrigações e defesa. Crie uma tabela por categoria, fundamento, evento inicial, fase ativa, arquivo, acesso e destinação.</p>
-    <p>Prazos legais, contratuais e prescricionais devem ser validados por assessorias competentes. Suspenda descarte quando houver litígio, auditoria, sinistro, investigação ou solicitação pendente. Veja o <Link href="/pt/gestao-de-documentos/modelo-politica-gestao-retencao-documentos-condominio-templates-checklist-compliance">modelo de política de retenção</Link>.</p>
+    <p>Prazos legais, contratuais e prescricionais devem ser validados por assessorias competentes. Suspenda descarte quando houver litígio, auditoria, sinistro, investigação ou solicitação pendente. Veja o <Link href={blogHref("/pt/gestao-de-documentos/modelo-politica-gestao-retencao-documentos-condominio-templates-checklist-compliance")}>modelo de política de retenção</Link>.</p>
     <p>Descarte papel por fragmentação compatível e dados digitais por exclusão controlada, incluindo cópias e integrações quando aplicável. Registre autorização e execução sem manter o conteúdo eliminado.</p>
 
     <h2 id="incidentes">Resposta a incidentes</h2>

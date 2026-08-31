@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { Button } from "../components/ui/button";
-import type { BlogArticle, BlogCategory } from "./content";
+import { BLOG_ORIGIN, type BlogArticle, type BlogCategory } from "./content";
 
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
@@ -14,10 +14,10 @@ export function BlogBreadcrumbs({ items }: { items: Array<{ label: string; href?
 export function ArticleCard({ article, category }: { article: BlogArticle; category: BlogCategory }) {
   return <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-primary/30 hover:shadow-md">
     <p className="text-sm font-semibold text-primary">{category.name}</p>
-    <h2 className="mt-3 text-2xl font-semibold text-gray-900"><Link href={article.canonicalPath}>{article.title}</Link></h2>
+    <h2 className="mt-3 text-2xl font-semibold text-gray-900"><Link href={`${BLOG_ORIGIN}${article.canonicalPath}`}>{article.title}</Link></h2>
     <p className="mt-3 text-gray-600">{article.summary}</p>
     <div className="mt-5 flex flex-wrap items-center gap-4 text-sm text-gray-500"><time dateTime={article.publishedAt}>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "UTC" }).format(new Date(article.publishedAt))}</time><span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />{article.readingMinutes} min de leitura</span></div>
-    <Link href={article.canonicalPath} className="mt-6 inline-flex items-center gap-2 font-medium text-primary hover:text-accent">Ler artigo <ArrowRight className="h-4 w-4" /></Link>
+    <Link href={`${BLOG_ORIGIN}${article.canonicalPath}`} className="mt-6 inline-flex items-center gap-2 font-medium text-primary hover:text-accent">Ler artigo <ArrowRight className="h-4 w-4" /></Link>
   </article>;
 }
 
