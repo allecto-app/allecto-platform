@@ -9,7 +9,7 @@ const ANPD_AGENTS = "https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiai
 const ANPD_SECURITY = "https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-publica-guia-de-seguranca-para-agentes-de-tratamento-de-pequeno-porte";
 const ANPD_INCIDENTS = "https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-aprova-o-regulamento-de-comunicacao-de-incidente-de-seguranca";
 
-function Checklist({ items }: { items: string[] }) { return <ul className="my-6 list-none space-y-2 pl-0">{items.map((item) => <li key={item} className="rounded-lg border bg-gray-50 px-4 py-3">☐ {item}</li>)}</ul>; }
+function Checklist({ items }: { items: string[] }) { return <ul className="my-6 list-none space-y-2 pl-0">{items.map((item) => <li key={item} className="flex items-start gap-3 rounded-lg border bg-gray-50 px-4 py-3"><span aria-hidden="true" className="mt-1 inline-block h-4 w-4 shrink-0 rounded-[3px] border border-gray-500 bg-white" /><span>{item}</span></li>)}</ul>; }
 function DataTable({ headers, rows }: { headers: string[]; rows: string[][] }) { return <div className="my-8 overflow-x-auto"><table className="min-w-[720px] border-collapse text-sm"><thead><tr>{headers.map((heading) => <th key={heading} className="border bg-gray-100 p-3 text-left">{heading}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={`${row[0]}-${index}`}>{row.map((cell, cellIndex) => <td key={`${cell}-${cellIndex}`} className="border p-3 align-top">{cell}</td>)}</tr>)}</tbody></table></div>; }
 
 const legalSources = [

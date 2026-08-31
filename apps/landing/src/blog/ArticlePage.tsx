@@ -19,6 +19,10 @@ export type ArticleContent = {
 
 export const LEGAL_DISCLAIMER = "Este conteúdo tem caráter informativo e não substitui a análise da convenção do condomínio nem a orientação de profissionais jurídicos, contábeis ou de proteção de dados.";
 
+function formatPublishedDate(date: string) {
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "UTC" }).format(new Date(date));
+}
+
 export function buildArticleJsonLd(article: BlogArticle) {
   return {
     "@context": "https://schema.org",
@@ -56,7 +60,7 @@ export function ArticlePage({ article, content }: { article: BlogArticle; conten
         <p className="font-semibold text-primary">{category.name}</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900 md:text-5xl">{article.title}</h1>
         <p className="mt-6 text-xl leading-8 text-gray-600">{article.summary}</p>
-        <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-500"><span>Por {article.author}</span><span>Revisão: {article.reviewer}</span><time dateTime={article.publishedAt}>Publicado em 30 de agosto de 2026</time><span>{article.readingMinutes} min de leitura</span></div>
+        <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-500"><span>Por {article.author}</span><span>Revisão: {article.reviewer}</span><time dateTime={article.publishedAt}>Publicado em {formatPublishedDate(article.publishedAt)}</time><span>{article.readingMinutes} min de leitura</span></div>
         <Image className="mt-8 h-auto w-full rounded-2xl border border-gray-200" src={article.imagePath} width={1200} height={630} priority alt={article.imageAlt} />
       </header>
       <div className="prose prose-lg max-w-none py-10 text-gray-700 [&_a]:font-medium [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline [&_h2]:mt-14 [&_h2]:scroll-mt-24 [&_h2]:text-3xl [&_h2]:font-semibold [&_h2]:text-gray-900 [&_h3]:mt-9 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-gray-900 [&_li]:mt-2 [&_p]:mt-5 [&_p]:leading-8">
